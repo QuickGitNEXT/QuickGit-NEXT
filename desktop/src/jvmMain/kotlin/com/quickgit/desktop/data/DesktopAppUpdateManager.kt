@@ -10,15 +10,15 @@ import java.util.Properties
 import java.util.regex.Pattern
 
 /**
- * Checks GitHub Releases for a newer QuickGit desktop package and downloads it.
+ * Checks GitHub Releases for a newer QuickGitNEXT desktop package and downloads it.
  * Mirrors Android AppUpdateManager but targets platform packages (.msi / .deb / AppImage / .dmg).
  */
 object DesktopAppUpdateConfig {
     const val OWNER = "SavedByLight"
-    const val REPO = "QuickGit"
-    /** Stamped by CI / packageVersion; override via system property quickgit.version. */
+    const val REPO = "QuickGitNEXT"
+    /** Stamped by CI / packageVersion; override via system property quickgitnext.version. */
     var currentVersionName: String =
-        System.getProperty("quickgit.version")
+        System.getProperty("quickgitnext.version")
             ?: System.getenv("QUICKGIT_VERSION")
             ?: "1.0.0"
 }
@@ -43,7 +43,7 @@ class DesktopAppUpdateManager(
 ) {
     private val prefsFile = File(
         System.getProperty("user.home"),
-        ".config/quickgit/update_prefs.properties"
+        ".config/quickgitnext/update_prefs.properties"
     )
     private val prefs = Properties().apply {
         if (prefsFile.exists()) prefsFile.inputStream().use { load(it) }
@@ -51,7 +51,7 @@ class DesktopAppUpdateManager(
 
     private fun savePrefs() {
         prefsFile.parentFile?.mkdirs()
-        prefsFile.outputStream().use { prefs.store(it, "QuickGit update prefs") }
+        prefsFile.outputStream().use { prefs.store(it, "QuickGitNEXT update prefs") }
     }
 
     fun isAutoPromptSuppressed(): Boolean {
@@ -152,14 +152,14 @@ class DesktopAppUpdateManager(
         onProgress: (Int) -> Unit = {}
     ): Result<File> {
         return try {
-            val dir = File(System.getProperty("user.home"), "Downloads/QuickGit-updates").apply { mkdirs() }
+            val dir = File(System.getProperty("user.home"), "Downloads/QuickGitNEXT-updates").apply { mkdirs() }
             val out = File(dir, assetName)
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 20_000
                 readTimeout = 120_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/octet-stream")
-                setRequestProperty("User-Agent", "QuickGit-Desktop")
+                setRequestProperty("User-Agent", "QuickGitNEXT-Desktop")
                 authHeader()?.let { setRequestProperty("Authorization", it) }
             }
             val code = conn.responseCode
@@ -213,7 +213,7 @@ class DesktopAppUpdateManager(
             connectTimeout = 15_000
             readTimeout = 20_000
             setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("User-Agent", "QuickGit-Desktop/${DesktopAppUpdateConfig.currentVersionName}")
+            setRequestProperty("User-Agent", "QuickGitNEXT-Desktop/${DesktopAppUpdateConfig.currentVersionName}")
             authHeader()?.let { setRequestProperty("Authorization", it) }
         }
         val code = conn.responseCode

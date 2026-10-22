@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 import java.awt.Dimension
 
 fun main() = application {
-    // Allow CI-stamped version via -Dquickgit.version=1.0.N
-    System.getProperty("quickgit.version")?.let {
+    // Allow CI-stamped version via -Dquickgitnext.version=1.0.N
+    System.getProperty("quickgitnext.version")?.let {
         DesktopAppUpdateConfig.currentVersionName = it
     }
 
@@ -32,13 +32,13 @@ fun main() = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "QuickGit",
+        title = "QuickGitNEXT",
         state = windowState
     ) {
         window.minimumSize = Dimension(800, 600)
 
         LaunchedEffect(Unit) {
-            AppLog.i("Main", "QuickGit desktop started (v${DesktopAppUpdateConfig.currentVersionName})")
+            AppLog.i("Main", "QuickGitNEXT desktop started (v${DesktopAppUpdateConfig.currentVersionName})")
         }
         val credentialStore = remember { DesktopCredentialStore() }
         val repoManager = remember { DesktopRepoManager(credentialStore) }
@@ -90,7 +90,7 @@ private fun UpdateAvailableDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "QuickGit ${available.latest.versionName} is on GitHub Releases " +
+                    "QuickGitNEXT ${available.latest.versionName} is on GitHub Releases " +
                         "(you have ${available.current.versionName})."
                 )
                 Text(

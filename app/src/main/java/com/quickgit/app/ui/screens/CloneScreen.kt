@@ -84,7 +84,7 @@ fun CloneScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 "Gerrit HTTPS clones use https://host/a/project/path. After you connect under " +
-                    "Credentials, QuickGit applies your HTTP password automatically.",
+                    "Credentials, QuickGitNEXT applies your HTTP password automatically.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -93,7 +93,7 @@ fun CloneScreen(
             Spacer(Modifier.height(4.dp))
             Text(
                 if (state.usingDefaultDestination)
-                    "Defaults to a folder under your QuickGit storage location. Optionally pick a different empty folder."
+                    "Defaults to a folder under your QuickGitNEXT storage location. Optionally pick a different empty folder."
                 else
                     "Using the folder you picked. Clear it to fall back to the default location.",
                 style = MaterialTheme.typography.bodySmall,

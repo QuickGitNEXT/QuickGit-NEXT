@@ -63,7 +63,7 @@ fun AutoUpdateHost(content: @Composable () -> Unit) {
                     title = { Text("New release available") },
                     text = {
                         Text(
-                            "QuickGit ${info.latest.versionName} is available " +
+                            "QuickGitNEXT ${info.latest.versionName} is available " +
                                 "(you have ${info.current.versionName}).\n\n" +
                                 "Open your browser to view the changelog and download the APK."
                         )

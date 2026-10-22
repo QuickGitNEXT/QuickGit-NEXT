@@ -117,7 +117,7 @@ fun RepoListScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
-                title = { Text("QuickGit") },
+                title = { Text("QuickGitNEXT") },
                 actions = {
                     // Profile + Search people in one menu — hidden on tablet/Chromebook
                     // layout since the NavigationRail already provides both.
@@ -422,7 +422,7 @@ fun RepoListScreen(
             text = {
                 Text(
                     if (external) {
-                        "This removes the repo from QuickGit's list only. Files on disk are not deleted."
+                        "This removes the repo from QuickGitNEXT's list only. Files on disk are not deleted."
                     } else {
                         "This deletes the local clone from this device. It won't affect the remote."
                     }

@@ -26,7 +26,7 @@ import com.quickgit.app.ui.theme.GitGreen
 
 /**
  * Chromebook / ARC detection. These devices often lack working biometrics and
- * system DEVICE_CREDENTIAL prompts for third-party apps; QuickGit uses an
+ * system DEVICE_CREDENTIAL prompts for third-party apps; QuickGitNEXT uses an
  * in-app Credentials password instead.
  */
 fun Context.isChromebookDevice(): Boolean {
@@ -242,7 +242,7 @@ private fun AppPasswordGate(
                 if (needsSetup) {
                     if (isChromebook) {
                         "Chromebooks often can’t use a system PIN for apps. " +
-                            "Create a password that unlocks only the Credentials screen in QuickGit. " +
+                            "Create a password that unlocks only the Credentials screen in QuickGitNEXT. " +
                             "The rest of the app stays unlocked."
                     } else {
                         "Create a password that unlocks only the Credentials screen. " +

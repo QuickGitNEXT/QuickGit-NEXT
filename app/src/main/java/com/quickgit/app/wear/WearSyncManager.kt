@@ -153,10 +153,10 @@ class WearSyncManager(
     companion object {
         private const val TAG = "WearSyncManager"
 
-        const val PATH_REPOS = "/quickgit/repos"
-        const val PATH_REQUEST_SYNC = "/quickgit/request_sync"
-        const val PATH_REPOS_PAYLOAD = "/quickgit/repos_payload"
-        const val CAPABILITY_PHONE = "quickgit_phone"
+        const val PATH_REPOS = "/quickgitnext/repos"
+        const val PATH_REQUEST_SYNC = "/quickgitnext/request_sync"
+        const val PATH_REPOS_PAYLOAD = "/quickgitnext/repos_payload"
+        const val CAPABILITY_PHONE = "quickgitnext_phone"
 
         const val KEY_UPDATED_AT = "updatedAt"
         const val KEY_REPOS = "repos"

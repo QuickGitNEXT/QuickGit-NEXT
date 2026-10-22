@@ -40,7 +40,7 @@ class AppPreferences(context: Context) {
     }
 
     companion object {
-        private const val PREFS_NAME = "quickgit_prefs"
+        private const val PREFS_NAME = "quickgitnext_prefs"
         private const val KEY_DESKTOP_LAYOUT = "desktop_layout_mode"
     }
 }

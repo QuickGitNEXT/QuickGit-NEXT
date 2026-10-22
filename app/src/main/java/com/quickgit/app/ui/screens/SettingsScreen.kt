@@ -55,7 +55,7 @@ fun SettingsScreen(
             Text(
                 "Where local clones live on disk. Point this at a folder you can also reach with " +
                     "your file manager if you need to copy files into a repo from outside the app — " +
-                    "on newer Android versions the default folder is private to QuickGit and isn't " +
+                    "on newer Android versions the default folder is private to QuickGitNEXT and isn't " +
                     "reachable from other apps.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

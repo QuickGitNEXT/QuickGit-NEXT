@@ -1,4 +1,4 @@
-# QuickGit — a GitHub Desktop-style git client for Android
+# QuickGitNEXT — a GitHub Desktop-style git client for Android
 
 A native Android app (Kotlin + Jetpack Compose) for cloning, browsing, staging,
 committing, pushing/pulling, branching, and resolving merge conflicts on git
@@ -46,7 +46,7 @@ Also ships as a **native desktop app** (Compose Multiplatform + JGit) for Linux
 ## Architecture
 
 ```
-app/src/main/java/com/quickgit/app/
+app/src/main/java/com/quickgitnext/app/
   data/
     RepoManager.kt           JGit: clone/status/stage/commit/push/pull/branches/diff/merge/files
     AccountManager.kt        Multi-account registry (GitHub / GitLab / Gerrit)
@@ -59,7 +59,7 @@ app/src/main/java/com/quickgit/app/
   viewmodel/                 StateFlow ViewModels per screen (IO on Dispatchers.IO)
   ui/screens/                Jetpack Compose (Material 3), including desktop-width variants
   navigation/                Compose Navigation + typed destinations
-  MainActivity.kt / QuickGitApp.kt
+  MainActivity.kt / QuickGitNEXTApp.kt
 ```
 
 Git operations are synchronous JGit calls wrapped in `withContext(Dispatchers.IO)`.
@@ -70,7 +70,7 @@ Long-running clone/push/pull can report progress via notifications where enabled
 You'll need **Android Studio (Koala or newer)** with the Android SDK (compileSdk 34) and a
 JDK 17.
 
-1. Open this folder (`QuickGit/`) directly in Android Studio — it will detect the Gradle
+1. Open this folder (`QuickGitNEXT/`) directly in Android Studio — it will detect the Gradle
    project and offer to generate the Gradle wrapper automatically. (The wrapper jar isn't
    checked in here since it's a binary; Android Studio's "Sync now" prompt handles it, or
    run `gradle wrapper` once if you have a system Gradle install.)
@@ -93,16 +93,16 @@ it just talks to whatever git remote you point it at.
 - **Credentials lock** — phones/tablets: biometrics or device PIN when available; Chromebooks (and any device without system lock): in-app Credentials password (set on first open). Desktop: same in-app password gate. Only the Credentials screen is gated.
 - **LFS** covers pointer detection and download/smudge for common HTTPS remotes; not a full
   `git-lfs` feature set (e.g. lock/unlock, custom transfer adapters).
-- Googlebook OS Intel models use a translation layer for many Android apps; QuickGit’s
+- Googlebook OS Intel models use a translation layer for many Android apps; QuickGitNEXT’s
   JVM/JGit stack should run, but always verify on target hardware for large repos and LFS.
 
 ## Permissions
 
 `INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (progress), and (on older API levels)
-external storage so clones can live under **Documents/QuickGit** on shared storage. On newer
-Android versions the app still tries `Documents/QuickGit` first and falls back to app-specific
+external storage so clones can live under **Documents/QuickGitNEXT** on shared storage. On newer
+Android versions the app still tries `Documents/QuickGitNEXT` first and falls back to app-specific
 external storage if the public folder is not writable. Uninstalling the app does **not** delete
-`Documents/QuickGit` when the public location is used.
+`Documents/QuickGitNEXT` when the public location is used.
 
 ## Tested on
  - Samsung Galaxy S25 Ultra (Snapdragon)
@@ -130,21 +130,21 @@ phones, tablets, Chromebooks, **Googlebook OS** (Arm64 and Intel x86_64 Googlebo
 
 ## Linux / Desktop (native)
 
-QuickGit also ships as a **native desktop application** for Linux (and Windows/macOS packaging)
+QuickGitNEXT also ships as a **native desktop application** for Linux (and Windows/macOS packaging)
 built with Compose Multiplatform + JGit.
 
 This is a full standalone app (not an Android module or Waydroid container).
 
 ### Features on desktop
 
-- Repo list (local clones under `~/QuickGit` by default)
+- Repo list (local clones under `~/QuickGitNEXT` by default)
 - Clone (HTTPS with PAT)
 - Changes / staging / unstage / discard
 - Commit with configurable author
 - Push / Pull / Fetch
 - History
 - Branches (list, create, checkout)
-- Encrypted credential store (`~/.config/quickgit/`)
+- Encrypted credential store (`~/.config/quickgitnext/`)
 - Settings (author, repos root, GPG sign toggle)
 - Left NavigationRail (Repos, Clone, Browse, Profile, Users, Logs, Creds, Settings)
 
@@ -172,9 +172,9 @@ Packages appear under `desktop/build/compose/binaries/main/`.
 
 | Item              | Path                          |
 |-------------------|-------------------------------|
-| Repos root        | `~/QuickGit` (configurable)   |
-| Credentials       | `~/.config/quickgit/credentials.enc` |
-| Preferences       | `~/.config/quickgit/prefs.properties` |
+| Repos root        | `~/QuickGitNEXT` (configurable)   |
+| Credentials       | `~/.config/quickgitnext/credentials.enc` |
+| Preferences       | `~/.config/quickgitnext/prefs.properties` |
 
 The Android app and the desktop app are independent; they do not share storage.
 
@@ -182,7 +182,7 @@ The Android app and the desktop app are independent; they do not share storage.
 
 The native Linux builds check GitHub Releases on startup (and via **Settings → Check for updates**).
 They prefer a `.deb` on Debian/Ubuntu and an `.AppImage` otherwise, download to
-`~/Downloads/QuickGit-updates/`, and open the file for install.
+`~/Downloads/QuickGitNEXT-updates/`, and open the file for install.
 
 ### Desktop credentials
 

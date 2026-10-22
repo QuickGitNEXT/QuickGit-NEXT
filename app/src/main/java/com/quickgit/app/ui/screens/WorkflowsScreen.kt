@@ -599,12 +599,12 @@ private fun JobLogContent(
                     ) {
                         Icon(Icons.Default.ContentCopy, "Copy entire log")
                     }
-                    // Save to /storage/emulated/0/Downloads/QuickGit/
+                    // Save to /storage/emulated/0/Downloads/QuickGitNEXT/
                     IconButton(
                         onClick = { vm.saveJobLog(context.applicationContext) },
                         enabled = !state.logText.isNullOrBlank() && !state.busy
                     ) {
-                        Icon(Icons.Default.Download, "Save log to Downloads/QuickGit")
+                        Icon(Icons.Default.Download, "Save log to Downloads/QuickGitNEXT")
                     }
                     // Toggle live watching
                     if (state.logJobId != null) {
@@ -1144,8 +1144,8 @@ private fun LiveJobWebContent(
             .replace("\r", "")
         val script = """
             (function() {
-              if (window.__quickgitAuthInjected) return;
-              window.__quickgitAuthInjected = true;
+              if (window.__quickgitnextAuthInjected) return;
+              window.__quickgitnextAuthInjected = true;
               var token = '$safeToken';
               function needsAuth(url) {
                 if (!url) return false;
@@ -1237,7 +1237,7 @@ private fun LiveJobWebContent(
                 )
             } else {
                 Text(
-                    "Authenticated with the account linked in QuickGit. Job data and API calls use your token; for full live streaming you can also sign in once on this page (cookies are kept).",
+                    "Authenticated with the account linked in QuickGitNEXT. Job data and API calls use your token; for full live streaming you can also sign in once on this page (cookies are kept).",
                     Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

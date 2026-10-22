@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 /**
  * Mobile-first text editor for repo files.
  *
- * Intentionally not a VS Code clone: Material 3 chrome, QuickGit accents,
+ * Intentionally not a VS Code clone: Material 3 chrome, QuickGitNEXT accents,
  * bottom save bar, find-in-file, undo/redo, no activity bar / minimap / command palette.
  */
 @OptIn(ExperimentalMaterial3Api::class)

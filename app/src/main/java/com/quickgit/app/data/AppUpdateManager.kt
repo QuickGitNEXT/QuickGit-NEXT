@@ -8,13 +8,13 @@ import com.quickgit.app.data.models.Release
 import com.quickgit.app.data.models.ReleaseAsset
 
 /**
- * Checks GitHub Releases for a newer QuickGit version and exposes a download
+ * Checks GitHub Releases for a newer QuickGitNEXT version and exposes a download
  * or Releases URL for the system browser. Does **not** download or install APKs
  * inside the app.
  */
 object AppUpdateConfig {
     const val OWNER = "SavedByLight"
-    const val REPO = "QuickGit"
+    const val REPO = "QuickGitNEXT"
 
     fun releasesUrl(): String =
         "https://github.com/$OWNER/$REPO/releases"
@@ -207,9 +207,9 @@ class AppUpdateManager(
     /**
      * Prefer the production phone APK over debug/wear builds.
      * Release assets look like:
-     *   quickgit-x.y.z.apk          ← store / production (wanted)
-     *   quickgit-x.y.z-debug.apk    ← logging/debug channel (skip)
-     *   quickgit-wear-x.y.z.apk     ← Wear OS (skip)
+     *   quickgitnext-x.y.z.apk          ← store / production (wanted)
+     *   quickgitnext-x.y.z-debug.apk    ← logging/debug channel (skip)
+     *   quickgitnext-wear-x.y.z.apk     ← Wear OS (skip)
      */
     private fun pickPhoneReleaseApk(assets: List<ReleaseAsset>): ReleaseAsset? {
         val apks = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
@@ -231,7 +231,7 @@ class AppUpdateManager(
 
     private fun normalizeVersionName(raw: String): String {
         return raw.trim()
-            .removePrefix("QuickGit")
+            .removePrefix("QuickGitNEXT")
             .trim()
             .removePrefix("v")
             .trim()

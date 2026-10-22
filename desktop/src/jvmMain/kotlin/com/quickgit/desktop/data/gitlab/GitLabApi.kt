@@ -454,7 +454,7 @@ class GitLabApi(
             connectTimeout = 20_000
             readTimeout = 30_000
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "QuickGit-Android")
+            setRequestProperty("User-Agent", "QuickGitNEXT-Android")
             if (!token.isNullOrBlank()) {
                 setRequestProperty("PRIVATE-TOKEN", token)
             }

@@ -371,7 +371,7 @@ class WorkflowsViewModel(
             _state.value = applyResult(
                 _state.value.copy(busy = false),
                 result,
-                successMessage = path?.let { "Saved to $it" } ?: "Log saved to Downloads/QuickGit"
+                successMessage = path?.let { "Saved to $it" } ?: "Log saved to Downloads/QuickGitNEXT"
             )
         }
     }

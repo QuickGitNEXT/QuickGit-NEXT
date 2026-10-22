@@ -496,7 +496,7 @@ object LfsSupport {
 
     /**
      * Equivalent of `git lfs install` for this repo (local only — no global hooks binary).
-     * Creates `.git/lfs`, records local config flags used by QuickGit.
+     * Creates `.git/lfs`, records local config flags used by QuickGitNEXT.
      */
     fun install(repoRoot: File): String {
         val lfsDir = File(repoRoot, ".git/lfs")

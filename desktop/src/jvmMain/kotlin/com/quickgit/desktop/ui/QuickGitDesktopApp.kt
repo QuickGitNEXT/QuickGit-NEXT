@@ -371,7 +371,7 @@ fun RepoListScreen(
                 Column {
                     Text(
                         if (external) {
-                            "This removes '${repo.name}' from QuickGit's list only. Files on disk are not deleted."
+                            "This removes '${repo.name}' from QuickGitNEXT's list only. Files on disk are not deleted."
                         } else {
                             "This permanently deletes '${repo.name}' from disk under the repos root. This cannot be undone."
                         }
@@ -3995,7 +3995,7 @@ fun ReleasesTab(
                                                 downloading = true
                                                 val destDir = java.io.File(
                                                     System.getProperty("user.home"),
-                                                    "Downloads/QuickGit"
+                                                    "Downloads/QuickGitNEXT"
                                                 )
                                                 destDir.mkdirs()
                                                 val dest = java.io.File(destDir, asset.name)
@@ -5840,7 +5840,7 @@ fun SettingsScreen(
                             updateStatus = "Up to date (${result.current.versionName})"
                         is DesktopUpdateCheckResult.Available ->
                             updateStatus =
-                                "QuickGit ${result.latest.versionName} is available — open Releases to download."
+                                "QuickGitNEXT ${result.latest.versionName} is available — open Releases to download."
                         is DesktopUpdateCheckResult.Error ->
                             updateStatus = "Check failed: ${result.message}"
                     }
@@ -5893,9 +5893,11 @@ fun CredentialsUnlockGate(
         Spacer(Modifier.height(8.dp))
         Text(
             if (needsSetup)
-                "Create a password to open Credentials on this computer. Use the same password you use to sign in to this laptop if you prefer."
+                "Create a password that unlocks only the Credentials screen on this computer. " +
+                    "Repos, clone, and git operations do not require it. " +
+                    "You may use the same password as your laptop login if you prefer."
             else
-                "Enter your password to open accounts and tokens.",
+                "Enter your password to open Credentials only. The rest of the app stays unlocked.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -6289,10 +6291,10 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 val chooser = javax.swing.JFileChooser().apply {
-                    dialogTitle = "Save QuickGit logs"
+                    dialogTitle = "Save QuickGitNEXT logs"
                     selectedFile = java.io.File(
                         System.getProperty("user.home"),
-                        "quickgit-logs-${java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(java.util.Date())}.txt"
+                        "quickgitnext-logs-${java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(java.util.Date())}.txt"
                     )
                 }
                 val res = chooser.showSaveDialog(null)
@@ -6363,7 +6365,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "Also written to ~/.config/quickgit/app.log",
+            "Also written to ~/.config/quickgitnext/app.log",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

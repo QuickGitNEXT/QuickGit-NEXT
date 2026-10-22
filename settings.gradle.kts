@@ -16,7 +16,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "QuickGit"
+rootProject.name = "QuickGitNEXT"
 
 include(":app")
 include(":desktop")

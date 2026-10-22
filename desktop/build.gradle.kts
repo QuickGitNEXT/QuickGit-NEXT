@@ -49,17 +49,17 @@ tasks.withType<JavaCompile> {
 compose.desktop {
     application {
         mainClass = "com.quickgit.desktop.MainKt"
-        // CI stamps version via -Pquickgit.version (and sed on packageVersion)
-        val appVer = (project.findProperty("quickgit.version") as String?) ?: "2.0.0"
-        jvmArgs += listOf("-Dquickgit.version=$appVer")
+        // CI stamps version via -Pquickgitnext.version (and sed on packageVersion)
+        val appVer = (project.findProperty("quickgitnext.version") as String?) ?: "2.0.0"
+        jvmArgs += listOf("-Dquickgitnext.version=$appVer")
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
-            packageName = "QuickGit"
+            packageName = "QuickGitNEXT"
             packageVersion = appVer
             description = "A GitHub Desktop-style git client for Linux, Windows and macOS"
-            copyright = "© 2025 QuickGit"
-            vendor = "QuickGit"
+            copyright = "© 2025 QuickGitNEXT"
+            vendor = "QuickGitNEXT"
 
             // jlink strips the JRE aggressively; JGit / Apache SSHD / networking touch
             // management, naming, and crypto APIs. Without these modules the .deb crashes
@@ -84,13 +84,13 @@ compose.desktop {
 
             linux {
                 iconFile.set(project.file("src/jvmMain/resources/icon.png"))
-                debMaintainer = "quickgit@example.com"
+                debMaintainer = "quickgitnext@example.com"
                 menuGroup = "Development"
                 appCategory = "Development"
             }
 
             windows {
-                menuGroup = "QuickGit"
+                menuGroup = "QuickGitNEXT"
                 // Stable per-product GUID so MSI upgrades replace previous installs
                 upgradeUuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 shortcut = true

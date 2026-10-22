@@ -11,7 +11,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.quickgit.app"
+        applicationId = "com.quickgitnext.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -51,7 +51,7 @@ android {
     }
 
     // store = production release (no in-app Logs screen)
-    // logging = "QuickGit Debug" with Logs UI + distinct applicationId (cannot name
+    // logging = "QuickGitNEXT Debug" with Logs UI + distinct applicationId (cannot name
     // the flavor "debug" — that collides with the Android debug BuildType)
     flavorDimensions += "channel"
     productFlavors {
@@ -64,7 +64,7 @@ android {
             dimension = "channel"
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            resValue("string", "app_name", "QuickGit Debug")
+            resValue("string", "app_name", "QuickGitNEXT Debug")
             buildConfigField("boolean", "SHOW_LOGS_UI", "true")
         }
     }

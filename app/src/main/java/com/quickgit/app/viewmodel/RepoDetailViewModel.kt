@@ -68,7 +68,7 @@ class RepoDetailViewModel(
     }
 
     private fun draftPrefs() =
-        app.getSharedPreferences("quickgit_commit_drafts", android.content.Context.MODE_PRIVATE)
+        app.getSharedPreferences("quickgitnext_commit_drafts", android.content.Context.MODE_PRIVATE)
 
     private fun draftKey(path: String) = "draft:" + path.hashCode()
 

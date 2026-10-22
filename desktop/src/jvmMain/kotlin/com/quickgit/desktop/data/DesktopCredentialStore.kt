@@ -18,12 +18,12 @@ import javax.crypto.spec.SecretKeySpec
  * Stores sensitive data (PATs, SSH keys, GPG keys) encrypted at rest using
  * AES-GCM with a key derived from a machine-local master password file.
  *
- * Location: ~/.config/quickgit/credentials.enc
+ * Location: ~/.config/quickgitnext/credentials.enc
  */
 class DesktopCredentialStore {
 
     companion object {
-        private const val CONFIG_DIR = ".config/quickgit"
+        private const val CONFIG_DIR = ".config/quickgitnext"
         private const val CREDS_FILE = "credentials.enc"
         private const val MASTER_FILE = "master.key"
         private const val GCM_TAG_LENGTH = 128
@@ -385,7 +385,7 @@ class DesktopCredentialStore {
             val props = Properties()
             cache.forEach { (k, v) -> props[k] = v }
             val baos = java.io.ByteArrayOutputStream()
-            props.store(baos, "QuickGit credentials – do not edit")
+            props.store(baos, "QuickGitNEXT credentials – do not edit")
             val encrypted = encrypt(baos.toByteArray())
             credsFile.writeBytes(encrypted)
         } catch (e: Exception) {

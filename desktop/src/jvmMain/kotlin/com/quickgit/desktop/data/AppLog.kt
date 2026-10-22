@@ -43,7 +43,7 @@ object AppLog {
     val entries: StateFlow<List<LogEntry>> = _entries.asStateFlow()
 
     private val logDir: File by lazy {
-        File(System.getProperty("user.home"), ".config/quickgit").also { it.mkdirs() }
+        File(System.getProperty("user.home"), ".config/quickgitnext").also { it.mkdirs() }
     }
     private val logFile: File by lazy { File(logDir, "app.log") }
 

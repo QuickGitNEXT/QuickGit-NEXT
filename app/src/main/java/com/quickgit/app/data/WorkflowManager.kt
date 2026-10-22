@@ -238,7 +238,7 @@ class WorkflowManager(
         AppLog.i(TAG, "dispatch: ${ref.projectPath} workflow=$workflowId ref=$refName inputs=${inputs.keys}")
         return if (ref.isGitLab) {
             // Triggering a new pipeline requires POST /projects/:id/pipeline — optional later
-            PrOpResult.Error("Manual pipeline trigger is not supported yet on GitLab from QuickGit")
+            PrOpResult.Error("Manual pipeline trigger is not supported yet on GitLab from QuickGitNEXT")
         } else {
             githubApi().dispatchWorkflow(ref.owner, ref.repo, workflowId, refName, inputs).toPrOpResult(ref.host)
         }
@@ -295,8 +295,8 @@ class WorkflowManager(
 
 
     /**
-     * Save job log text under public Downloads/QuickGit/
-     * (e.g. /storage/emulated/0/Downloads/QuickGit/…).
+     * Save job log text under public Downloads/QuickGitNEXT/
+     * (e.g. /storage/emulated/0/Downloads/QuickGitNEXT/…).
      * Uses MediaStore on API 29+ so no extra storage permission is required.
      */
     fun saveJobLogToDownloads(
@@ -318,27 +318,27 @@ class WorkflowManager(
                     put(MediaStore.Downloads.MIME_TYPE, "text/plain")
                     put(
                         MediaStore.Downloads.RELATIVE_PATH,
-                        Environment.DIRECTORY_DOWNLOADS + "/QuickGit"
+                        Environment.DIRECTORY_DOWNLOADS + "/QuickGitNEXT"
                     )
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val resolver = context.contentResolver
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: return null to PrOpResult.Error("Could not create file in Downloads/QuickGit")
+                    ?: return null to PrOpResult.Error("Could not create file in Downloads/QuickGitNEXT")
                 resolver.openOutputStream(uri)?.use { out ->
                     out.write(logText.toByteArray(Charsets.UTF_8))
                 } ?: return null to PrOpResult.Error("Could not write log file")
                 values.clear()
                 values.put(MediaStore.Downloads.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
-                "/storage/emulated/0/Downloads/QuickGit/$fileName"
+                "/storage/emulated/0/Downloads/QuickGitNEXT/$fileName"
             } else {
                 val dir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "QuickGit"
+                    "QuickGitNEXT"
                 )
                 if (!dir.exists() && !dir.mkdirs()) {
-                    return null to PrOpResult.Error("Could not create Downloads/QuickGit")
+                    return null to PrOpResult.Error("Could not create Downloads/QuickGitNEXT")
                 }
                 val file = File(dir, fileName)
                 FileOutputStream(file).use { it.write(logText.toByteArray(Charsets.UTF_8)) }

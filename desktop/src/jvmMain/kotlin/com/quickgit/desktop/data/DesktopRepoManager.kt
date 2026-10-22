@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Desktop port of the core RepoManager.
- * Uses standard File IO and stores the repos root under ~/QuickGit by default.
+ * Uses standard File IO and stores the repos root under ~/QuickGitNEXT by default.
  */
 class DesktopRepoManager(
     private val credentialStore: DesktopCredentialStore
@@ -42,14 +42,14 @@ class DesktopRepoManager(
     private val TAG = "DesktopRepoManager"
     private val repoLocks = ConcurrentHashMap<String, Any>()
 
-    private val configDir = File(System.getProperty("user.home"), ".config/quickgit").also { it.mkdirs() }
+    private val configDir = File(System.getProperty("user.home"), ".config/quickgitnext").also { it.mkdirs() }
     private val prefsFile = File(configDir, "prefs.properties")
     private val prefs = java.util.Properties().apply {
         if (prefsFile.exists()) prefsFile.inputStream().use { load(it) }
     }
 
     private fun savePrefs() {
-        prefsFile.outputStream().use { prefs.store(it, "QuickGit desktop prefs") }
+        prefsFile.outputStream().use { prefs.store(it, "QuickGitNEXT desktop prefs") }
     }
 
     // ---------- Root path ----------
@@ -60,7 +60,7 @@ class DesktopRepoManager(
             val f = File(custom)
             if (f.isDirectory || f.mkdirs()) return f
         }
-        val default = File(System.getProperty("user.home"), "QuickGit")
+        val default = File(System.getProperty("user.home"), "QuickGitNEXT")
         default.mkdirs()
         return default
     }

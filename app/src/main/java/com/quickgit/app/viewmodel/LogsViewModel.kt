@@ -20,10 +20,10 @@ class LogsViewModel : ViewModel() {
     /** Renders the current log as plain text for copy / save actions. */
     fun asPlainText(): String = AppLog.dumpText()
 
-    /** Suggested filename for a save dialog, e.g. `quickgit-logs-20260821-094200.txt`. */
+    /** Suggested filename for a save dialog, e.g. `quickgitnext-logs-20260821-094200.txt`. */
     fun suggestedFileName(): String {
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        return "quickgit-logs-$stamp.txt"
+        return "quickgitnext-logs-$stamp.txt"
     }
 
     /**

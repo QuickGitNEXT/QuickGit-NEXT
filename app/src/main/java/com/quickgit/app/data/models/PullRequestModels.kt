@@ -23,7 +23,7 @@ data class PullRequest(
     val mergeable: Boolean?,      // null while GitHub is still computing it
     val authorLogin: String,
     val headRef: String,          // branch name on the (possibly forked) head repo
-    val headRepoFullName: String?,// e.g. "someone/quickgit" — null if the head repo/fork was deleted
+    val headRepoFullName: String?,// e.g. "someone/quickgitnext" — null if the head repo/fork was deleted
     val headSha: String,
     val baseRef: String,
     val commentsCount: Int,

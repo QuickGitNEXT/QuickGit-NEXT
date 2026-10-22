@@ -78,7 +78,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     }
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("quickgit_prefs", Context.MODE_PRIVATE)
+        context.getSharedPreferences("quickgitnext_prefs", Context.MODE_PRIVATE)
 
     init {
         installJGitMemoryLimits()
@@ -370,7 +370,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     fun setReposRootFromTree(treeUri: Uri): SetReposRootResult {
         val resolved = filePathForTreeUri(treeUri)
             ?: return SetReposRootResult.Error(
-                "That folder isn't on local device storage, so QuickGit can't use it directly " +
+                "That folder isn't on local device storage, so QuickGitNEXT can't use it directly " +
                     "(this happens with cloud-backed providers like Drive). Pick a folder on your " +
                     "phone's internal storage or an SD card instead."
             )
@@ -381,7 +381,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         }
         if (!resolved.isDirectory || !canActuallyWrite(resolved)) {
             return SetReposRootResult.Error(
-                "QuickGit can't write to that folder. Try a different one, or a subfolder of it."
+                "QuickGitNEXT can't write to that folder. Try a different one, or a subfolder of it."
             )
         }
         try {
@@ -451,7 +451,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     fun resolveCloneDestination(treeUri: Uri): ResolveCloneDestinationResult {
         val resolved = filePathForTreeUri(treeUri)
             ?: return ResolveCloneDestinationResult.Error(
-                "That folder isn't on local device storage, so QuickGit can't clone into it directly " +
+                "That folder isn't on local device storage, so QuickGitNEXT can't clone into it directly " +
                     "(this happens with cloud-backed providers like Drive). Pick a folder on your " +
                     "phone's internal storage or an SD card instead."
             )
@@ -460,7 +460,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         }
         resolved.mkdirs()
         if (!resolved.isDirectory || !canActuallyWrite(resolved)) {
-            return ResolveCloneDestinationResult.Error("QuickGit can't write to that folder.")
+            return ResolveCloneDestinationResult.Error("QuickGitNEXT can't write to that folder.")
         }
         return ResolveCloneDestinationResult.Success(resolved)
     }
@@ -512,7 +512,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     /**
      * Registers an existing local Git repository (folder containing `.git`) so it
      * appears in the repo list. Used when the user already has a clone on disk
-     * (Termux, another app, PC sync, etc.) and wants QuickGit to manage it.
+     * (Termux, another app, PC sync, etc.) and wants QuickGitNEXT to manage it.
      *
      * [treeUri] is a SAF tree from `OpenDocumentTree`. The folder must resolve to
      * a real path on device storage (same limitation as [setReposRootFromTree]).
@@ -520,7 +520,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     fun importLocalRepoFromTree(treeUri: Uri): ImportRepoResult {
         val resolved = filePathForTreeUri(treeUri)
             ?: return ImportRepoResult.Error(
-                "That folder isn't on local device storage, so QuickGit can't open it " +
+                "That folder isn't on local device storage, so QuickGitNEXT can't open it " +
                     "(this happens with cloud-backed providers like Drive). Pick a folder " +
                     "on your phone's internal storage or an SD card."
             )
@@ -622,7 +622,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
      * actually fail. Do a real probe write+delete instead.
      */
     private fun canActuallyWrite(dir: File): Boolean {
-        val probe = File(dir, ".quickgit_write_probe")
+        val probe = File(dir, ".quickgitnext_write_probe")
         return try {
             FileOutputStream(probe).use { it.write(1) }
             probe.delete()
