@@ -2,7 +2,7 @@ name: Build and Release
 
 # Manual only. Run from Actions → Build and Release → Run workflow.
 # Set "version" to the release number (e.g. 2.0.1). Artifacts and the GitHub
-# Release are published as QuickGit x.x.x with a changelog of every commit
+# Release are published as QuickGitNEXT x.x.x with a changelog of every commit
 # since the previous tag.
 #
 # Compile jobs (separate, same release):
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 2.0.1) — becomes QuickGit x.x.x'
+        description: 'Release version (e.g. 2.0.1) — becomes QuickGitNEXT x.x.x'
         required: true
         type: string
       version_code:
@@ -52,7 +52,10 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${{ inputs.version }}"
+          RAW="${RAW#QuickGitNEXT }"
           RAW="${RAW#QuickGit }"
+          RAW="${RAW#quickgitnext }"
+          RAW="${RAW#QuickGitNEXT }"
           RAW="${RAW#quickgit }"
           RAW="${RAW#v}"
           VERSION_NAME="$(echo "$RAW" | tr -d '[:space:]')"
@@ -71,7 +74,7 @@ jobs:
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Version: QuickGit $VERSION_NAME (code $VERSION_CODE), tag $TAG"
+          echo "Version: QuickGitNEXT $VERSION_NAME (code $VERSION_CODE), tag $TAG"
 
       - name: Build changelog since previous release
         id: changelog
@@ -139,8 +142,8 @@ jobs:
 
       - name: Decode keystore
         run: |
-          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/quickgit-release.jks"
-          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/quickgit-release.jks" >> "$GITHUB_ENV"
+          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/quickgitnext-release.jks"
+          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/quickgitnext-release.jks" >> "$GITHUB_ENV"
           echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> "$GITHUB_ENV"
           echo "SIGNING_KEY_ALIAS=${{ secrets.SIGNING_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "SIGNING_KEY_PASSWORD=${{ secrets.SIGNING_KEY_PASSWORD }}" >> "$GITHUB_ENV"
@@ -174,9 +177,9 @@ jobs:
             echo "Wear release APK not found under wear/build/outputs/apk/release" >&2
             exit 1
           fi
-          cp "$STORE_APK" "dist/quickgit-${{ needs.version.outputs.name }}.apk"
-          cp "$DEBUG_APK" "dist/quickgit-${{ needs.version.outputs.name }}-debug.apk"
-          cp "$WEAR_APK" "dist/quickgit-wear-${{ needs.version.outputs.name }}.apk"
+          cp "$STORE_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
+          cp "$DEBUG_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
+          cp "$WEAR_APK" "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
           ls -la dist/
 
       - name: Upload Android artifacts
@@ -222,7 +225,7 @@ jobs:
       - name: Build desktop Deb
         run: |
           gradle :desktop:packageDeb --no-daemon \
-            -Pquickgit.version="${{ needs.version.outputs.name }}"
+            -Pquickgitnext.version="${{ needs.version.outputs.name }}"
 
       - name: Stage Deb
         run: |
@@ -234,7 +237,7 @@ jobs:
             find desktop/build -type f 2>/dev/null | head -80 || true
             exit 1
           fi
-          cp "$DEB" "dist/quickgit-${{ needs.version.outputs.name }}-linux-amd64.deb"
+          cp "$DEB" "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb"
           ls -la dist/
 
       - name: Upload Deb artifact
@@ -280,7 +283,7 @@ jobs:
       - name: Build desktop Rpm
         run: |
           gradle :desktop:packageRpm --no-daemon \
-            -Pquickgit.version="${{ needs.version.outputs.name }}"
+            -Pquickgitnext.version="${{ needs.version.outputs.name }}"
           find desktop/build -type f -name '*.rpm' 2>/dev/null | head -20 || true
 
       - name: Stage Rpm
@@ -293,7 +296,7 @@ jobs:
             find desktop/build -type f 2>/dev/null | head -80 || true
             exit 1
           fi
-          cp "$RPM" "dist/quickgit-${{ needs.version.outputs.name }}-linux-x86_64.rpm"
+          cp "$RPM" "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.rpm"
           ls -la dist/
 
       - name: Upload Rpm artifact
@@ -357,7 +360,7 @@ jobs:
         run: |
           set +e
           gradle :desktop:packageAppImage --no-daemon \
-            -Pquickgit.version="${{ needs.version.outputs.name }}"
+            -Pquickgitnext.version="${{ needs.version.outputs.name }}"
           APPIMAGE_RC=$?
           set -e
           echo "packageAppImage exit code: $APPIMAGE_RC"
@@ -365,9 +368,9 @@ jobs:
 
           if ! find desktop/build -type f -name '*.AppImage' 2>/dev/null | grep -q .; then
             echo "Compose did not emit .AppImage — building one with appimagetool"
-            APP_DIR=$(find desktop/build/compose/binaries -type d -path '*/app/QuickGit' 2>/dev/null | head -n 1 || true)
+            APP_DIR=$(find desktop/build/compose/binaries -type d -path '*/app/QuickGitNEXT' 2>/dev/null | head -n 1 || true)
             if [ -z "$APP_DIR" ]; then
-              APP_DIR=$(find desktop/build/compose/binaries -type d -name 'QuickGit' 2>/dev/null | head -n 1 || true)
+              APP_DIR=$(find desktop/build/compose/binaries -type d -name 'QuickGitNEXT' 2>/dev/null | head -n 1 || true)
             fi
             if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
               echo "ERROR: could not locate packaged app dir under desktop/build/compose/binaries" >&2
@@ -375,51 +378,51 @@ jobs:
               exit 1
             fi
             echo "Using app dir: $APP_DIR"
-            STAGE="$RUNNER_TEMP/quickgit-appimage"
+            STAGE="$RUNNER_TEMP/quickgitnext-appimage"
             rm -rf "$STAGE"
             mkdir -p "$STAGE"
-            cp -a "$APP_DIR" "$STAGE/QuickGit.AppDir"
-            BIN=$(find "$STAGE/QuickGit.AppDir" -type f -path '*/bin/QuickGit' | head -n 1 || true)
+            cp -a "$APP_DIR" "$STAGE/QuickGitNEXT.AppDir"
+            BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f -path '*/bin/QuickGitNEXT' | head -n 1 || true)
             if [ -z "$BIN" ]; then
-              BIN=$(find "$STAGE/QuickGit.AppDir" -type f -executable -name 'QuickGit' | head -n 1 || true)
+              BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f -executable -name 'QuickGitNEXT' | head -n 1 || true)
             fi
             if [ -z "$BIN" ]; then
-              echo "ERROR: QuickGit launcher not found in $APP_DIR" >&2
-              find "$STAGE/QuickGit.AppDir" -maxdepth 4 -type f 2>/dev/null | head -40
+              echo "ERROR: QuickGitNEXT launcher not found in $APP_DIR" >&2
+              find "$STAGE/QuickGitNEXT.AppDir" -maxdepth 4 -type f 2>/dev/null | head -40
               exit 1
             fi
-            REL_BIN="${BIN#$STAGE/QuickGit.AppDir/}"
+            REL_BIN="${BIN#$STAGE/QuickGitNEXT.AppDir/}"
             {
               echo '#!/bin/sh'
               echo 'SELF=$(dirname "$(readlink -f "$0")")'
               echo "exec \"\$SELF/$REL_BIN\" \"\$@\""
-            } > "$STAGE/QuickGit.AppDir/AppRun"
-            chmod +x "$STAGE/QuickGit.AppDir/AppRun"
+            } > "$STAGE/QuickGitNEXT.AppDir/AppRun"
+            chmod +x "$STAGE/QuickGitNEXT.AppDir/AppRun"
             {
               echo "[Desktop Entry]"
-              echo "Name=QuickGit"
+              echo "Name=QuickGitNEXT"
               echo "Exec=AppRun"
-              echo "Icon=quickgit"
+              echo "Icon=quickgitnext"
               echo "Type=Application"
               echo "Categories=Development;"
               echo "Terminal=false"
-            } > "$STAGE/QuickGit.AppDir/quickgit.desktop"
+            } > "$STAGE/QuickGitNEXT.AppDir/quickgitnext.desktop"
             # appimagetool requires the Icon= name to exist as png/svg/xpm in AppDir
             ICON_SRC=""
             for c in               desktop/src/jvmMain/resources/icon.png               app/src/main/res/mipmap-xxxhdpi/ic_launcher.png               app/src/main/res/mipmap-xxhdpi/ic_launcher.png; do
               if [ -f "$c" ]; then ICON_SRC="$c"; break; fi
             done
             if [ -n "$ICON_SRC" ]; then
-              cp "$ICON_SRC" "$STAGE/QuickGit.AppDir/quickgit.png"
+              cp "$ICON_SRC" "$STAGE/QuickGitNEXT.AppDir/quickgitnext.png"
               echo "Using icon: $ICON_SRC"
             else
               # Minimal valid 1x1 PNG so packaging does not fail
-              printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'                 > "$STAGE/QuickGit.AppDir/quickgit.png" || true
-              echo "WARNING: no project icon found; wrote placeholder quickgit.png"
+              printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'                 > "$STAGE/QuickGitNEXT.AppDir/quickgitnext.png" || true
+              echo "WARNING: no project icon found; wrote placeholder quickgitnext.png"
             fi
             mkdir -p "desktop/build/compose/binaries/main/appimage"
-            OUT_AI="desktop/build/compose/binaries/main/appimage/QuickGit-${{ needs.version.outputs.name }}-x86_64.AppImage"
-            APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$STAGE/QuickGit.AppDir" "$OUT_AI"
+            OUT_AI="desktop/build/compose/binaries/main/appimage/QuickGitNEXT-${{ needs.version.outputs.name }}-x86_64.AppImage"
+            APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$STAGE/QuickGitNEXT.AppDir" "$OUT_AI"
             chmod +x "$OUT_AI"
             echo "Built fallback AppImage: $OUT_AI"
           fi
@@ -430,15 +433,15 @@ jobs:
           mkdir -p dist
           APPIMAGE=$(find desktop/build -type f -name '*.AppImage' 2>/dev/null | head -n 1 || true)
           if [ -z "$APPIMAGE" ]; then
-            APPIMAGE=$(find desktop/build -type f -name 'QuickGit*.AppImage' 2>/dev/null | head -n 1 || true)
+            APPIMAGE=$(find desktop/build -type f -name 'QuickGitNEXT*.AppImage' 2>/dev/null | head -n 1 || true)
           fi
           if [ -z "$APPIMAGE" ] || [ ! -f "$APPIMAGE" ]; then
             echo "ERROR: .AppImage not found" >&2
             find desktop/build -type f 2>/dev/null | head -100 || true
             exit 1
           fi
-          cp "$APPIMAGE" "dist/quickgit-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
-          chmod +x "dist/quickgit-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
+          cp "$APPIMAGE" "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
+          chmod +x "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
           ls -la dist/
 
       - name: Upload AppImage artifact
@@ -508,7 +511,7 @@ jobs:
 
       - name: Build desktop MSI
         run: |
-          gradle :desktop:packageMsi --no-daemon "-Pquickgit.version=${{ needs.version.outputs.name }}"
+          gradle :desktop:packageMsi --no-daemon "-Pquickgitnext.version=${{ needs.version.outputs.name }}"
         shell: cmd
 
       - name: Locate and stage Windows MSI
@@ -520,7 +523,7 @@ jobs:
             Write-Error "No .msi found under desktop/build"
             exit 1
           }
-          $out = "dist\quickgit-${{ needs.version.outputs.name }}-windows-x64.msi"
+          $out = "dist\quickgitnext-${{ needs.version.outputs.name }}-windows-x64.msi"
           Copy-Item $msi.FullName $out
           Write-Host "MSI: $out"
           Get-ChildItem dist
@@ -586,13 +589,13 @@ jobs:
       - name: List release files
         run: |
           ls -la dist/
-          test -f "dist/quickgit-${{ needs.version.outputs.name }}.apk"
-          test -f "dist/quickgit-${{ needs.version.outputs.name }}-debug.apk"
-          test -f "dist/quickgit-wear-${{ needs.version.outputs.name }}.apk"
-          test -f "dist/quickgit-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
-          test -f "dist/quickgit-${{ needs.version.outputs.name }}-linux-amd64.deb"
-          test -f "dist/quickgit-${{ needs.version.outputs.name }}-linux-x86_64.rpm"
-          if [ -f "dist/quickgit-${{ needs.version.outputs.name }}-windows-x64.msi" ]; then
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
+          test -f "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb"
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.rpm"
+          if [ -f "dist/quickgitnext-${{ needs.version.outputs.name }}-windows-x64.msi" ]; then
             echo "Windows MSI present"
           else
             echo "WARNING: Windows MSI missing"
@@ -625,9 +628,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: QuickGit ${{ needs.version.outputs.name }}
+          name: QuickGitNEXT ${{ needs.version.outputs.name }}
           body: |
-            **QuickGit ${{ needs.version.outputs.name }}**
+            **QuickGitNEXT ${{ needs.version.outputs.name }}**
 
             Built from commit `${{ github.sha }}`.
 
@@ -636,13 +639,13 @@ jobs:
             ---
 
             ### Artifacts
-            - `quickgit-${{ needs.version.outputs.name }}.apk` — phone / tablet **release** (no Logs UI)
-            - `quickgit-${{ needs.version.outputs.name }}-debug.apk` — phone / tablet **debug** (includes Logs UI; id `com.quickgit.app.debug`)
-            - `quickgit-wear-${{ needs.version.outputs.name }}.apk` — Wear OS
-            - `quickgit-${{ needs.version.outputs.name }}-linux-amd64.deb` — native Linux (.deb; Debian/Ubuntu)
-            - `quickgit-${{ needs.version.outputs.name }}-linux-x86_64.rpm` — native Linux (.rpm; Fedora/RHEL/openSUSE)
-            - `quickgit-${{ needs.version.outputs.name }}-linux-x86_64.AppImage` — native Linux (AppImage)
-            - `quickgit-${{ needs.version.outputs.name }}-windows-x64.msi` — native Windows (MSI; included when the Windows job succeeds)
+            - `quickgitnext-${{ needs.version.outputs.name }}.apk` — phone / tablet **release** (no Logs UI)
+            - `quickgitnext-${{ needs.version.outputs.name }}-debug.apk` — phone / tablet **debug** (includes Logs UI; id `com.quickgitnext.app.debug`)
+            - `quickgitnext-wear-${{ needs.version.outputs.name }}.apk` — Wear OS
+            - `quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb` — native Linux (.deb; Debian/Ubuntu)
+            - `quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.rpm` — native Linux (.rpm; Fedora/RHEL/openSUSE)
+            - `quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage` — native Linux (AppImage)
+            - `quickgitnext-${{ needs.version.outputs.name }}-windows-x64.msi` — native Windows (MSI; included when the Windows job succeeds)
 
             **Desktop auto-update:** Linux (.deb / .rpm / AppImage) and Windows (.msi) builds check this Releases page for newer packages for their platform.
 
