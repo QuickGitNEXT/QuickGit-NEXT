@@ -320,18 +320,27 @@ fun RepoListScreen(
                     )
                 }
 
-                PullToRefreshBox(
-                    isRefreshing = loading,
-                    onRefresh = vm::refresh,
-                    modifier = Modifier.fillMaxSize()
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 3.dp,
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    if (loading && repos.isEmpty()) {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
-                    } else if (repos.isEmpty()) {
-                        Column(
-                            Modifier.align(Alignment.Center).padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
+                    PullToRefreshBox(
+                        isRefreshing = loading,
+                        onRefresh = vm::refresh,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (loading && repos.isEmpty()) {
+                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                        } else if (repos.isEmpty()) {
+                            Column(
+                                Modifier.align(Alignment.Center).padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                             Text("No repositories yet", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(8.dp))
                             Text(
@@ -414,6 +423,7 @@ fun RepoListScreen(
                                 item { Spacer(Modifier.height(96.dp)) }
                             }
                         }
+                    }
                     }
                 }
             }
