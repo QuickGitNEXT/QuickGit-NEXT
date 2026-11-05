@@ -184,41 +184,25 @@ fun RepoDetailScreen(
             var showStatusOptions by remember { mutableStateOf(false) }
             var showLfsOptions by remember { mutableStateOf(false) }
 
-            // Small phones only: Pull / Push / Status / LFS under the title.
-            // Large phones: same actions sit in the floating bar above the commit control.
+            // Small phones: labeled floating git-ops bar under the title.
+            // Large phones: same bar sits above the commit control instead.
             if (!largePhone) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { showPullOptions = true },
-                        enabled = !state.busy
-                    ) {
-                        Icon(Icons.Default.ArrowDownward, contentDescription = "Pull")
-                    }
-                    IconButton(
-                        onClick = { showPushOptions = true },
-                        enabled = !state.busy
-                    ) {
-                        Icon(Icons.Default.ArrowUpward, contentDescription = "Push")
-                    }
-                    IconButton(
-                        onClick = { showStatusOptions = true },
-                        enabled = !state.busy
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = "Status")
-                    }
-                    IconButton(
-                        onClick = { showLfsOptions = true },
-                        enabled = !state.busy
-                    ) {
-                        Icon(Icons.Default.Storage, contentDescription = "LFS")
-                    }
-                }
+                RepoSubNavFloatingBar(
+                    items = listOf(
+                        SubNavItem(Icons.Default.ArrowDownward, "Pull") {
+                            if (!state.busy) showPullOptions = true
+                        },
+                        SubNavItem(Icons.Default.ArrowUpward, "Push") {
+                            if (!state.busy) showPushOptions = true
+                        },
+                        SubNavItem(Icons.Default.Info, "Status") {
+                            if (!state.busy) showStatusOptions = true
+                        },
+                        SubNavItem(Icons.Default.Storage, "LFS") {
+                            if (!state.busy) showLfsOptions = true
+                        },
+                    )
+                )
             }
 
             if (showPullOptions) {
