@@ -28,6 +28,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -297,8 +298,10 @@ private fun CodeEditor(
         }
     }
 
-    // Register handlers once the editor is composed; keep flags current.
-    SideEffect { syncBridge() }
+    // Update undo/redo bridge when text changes (not on every recomposition).
+    LaunchedEffect(fieldValue.text) {
+        syncBridge()
+    }
 
     // Sync external content changes (load from VM). Reset history on full reload.
     LaunchedEffect(text) {
@@ -317,8 +320,15 @@ private fun CodeEditor(
     var matchIndex by remember { mutableIntStateOf(0) }
     val findFocus = remember { FocusRequester() }
 
-    val matches = remember(fieldValue.text, query) {
-        findMatches(fieldValue.text, query)
+    // Debounce find on large files so typing the query does not scan the whole buffer every frame.
+    var matches by remember { mutableStateOf<List<Pair<Int, Int>>>(emptyList()) }
+    LaunchedEffect(fieldValue.text, query) {
+        if (query.isEmpty()) {
+            matches = emptyList()
+            return@LaunchedEffect
+        }
+        if (fieldValue.text.length > 40_000) delay(120)
+        matches = findMatches(fieldValue.text, query)
     }
     LaunchedEffect(matches.size) {
         if (matches.isEmpty()) matchIndex = 0
@@ -371,8 +381,13 @@ private fun CodeEditor(
     val gutterFg = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
     val language = remember(filePath) { SyntaxHighlight.languageFromPath(filePath) }
     val palette = rememberSyntaxPalette(baseColor)
-    val highlightTransform = remember(language, palette) {
-        SyntaxHighlight.visualTransformation(language, palette)
+    // Skip full-file highlighting on large buffers — keeps typing smooth on phones/tablets.
+    val highlightTransform = remember(language, palette, fieldValue.text.length) {
+        if (fieldValue.text.length > 80_000) {
+            VisualTransformation.None
+        } else {
+            SyntaxHighlight.visualTransformation(language, palette)
+        }
     }
     val lineHeightDp = with(density) { 20.sp.toDp() }
 
@@ -391,30 +406,30 @@ private fun CodeEditor(
         }
 
         Row(Modifier.weight(1f).fillMaxWidth()) {
-            Column(
-                Modifier
+            // One Text for all line numbers — composing thousands of Text nodes was a major jank source.
+            val gutterText = remember(lineCount) {
+                buildString(lineCount * 4) {
+                    for (i in 1..lineCount) {
+                        append(i)
+                        if (i < lineCount) append('\n')
+                    }
+                }
+            }
+            Text(
+                text = gutterText,
+                style = codeStyle.copy(
+                    color = gutterFg,
+                    fontSize = 11.sp,
+                    lineHeight = 20.sp
+                ),
+                modifier = Modifier
                     .width(gutterWidth)
                     .fillMaxHeight()
                     .background(gutterBg)
                     .verticalScroll(vScroll)
                     .padding(top = 12.dp, bottom = 12.dp, end = 6.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                for (i in 1..lineCount) {
-                    Text(
-                        text = i.toString(),
-                        style = codeStyle.copy(
-                            color = gutterFg,
-                            fontSize = 11.sp,
-                            lineHeight = 20.sp
-                        ),
-                        modifier = Modifier
-                            .height(lineHeightDp)
-                            .wrapContentHeight(align = Alignment.CenterVertically),
-                        maxLines = 1
-                    )
-                }
-            }
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
+            )
             Box(
                 Modifier
                     .weight(1f)

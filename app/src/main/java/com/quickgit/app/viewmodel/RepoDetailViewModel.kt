@@ -89,27 +89,37 @@ class RepoDetailViewModel(
     private fun loadStatus(showRefreshing: Boolean) {
         viewModelScope.launch {
             if (showRefreshing) _state.value = _state.value.copy(refreshing = true)
-            val status = withContext(Dispatchers.IO) { repoManager.getStatus(repoPath) }
-            val (branch, remoteUrl) = withContext(Dispatchers.IO) {
-                repoManager.openGit(repoPath).use { git ->
-                    val b = git.repository.branch
-                    val url = git.repository.config.getString("remote", "origin", "url")
-                    b to url
+            // One IO pass: status + open repo once for branch/remotes + message from status
+            // (previously 4 sequential repo opens / 2× git.status — main source of Changes lag).
+            val snapshot = withContext(Dispatchers.IO) {
+                val status = repoManager.getStatus(repoPath)
+                val (branch, remoteUrl, remotes) = try {
+                    repoManager.openGit(repoPath).use { git ->
+                        val b = git.repository.branch
+                        val url = git.repository.config.getString("remote", "origin", "url")
+                        val cfg = git.repository.config
+                        val rem = cfg.getSubsections("remote").associateWith { name ->
+                            cfg.getString("remote", name, "url") ?: ""
+                        }.filterValues { it.isNotBlank() }
+                        Triple(b, url, rem)
+                    }
+                } catch (_: Exception) {
+                    Triple(null, null, emptyMap())
                 }
+                val suggestion = repoManager.suggestCommitMessageFromStatus(status)
+                Snapshot(status, branch, remoteUrl, remotes, suggestion)
             }
-            val isGitLab = isGitLabRemoteUrl(remoteUrl)
-            val isGerrit = repoManager.isGerritRemoteUrl(remoteUrl)
-            val remotes = withContext(Dispatchers.IO) { repoManager.listRemotes(repoPath) }
-            val suggestion = withContext(Dispatchers.IO) { repoManager.suggestCommitMessage(repoPath) }
-            val branchName = branch ?: ""
+            val branchName = snapshot.branch ?: ""
+            val remoteUrl = snapshot.remoteUrl
+            val remotes = snapshot.remotes
             _state.value = _state.value.copy(
-                status = status,
+                status = snapshot.status,
                 branch = branchName,
                 remoteUrl = remoteUrl,
-                isGitLabRemote = isGitLab,
-                isGerritRemote = isGerrit,
+                isGitLabRemote = isGitLabRemoteUrl(remoteUrl),
+                isGerritRemote = repoManager.isGerritRemoteUrl(remoteUrl),
                 remotes = remotes,
-                suggestedCommitMessage = suggestion,
+                suggestedCommitMessage = snapshot.suggestion,
                 pushLocalBranch = _state.value.pushLocalBranch.ifBlank { branchName },
                 pushRemoteBranch = _state.value.pushRemoteBranch.ifBlank { branchName },
                 pushRemote = _state.value.pushRemote.ifBlank {
@@ -119,6 +129,14 @@ class RepoDetailViewModel(
             )
         }
     }
+
+    private data class Snapshot(
+        val status: RepoStatus,
+        val branch: String?,
+        val remoteUrl: String?,
+        val remotes: Map<String, String>,
+        val suggestion: String
+    )
 
     fun toggleStage(filePath: String, currentlyStaged: Boolean) {
         viewModelScope.launch {

@@ -1620,6 +1620,20 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
      * Suggest a GitHub-style default commit message from the current index/working tree.
      * Examples: "Delete foo.txt", "Rename a.kt to b.kt", "Add README.md", "Update Main.kt".
      */
+    /**
+     * Build a suggested commit message from an already-loaded [RepoStatus]
+     * (avoids a second git.status() during UI refresh).
+     */
+    fun suggestCommitMessageFromStatus(status: RepoStatus): String {
+        val added = (status.staged.filter { it.type == ChangeType.ADDED }.map { it.path } +
+            status.untracked.map { it.path }).sorted()
+        val deleted = (status.staged.filter { it.type == ChangeType.DELETED }.map { it.path } +
+            status.unstaged.filter { it.type == ChangeType.DELETED }.map { it.path }).sorted()
+        val modified = (status.staged.filter { it.type == ChangeType.MODIFIED }.map { it.path } +
+            status.unstaged.filter { it.type == ChangeType.MODIFIED }.map { it.path }).sorted()
+        return formatSuggestedCommitMessage(added, deleted, modified)
+    }
+
     fun suggestCommitMessage(path: String): String {
         return try {
             openGit(path).use { git ->
@@ -1627,38 +1641,46 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
                 val added = (s.added + s.untracked).sorted()
                 val deleted = (s.removed + s.missing).sorted()
                 val modified = (s.changed + s.modified).sorted()
-                if (deleted.size == 1 && added.size == 1) {
-                    val from = deleted.first().substringAfterLast('/')
-                    val to = added.first().substringAfterLast('/')
-                    if (from != to) return "Rename $from to $to"
-                }
-                when {
-                    added.size == 1 && deleted.isEmpty() && modified.isEmpty() ->
-                        "Add ${added.first().substringAfterLast('/')}"
-                    deleted.size == 1 && added.isEmpty() && modified.isEmpty() ->
-                        "Delete ${deleted.first().substringAfterLast('/')}"
-                    modified.size == 1 && added.isEmpty() && deleted.isEmpty() ->
-                        "Update ${modified.first().substringAfterLast('/')}"
-                    added.isNotEmpty() && deleted.isEmpty() && modified.isEmpty() ->
-                        if (added.size <= 3) "Add ${added.joinToString(", ") { it.substringAfterLast('/') }}"
-                        else "Add ${added.size} files"
-                    deleted.isNotEmpty() && added.isEmpty() && modified.isEmpty() ->
-                        if (deleted.size <= 3) "Delete ${deleted.joinToString(", ") { it.substringAfterLast('/') }}"
-                        else "Delete ${deleted.size} files"
-                    modified.isNotEmpty() && added.isEmpty() && deleted.isEmpty() ->
-                        if (modified.size <= 3) "Update ${modified.joinToString(", ") { it.substringAfterLast('/') }}"
-                        else "Update ${modified.size} files"
-                    else -> {
-                        val parts = mutableListOf<String>()
-                        if (added.isNotEmpty()) parts += "add ${added.size}"
-                        if (modified.isNotEmpty()) parts += "update ${modified.size}"
-                        if (deleted.isNotEmpty()) parts += "delete ${deleted.size}"
-                        parts.joinToString(", ").replaceFirstChar { it.uppercase() }
-                    }
-                }
+                formatSuggestedCommitMessage(added, deleted, modified)
             }
         } catch (_: Exception) {
             ""
+        }
+    }
+
+    private fun formatSuggestedCommitMessage(
+        added: List<String>,
+        deleted: List<String>,
+        modified: List<String>
+    ): String {
+        if (deleted.size == 1 && added.size == 1) {
+            val from = deleted.first().substringAfterLast('/')
+            val to = added.first().substringAfterLast('/')
+            if (from != to) return "Rename $from to $to"
+        }
+        return when {
+            added.size == 1 && deleted.isEmpty() && modified.isEmpty() ->
+                "Add ${added.first().substringAfterLast('/')}"
+            deleted.size == 1 && added.isEmpty() && modified.isEmpty() ->
+                "Delete ${deleted.first().substringAfterLast('/')}"
+            modified.size == 1 && added.isEmpty() && deleted.isEmpty() ->
+                "Update ${modified.first().substringAfterLast('/')}"
+            added.isNotEmpty() && deleted.isEmpty() && modified.isEmpty() ->
+                if (added.size <= 3) "Add ${added.joinToString(", ") { it.substringAfterLast('/') }}"
+                else "Add ${added.size} files"
+            deleted.isNotEmpty() && added.isEmpty() && modified.isEmpty() ->
+                if (deleted.size <= 3) "Delete ${deleted.joinToString(", ") { it.substringAfterLast('/') }}"
+                else "Delete ${deleted.size} files"
+            modified.isNotEmpty() && added.isEmpty() && deleted.isEmpty() ->
+                if (modified.size <= 3) "Update ${modified.joinToString(", ") { it.substringAfterLast('/') }}"
+                else "Update ${modified.size} files"
+            else -> {
+                val parts = mutableListOf<String>()
+                if (added.isNotEmpty()) parts += "add ${added.size}"
+                if (modified.isNotEmpty()) parts += "update ${modified.size}"
+                if (deleted.isNotEmpty()) parts += "delete ${deleted.size}"
+                parts.joinToString(", ").replaceFirstChar { it.uppercase() }
+            }
         }
     }
 

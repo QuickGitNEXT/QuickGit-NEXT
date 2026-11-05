@@ -277,7 +277,7 @@ object SyntaxHighlight {
             return AnnotatedString(text, SpanStyle(color = palette.default))
         }
         // Cap work on huge files so UI stays responsive
-        if (text.length > 200_000) {
+        if (text.length > 80_000) {
             return AnnotatedString(text, SpanStyle(color = palette.default))
         }
 
