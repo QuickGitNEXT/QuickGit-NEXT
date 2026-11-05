@@ -21,6 +21,7 @@ import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
+import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.viewmodel.BranchesViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
@@ -79,6 +80,7 @@ fun RepoDetailScreenDesktop(
         }
     }
     val snackbarHost = remember { SnackbarHostState() }
+    var showTaskSuccess by remember { mutableStateOf(false) }
     var pullMenuExpanded by remember { mutableStateOf(false) }
     var pushMenuExpanded by remember { mutableStateOf(false) }
     var lfsMenuExpanded by remember { mutableStateOf(false) }
@@ -96,7 +98,7 @@ fun RepoDetailScreenDesktop(
             return@LaunchedEffect
         }
         when (val r = state.lastResult) {
-            is GitOpResult.Success -> { snackbarHost.showSnackbar("Done"); vm.consumeResult() }
+            is GitOpResult.Success -> { showTaskSuccess = true }
             is GitOpResult.UpToDate -> { snackbarHost.showSnackbar(r.message); vm.consumeResult() }
             is GitOpResult.Error -> { snackbarHost.showSnackbar(r.message); vm.consumeResult() }
             is GitOpResult.AuthRequired -> { vm.consumeResult(); onNeedsAuth(r.remoteUrl) }
@@ -109,7 +111,8 @@ fun RepoDetailScreenDesktop(
     val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases", "History")
     var tabIndex by remember { mutableStateOf(0) }
 
-    Scaffold(
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
@@ -606,5 +609,17 @@ private fun DesktopChangeRow(
                 )
             }
         }
+
+        ExpressiveTaskOverlay(
+            visible = state.busy,
+            label = state.busyLabel.ifBlank { if (state.busy) "Working…" else "" },
+            success = showTaskSuccess,
+            onSuccessConsumed = {
+                showTaskSuccess = false
+                vm.consumeResult()
+            }
+        )
+    } // overlay Box
+
     }
 }

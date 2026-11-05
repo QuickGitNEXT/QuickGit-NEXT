@@ -19,6 +19,7 @@ data class RepoDetailUiState(
     val branch: String = "",
     /** True while a git operation (stage, commit, push, pull, discard...) is running — used to disable buttons. */
     val busy: Boolean = false,
+    val busyLabel: String = "",
     /** True only while a pull-to-refresh (or the initial load) is in flight — drives the refresh indicator. */
     val refreshing: Boolean = false,
     val commitMessage: String = "",
@@ -145,7 +146,7 @@ class RepoDetailViewModel(
                 if (currentlyStaged) repoManager.unstage(repoPath, listOf(filePath))
                 else repoManager.stage(repoPath, listOf(filePath))
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -156,7 +157,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.stage(repoPath, paths) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -167,7 +168,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.unstage(repoPath, paths) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -176,7 +177,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.stageAll(repoPath) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -185,7 +186,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.unstageAll(repoPath) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -201,7 +202,7 @@ class RepoDetailViewModel(
                 val st = _state.value.status
                 if (st != null) {
                     _state.value = _state.value.copy(
-                        busy = false,
+                        busy = false, busyLabel = "",
                         lastResult = result,
                         status = st.copy(
                             unstaged = st.unstaged.filterNot { it.path == filePath },
@@ -209,10 +210,10 @@ class RepoDetailViewModel(
                         )
                     )
                 } else {
-                    _state.value = _state.value.copy(busy = false, lastResult = result)
+                    _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
                 }
             } else {
-                _state.value = _state.value.copy(busy = false, lastResult = result)
+                _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             }
         }
     }
@@ -225,12 +226,12 @@ class RepoDetailViewModel(
             if (result is GitOpResult.Success) {
                 val st = _state.value.status
                 _state.value = _state.value.copy(
-                    busy = false,
+                    busy = false, busyLabel = "",
                     lastResult = result,
                     status = st?.copy(unstaged = emptyList(), untracked = emptyList())
                 )
             } else {
-                _state.value = _state.value.copy(busy = false, lastResult = result)
+                _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             }
         }
     }
@@ -264,7 +265,7 @@ class RepoDetailViewModel(
             val remotes = if (result is GitOpResult.Success) {
                 withContext(Dispatchers.IO) { repoManager.listRemotes(repoPath) }
             } else _state.value.remotes
-            _state.value = _state.value.copy(busy = false, lastResult = result, remotes = remotes)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result, remotes = remotes)
         }
     }
 
@@ -275,7 +276,7 @@ class RepoDetailViewModel(
             val remotes = if (result is GitOpResult.Success) {
                 withContext(Dispatchers.IO) { repoManager.listRemotes(repoPath) }
             } else _state.value.remotes
-            _state.value = _state.value.copy(busy = false, lastResult = result, remotes = remotes)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result, remotes = remotes)
         }
     }
 
@@ -302,7 +303,7 @@ class RepoDetailViewModel(
             if (result is GitOpResult.Success) {
                 clearCommitDraft(repoPath)
                 _state.value = _state.value.copy(
-                    busy = false,
+                    busy = false, busyLabel = "",
                     lastResult = result,
                     commitMessage = "",
                     amend = false
@@ -310,14 +311,14 @@ class RepoDetailViewModel(
                 // Commit clears the index; refresh so staged list empties without waiting for a later stage/push.
                 loadStatus(showRefreshing = false)
             } else {
-                _state.value = _state.value.copy(busy = false, lastResult = result)
+                _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             }
         }
     }
 
     fun push(force: Boolean = false, forceWithLease: Boolean = false) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true)
+            _state.value = _state.value.copy(busy = true, busyLabel = "Pushing…")
             notifier.start(GitProgressNotifier.Kind.PUSH, "Pushing…", "Starting…")
             val remote = _state.value.pushRemote.ifBlank { "origin" }
             val lb = _state.value.pushLocalBranch.ifBlank { null }
@@ -335,7 +336,7 @@ class RepoDetailViewModel(
                     notifier.update(GitProgressNotifier.Kind.PUSH, progress, percent)
                 }
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             when (result) {
                 is GitOpResult.Success -> {
                     notifier.finish(GitProgressNotifier.Kind.PUSH, "Push finished")
@@ -349,7 +350,7 @@ class RepoDetailViewModel(
     /** Gerrit only: push current branch to refs/for/<target> for code review. */
     fun pushForReview() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true)
+            _state.value = _state.value.copy(busy = true, busyLabel = "Pushing for review…")
             notifier.start(GitProgressNotifier.Kind.PUSH, "Pushing for review…", "Starting…")
             val remote = _state.value.pushRemote.ifBlank { "origin" }
             val lb = _state.value.pushLocalBranch.ifBlank { null }
@@ -365,7 +366,7 @@ class RepoDetailViewModel(
                     notifier.update(GitProgressNotifier.Kind.PUSH, progress, percent)
                 }
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             when (result) {
                 is GitOpResult.Success -> {
                     notifier.finish(GitProgressNotifier.Kind.PUSH, "Push for review finished")
@@ -395,7 +396,7 @@ class RepoDetailViewModel(
                     notifier.update(GitProgressNotifier.Kind.PUSH, progress, percent)
                 }
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             when (result) {
                 is GitOpResult.Success, is GitOpResult.UpToDate -> {
                     notifier.finish(GitProgressNotifier.Kind.PUSH, "Push with rebase finished")
@@ -408,7 +409,7 @@ class RepoDetailViewModel(
 
     fun pull() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true)
+            _state.value = _state.value.copy(busy = true, busyLabel = "Pulling…")
             notifier.start(GitProgressNotifier.Kind.PULL, "Pulling…", "Starting…")
             val result = withContext(Dispatchers.IO) {
                 repoManager.pull(repoPath) { progress ->
@@ -416,7 +417,7 @@ class RepoDetailViewModel(
                     notifier.update(GitProgressNotifier.Kind.PULL, progress, percent)
                 }
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             when (result) {
                 is GitOpResult.Success, is GitOpResult.UpToDate ->
                     notifier.finish(GitProgressNotifier.Kind.PULL, "Pull finished")
@@ -437,7 +438,7 @@ class RepoDetailViewModel(
                     notifier.update(GitProgressNotifier.Kind.PULL, progress, percent)
                 }
             }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             when (result) {
                 is GitOpResult.Success, is GitOpResult.UpToDate ->
                     notifier.finish(GitProgressNotifier.Kind.PULL, "Pull --rebase finished")
@@ -457,14 +458,14 @@ class RepoDetailViewModel(
                 }
             }
             if (pullResult is GitOpResult.Error || pullResult is GitOpResult.AuthRequired || pullResult is GitOpResult.Conflict) {
-                _state.value = _state.value.copy(busy = false, lastResult = pullResult)
+                _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = pullResult)
                 notifier.cancel(GitProgressNotifier.Kind.PULL)
                 return@launch
             }
             notifier.update(GitProgressNotifier.Kind.PULL, "Fetching LFS…")
             val lfsResult = withContext(Dispatchers.IO) { repoManager.fetchLfs(repoPath) }
             _state.value = _state.value.copy(
-                busy = false,
+                busy = false, busyLabel = "",
                 lastResult = lfsResult,
                 statusMessage = when {
                     lfsResult is GitOpResult.Success -> "Pull done · LFS pulled"
@@ -488,14 +489,14 @@ class RepoDetailViewModel(
                 }
             }
             if (pushResult is GitOpResult.Error || pushResult is GitOpResult.AuthRequired) {
-                _state.value = _state.value.copy(busy = false, lastResult = pushResult)
+                _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = pushResult)
                 notifier.cancel(GitProgressNotifier.Kind.PUSH)
                 return@launch
             }
             notifier.update(GitProgressNotifier.Kind.PUSH, "Uploading LFS…")
             val lfsResult = withContext(Dispatchers.IO) { repoManager.pushLfs(repoPath) }
             _state.value = _state.value.copy(
-                busy = false,
+                busy = false, busyLabel = "",
                 lastResult = if (lfsResult is GitOpResult.Error) lfsResult else pushResult,
                 statusMessage = when {
                     lfsResult is GitOpResult.Success -> "Push done · LFS pushed"
@@ -519,7 +520,7 @@ class RepoDetailViewModel(
                     e.message ?: "Status failed"
                 }
             }
-            _state.value = _state.value.copy(busy = false, statusDetail = msg, lastResult = null)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", statusDetail = msg, lastResult = null)
         }
     }
 
@@ -534,7 +535,7 @@ class RepoDetailViewModel(
                     e.message ?: "Status failed"
                 }
             }
-            _state.value = _state.value.copy(busy = false, statusDetail = msg, lastResult = null)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", statusDetail = msg, lastResult = null)
         }
     }
 
@@ -542,7 +543,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.fetchLfs(repoPath) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
         }
     }
 
@@ -550,7 +551,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.pushLfs(repoPath) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
             if (result is GitOpResult.Success) loadStatus(showRefreshing = false)
         }
     }
@@ -559,7 +560,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.lfsInstall(repoPath) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
         }
     }
 
@@ -567,7 +568,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.lfsTrack(repoPath, pattern) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
         }
     }
 
@@ -575,7 +576,7 @@ class RepoDetailViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             val result = withContext(Dispatchers.IO) { repoManager.lfsUntrack(repoPath, pattern) }
-            _state.value = _state.value.copy(busy = false, lastResult = result)
+            _state.value = _state.value.copy(busy = false, busyLabel = "", lastResult = result)
         }
     }
 
@@ -585,7 +586,7 @@ class RepoDetailViewModel(
             val (st, result) = withContext(Dispatchers.IO) { repoManager.lfsStatus(repoPath) }
             val msg = st?.message
             _state.value = _state.value.copy(
-                busy = false,
+                busy = false, busyLabel = "",
                 lastResult = if (msg != null && result is GitOpResult.Success) {
                     // Surface summary via Success path — UI shows lastResult
                     result
