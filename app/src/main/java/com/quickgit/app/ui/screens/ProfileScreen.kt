@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +34,9 @@ fun ProfileScreen(
     onOpenUser: (String) -> Unit = {},
     onCloneRepo: (GitHubRemoteRepo) -> Unit = {},
     onOpenRepo: (GitHubRemoteRepo) -> Unit = {},
-    onNeedsAuth: () -> Unit
+    onNeedsAuth: () -> Unit,
+    /** When set (large phones), shows Search people in the top bar. */
+    onSearchPeople: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -69,6 +72,13 @@ fun ProfileScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
+                },
+                actions = {
+                    if (onSearchPeople != null && state.isSelf) {
+                        IconButton(onClick = onSearchPeople) {
+                            Icon(Icons.Default.Search, contentDescription = "Search people")
+                        }
+                    }
                 }
             )
         }

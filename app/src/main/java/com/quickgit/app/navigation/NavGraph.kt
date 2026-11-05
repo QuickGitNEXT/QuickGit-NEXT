@@ -143,7 +143,11 @@ fun QuickGitNavGraph() {
                 onOpenRepo = { repo ->
                     navController.navigate(Dest.remoteBrowse(repo.ownerLogin, repo.name, repo.defaultBranch))
                 },
-                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } }
+                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
+                // Large phones: user search lives under Profile (no Users tab on the bar).
+                onSearchPeople = if (isLargePhone) {
+                    { navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true } }
+                } else null
             )
         }
 
@@ -497,7 +501,7 @@ fun QuickGitNavGraph() {
         }
     }
 
-    fun navItems(includeBrowse: Boolean = true): List<FloatingNavItem> {
+    fun navItems(includeBrowse: Boolean = true, includeUsers: Boolean = true): List<FloatingNavItem> {
         val items = mutableListOf(
             FloatingNavItem(
                 icon = Icons.Default.Folder,
@@ -539,16 +543,19 @@ fun QuickGitNavGraph() {
         items += FloatingNavItem(
             icon = Icons.Default.Person,
             label = "Profile",
-            selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/")
+            selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/") ||
+                (!includeUsers && isSelected(Dest.USER_SEARCH))
         ) {
             navController.navigate(Dest.profile()) { launchSingleTop = true }
         }
-        items += FloatingNavItem(
-            icon = Icons.Default.Search,
-            label = "Users",
-            selected = isSelected(Dest.USER_SEARCH)
-        ) {
-            navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+        if (includeUsers) {
+            items += FloatingNavItem(
+                icon = Icons.Default.Search,
+                label = "Users",
+                selected = isSelected(Dest.USER_SEARCH)
+            ) {
+                navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+            }
         }
         if (BuildConfig.SHOW_LOGS_UI) {
             items += FloatingNavItem(
@@ -581,7 +588,7 @@ fun QuickGitNavGraph() {
         useRail -> {
             Row(Modifier.fillMaxSize()) {
                 NavigationRail(modifier = Modifier.fillMaxHeight()) {
-                    val items = navItems(includeBrowse = true)
+                    val items = navItems(includeBrowse = true, includeUsers = true)
                     // Primary destinations stay on top; Logs / Creds / Settings sit at the bottom.
                     val bottomLabels = setOf("Logs", "Creds", "Settings")
                     items.filter { it.label !in bottomLabels }.forEach { item ->
@@ -609,7 +616,7 @@ fun QuickGitNavGraph() {
                     NavContent()
                 }
                 FloatingTabletNavBar(
-                    items = navItems(includeBrowse = !isLargePhone),
+                    items = navItems(includeBrowse = !isLargePhone, includeUsers = !isLargePhone),
                     compact = floatingBarCompact,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
