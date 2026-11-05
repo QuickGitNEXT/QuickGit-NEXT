@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.theme.GitGreen
+import kotlin.math.max
 import kotlin.math.sqrt
 
 data class FloatingNavItem(
@@ -46,31 +47,47 @@ data class FloatingNavItem(
     val onClick: () -> Unit
 )
 
-/** Physical screen diagonal in inches (best-effort from DisplayMetrics). */
+/** Physical screen diagonal in inches (best-effort). */
 fun Context.screenDiagonalInches(): Float {
     val m = resources.displayMetrics
-    val w = m.widthPixels / m.xdpi.toDouble()
-    val h = m.heightPixels / m.ydpi.toDouble()
+    val xdpi = m.xdpi.takeIf { it > 0f } ?: m.densityDpi.toFloat()
+    val ydpi = m.ydpi.takeIf { it > 0f } ?: m.densityDpi.toFloat()
+    val w = m.widthPixels / xdpi.toDouble()
+    val h = m.heightPixels / ydpi.toDouble()
     return sqrt(w * w + h * h).toFloat()
 }
 
 /**
- * Material 3 floating bottom navigation (phones ≥ 6.3″ and tablets).
- *
- * All destinations share equal width in one row so every option stays visible
- * without horizontal scrolling. Chromebooks use the side rail instead.
+ * True for phone-class devices that should use the floating bottom navbar:
+ * physical diagonal > 6.3″, or dp heuristics when DPI reporting is wrong.
+ * Excludes tablets (smallest width ≥ 600dp).
+ */
+fun Context.isLargePhoneForFloatingNav(): Boolean {
+    val cfg = resources.configuration
+    val sw = cfg.smallestScreenWidthDp
+    if (sw >= 600) return false
+    val longDp = max(cfg.screenWidthDp, cfg.screenHeightDp)
+    val shortDp = minOf(cfg.screenWidthDp, cfg.screenHeightDp)
+    val diag = screenDiagonalInches()
+    return diag > 6.3f ||
+        (longDp >= 780 && shortDp < 600) ||
+        (sw >= 392 && longDp >= 740)
+}
+
+/**
+ * Material 3 floating bottom navigation for large phones and tablets.
+ * Equal-weight items so every destination stays on-screen without scrolling.
  */
 @Composable
 fun FloatingTabletNavBar(
     items: List<FloatingNavItem>,
     modifier: Modifier = Modifier,
-    /** Tighter chrome for phone-width layouts so every item still fits. */
     compact: Boolean = false
 ) {
     val navPad = WindowInsets.navigationBars.asPaddingValues()
-    val shape = RoundedCornerShape(if (compact) 24.dp else 28.dp)
-    val hPad = if (compact) 10.dp else 16.dp
-    val vPad = if (compact) 8.dp else 12.dp
+    val shape = RoundedCornerShape(if (compact) 22.dp else 28.dp)
+    val hPad = if (compact) 8.dp else 16.dp
+    val vPad = if (compact) 6.dp else 12.dp
 
     Box(
         modifier = modifier
@@ -81,7 +98,7 @@ fun FloatingTabletNavBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = if (compact) 560.dp else 720.dp)
+                .widthIn(max = if (compact) 520.dp else 720.dp)
                 .fillMaxWidth()
                 .clip(shape)
         ) {
@@ -96,13 +113,13 @@ fun FloatingTabletNavBar(
             Surface(
                 shape = shape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(
-                    alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.72f else 0.94f
+                    alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.78f else 0.96f
                 ),
-                tonalElevation = 3.dp,
-                shadowElevation = 10.dp,
+                tonalElevation = 4.dp,
+                shadowElevation = 12.dp,
                 border = BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -110,8 +127,8 @@ fun FloatingTabletNavBar(
                     Modifier
                         .fillMaxWidth()
                         .padding(
-                            horizontal = if (compact) 4.dp else 8.dp,
-                            vertical = if (compact) 6.dp else 8.dp
+                            horizontal = if (compact) 2.dp else 6.dp,
+                            vertical = if (compact) 5.dp else 8.dp
                         ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -136,9 +153,8 @@ private fun FloatingNavBarItem(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val selectedBg = if (item.selected) GitGreen.copy(alpha = 0.18f) else Color.Transparent
+    val selectedBg = if (item.selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
     val contentColor = if (item.selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-    // Shorter labels so 7–8 destinations fit on phone widths.
     val shortLabel = when (item.label) {
         "Repos" -> "Repos"
         "Clone" -> "Clone"
@@ -153,14 +169,14 @@ private fun FloatingNavBarItem(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(selectedBg)
             .clickable(
                 interactionSource = interaction,
                 indication = rememberRipple(bounded = true, color = GitGreen),
                 onClick = item.onClick
             )
-            .padding(vertical = if (compact) 4.dp else 6.dp, horizontal = 2.dp),
+            .padding(vertical = if (compact) 3.dp else 5.dp, horizontal = 1.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
@@ -175,7 +191,7 @@ private fun FloatingNavBarItem(
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Medium,
                 fontSize = if (compact) 9.sp else 10.sp,
-                lineHeight = if (compact) 11.sp else 12.sp
+                lineHeight = 11.sp
             ),
             maxLines = 1,
             overflow = TextOverflow.Clip,

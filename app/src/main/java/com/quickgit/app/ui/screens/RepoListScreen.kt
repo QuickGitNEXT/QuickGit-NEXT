@@ -59,8 +59,12 @@ fun RepoListScreen(
     // exposes Profile, Search people, and Settings (matching the Linux/Mac desktop
     // app's RepoListScreen, which has no such menu of its own), so this screen's
     // own account dropdown and Settings icon would be pure duplicates.
-    isDesktopLayout: Boolean = false
+    isDesktopLayout: Boolean = false,
+    // Large phones (≥ ~6.3″) and tablets with the floating bottom navbar:
+    // hide duplicate Profile / Settings / global Clone-Browse from the top bar + FAB.
+    useFloatingNav: Boolean = false
 ) {
+    val hideChromeNav = isDesktopLayout || useFloatingNav
     val repos by vm.repos.collectAsState()
     val loading by vm.loading.collectAsState()
     val account by vm.account.collectAsState()
@@ -119,9 +123,8 @@ fun RepoListScreen(
             TopAppBar(
                 title = { Text("QuickGitNEXT") },
                 actions = {
-                    // Profile + Search people in one menu — hidden on tablet/Chromebook
-                    // layout since the NavigationRail already provides both.
-                    if (!isDesktopLayout) {
+                    // Profile + Search — hidden when rail or floating navbar owns those destinations.
+                    if (!hideChromeNav) {
                         Box {
                             IconButton(onClick = { accountMenuExpanded = true }) {
                                 val avatarUrl = account?.avatarUrl
@@ -220,10 +223,8 @@ fun RepoListScreen(
                             }
                         }
                     }
-                    // Logs / Settings — hidden on tablet/Chromebook layout since
-                    // the NavigationRail already provides them (matching desktop).
-                    // Account management is under Profiles → Manage accounts.
-                    if (!isDesktopLayout) {
+                    // Logs / Settings — hidden when rail or floating navbar owns them.
+                    if (!hideChromeNav) {
                         // Logs only in the debug channel build (BuildConfig.SHOW_LOGS_UI)
                         if (BuildConfig.SHOW_LOGS_UI) {
                             IconButton(onClick = onLogs) {
@@ -238,9 +239,12 @@ fun RepoListScreen(
                 }
             )
         },
-        // Phone: bottom-right FAB menu. Tablet/Chromebook/desktop-window (isDesktopLayout):
+        // Phone without floating nav: bottom-right FAB menu.
+        // Large phone / tablet floating nav or desktop rail: only local actions if needed.
         // match the Linux desktop app — no FAB; "New repository" lives in the list header.
         floatingActionButton = {
+            // Desktop rail: no FAB. Floating navbar phones: keep local-only actions
+            // (create / import) — Clone & Browse live on the bottom bar.
             if (!isDesktopLayout) {
                 Column(horizontalAlignment = Alignment.End) {
                     AnimatedVisibility(
@@ -262,24 +266,26 @@ fun RepoListScreen(
                                 }
                             )
                             Spacer(Modifier.height(12.dp))
-                            FabMenuItem(
-                                label = "Browse repos",
-                                icon = Icons.Default.CloudDownload,
-                                onClick = {
-                                    fabExpanded = false
-                                    onBrowseGitHub()
-                                }
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            FabMenuItem(
-                                label = "Clone URL",
-                                icon = Icons.Default.Add,
-                                onClick = {
-                                    fabExpanded = false
-                                    onClone()
-                                }
-                            )
-                            Spacer(Modifier.height(12.dp))
+                            if (!useFloatingNav) {
+                                FabMenuItem(
+                                    label = "Browse repos",
+                                    icon = Icons.Default.CloudDownload,
+                                    onClick = {
+                                        fabExpanded = false
+                                        onBrowseGitHub()
+                                    }
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                FabMenuItem(
+                                    label = "Clone URL",
+                                    icon = Icons.Default.Add,
+                                    onClick = {
+                                        fabExpanded = false
+                                        onClone()
+                                    }
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
                             FabMenuItem(
                                 label = "Import folder",
                                 icon = Icons.Default.FolderOpen,

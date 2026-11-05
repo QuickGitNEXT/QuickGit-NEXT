@@ -44,7 +44,7 @@ import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
 import com.quickgit.app.ui.components.FloatingNavItem
 import com.quickgit.app.ui.components.FloatingTabletNavBar
-import com.quickgit.app.ui.components.screenDiagonalInches
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.screens.*
 import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.viewmodel.*
@@ -73,26 +73,21 @@ fun QuickGitNavGraph() {
     val app = context.applicationContext as QuickGitApp
     val desktopMode by app.appPreferences.desktopLayoutMode.collectAsState()
     val isChromebook = remember(context) { context.isChromebookDevice() }
-    // Physical diagonal — phones above 6.3" get the floating bar; smaller keep the old layout.
-    val diagonalInches = remember(context) { context.screenDiagonalInches() }
-    val isLargePhone = !wsc.isTabletOrWider && diagonalInches > 6.3f
-    // Wide chrome (tablet or Chromebook), subject to layout mode preference.
+    // Phones > ~6.3″ (diagonal + dp fallbacks). Tablets use width class separately.
+    val isLargePhone = remember(context, wsc) {
+        !wsc.isTabletOrWider && context.isLargePhoneForFloatingNav()
+    }
     val preferWideChrome = when (desktopMode) {
         DesktopLayoutMode.ALWAYS -> true
         DesktopLayoutMode.NEVER -> false
         DesktopLayoutMode.AUTO -> wsc.isTabletOrWider
     }
-    // Chromebook keeps the permanent left rail.
-    val useRail = preferWideChrome && isChromebook
-    // Floating bar: tablets (non-Chromebook wide) + phones larger than 6.3".
-    // Smaller phones (≤ 6.3") keep the previous in-screen phone layout only.
-    val useFloatingBar = when (desktopMode) {
-        DesktopLayoutMode.NEVER -> false
-        DesktopLayoutMode.ALWAYS -> (!isChromebook && (preferWideChrome || isLargePhone))
-        DesktopLayoutMode.AUTO -> (!isChromebook && (preferWideChrome || isLargePhone))
-    }
-    val floatingBarCompact = isLargePhone && !preferWideChrome
-    // Repo list / detail still use "desktop" content affordances on any wide layout.
+    // Chromebook: permanent left rail when wide chrome is on.
+    val useRail = isChromebook && preferWideChrome
+    // Floating navbar: large phones always; tablets when not Chromebook.
+    // Not gated by NEVER for large phones so the navbar actually ships on 6.4″+ handsets.
+    val useFloatingBar = !useRail && (isLargePhone || (preferWideChrome && !isChromebook))
+    val floatingBarCompact = isLargePhone
     val isDesktopLayout = preferWideChrome
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -118,7 +113,8 @@ fun QuickGitNavGraph() {
                 onSettings = { navController.navigate(Dest.SETTINGS) { launchSingleTop = true } },
                 onCredentials = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 onLogs = { if (BuildConfig.SHOW_LOGS_UI) navController.navigate(Dest.LOGS) },
-                isDesktopLayout = isDesktopLayout
+                isDesktopLayout = isDesktopLayout,
+                useFloatingNav = useFloatingBar
             )
         }
 
@@ -603,7 +599,7 @@ fun QuickGitNavGraph() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .padding(bottom = 88.dp)
+                        .padding(bottom = if (floatingBarCompact) 96.dp else 88.dp)
                 ) {
                     NavContent()
                 }
