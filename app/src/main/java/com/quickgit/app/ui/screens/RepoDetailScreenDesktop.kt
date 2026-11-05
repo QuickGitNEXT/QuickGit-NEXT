@@ -435,6 +435,17 @@ fun RepoDetailScreenDesktop(
             }
         )
     }
+
+        ExpressiveTaskOverlay(
+            visible = state.busy,
+            label = state.busyLabel.ifBlank { if (state.busy) "Working…" else "" },
+            success = showTaskSuccess,
+            onSuccessConsumed = {
+                showTaskSuccess = false
+                vm.consumeResult()
+            }
+        )
+    } // Box
 }
 
 /**
@@ -609,17 +620,5 @@ private fun DesktopChangeRow(
                 )
             }
         }
-
-        ExpressiveTaskOverlay(
-            visible = state.busy,
-            label = state.busyLabel.ifBlank { if (state.busy) "Working…" else "" },
-            success = showTaskSuccess,
-            onSuccessConsumed = {
-                showTaskSuccess = false
-                vm.consumeResult()
-            }
-        )
-    } // overlay Box
-
     }
 }
