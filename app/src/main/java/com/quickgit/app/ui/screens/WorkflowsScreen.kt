@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -58,11 +59,28 @@ import kotlinx.coroutines.launch
 fun WorkflowsScreen(
     vm: WorkflowsViewModel,
     onBack: (() -> Unit)? = null,
-    onNeedsAuth: (String) -> Unit
+    onNeedsAuth: (String) -> Unit,
+    /** When set, Actions hosts a Releases tab (large-phone nav no longer has a separate Releases entry). */
+    repoPath: String? = null,
+    showReleasesTab: Boolean = false
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     var showDispatch by remember { mutableStateOf<Workflow?>(null) }
+    var section by remember { mutableStateOf(0) } // 0 = Actions/Build, 1 = Releases
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val releasesFactory = remember(context) {
+        com.quickgit.app.viewmodel.ViewModelFactory(
+            context.applicationContext as android.app.Application
+        )
+    }
+    // Always obtain the VM (Compose rules); only init when the tab is enabled.
+    val releasesVm: ReleasesViewModel = viewModel(factory = releasesFactory)
+    LaunchedEffect(repoPath, showReleasesTab) {
+        if (showReleasesTab && repoPath != null) {
+            releasesVm.init(repoPath)
+        }
+    }
 
     LaunchedEffect(state.errorMessage, state.statusMessage, state.authRequiredHost) {
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
@@ -102,6 +120,31 @@ fun WorkflowsScreen(
         return
     }
 
+    if (showReleasesTab && section == 1 && 
+        state.selectedRun == null && state.logJobId == null && state.livePageUrl == null
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            if (onBack != null || showReleasesTab) {
+                TopAppBar(
+                    title = { Text(if (state.isGitLab) "Build" else "Actions") },
+                    navigationIcon = {
+                        onBack?.let { back ->
+                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+                        }
+                    }
+                )
+                TabRow(selectedTabIndex = section) {
+                    Tab(selected = section == 0, onClick = { section = 0 }, text = { Text(if (state.isGitLab) "Pipelines" else "Workflows") })
+                    Tab(selected = section == 1, onClick = { section = 1 }, text = { Text("Releases") })
+                }
+            }
+            Box(Modifier.weight(1f)) {
+                ReleasesScreen(vm = releasesVm, onBack = null, onNeedsAuth = onNeedsAuth, embedded = true)
+            }
+        }
+        return
+    }
+
     if (!state.supported) {
         Scaffold(
             topBar = {
@@ -130,19 +173,35 @@ fun WorkflowsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (state.isGitLab) "Build" else "Actions") },
-                navigationIcon = {
-                    onBack?.let { back ->
-                        IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+            Column {
+                TopAppBar(
+                    title = { Text(if (state.isGitLab) "Build" else "Actions") },
+                    navigationIcon = {
+                        onBack?.let { back ->
+                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
-                        Icon(Icons.Default.Refresh, "Refresh")
+                )
+                if (showReleasesTab) {
+                    TabRow(selectedTabIndex = section) {
+                        Tab(
+                            selected = section == 0,
+                            onClick = { section = 0 },
+                            text = { Text(if (state.isGitLab) "Pipelines" else "Workflows") }
+                        )
+                        Tab(
+                            selected = section == 1,
+                            onClick = { section = 1 },
+                            text = { Text("Releases") }
+                        )
                     }
                 }
-            )
+            }
         }
     ) { padding ->
         AdaptiveContent(Modifier.padding(padding)) {

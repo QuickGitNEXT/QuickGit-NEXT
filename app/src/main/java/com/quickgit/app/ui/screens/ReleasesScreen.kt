@@ -32,7 +32,9 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 fun ReleasesScreen(
     vm: ReleasesViewModel,
     onBack: (() -> Unit)? = null,
-    onNeedsAuth: (String) -> Unit
+    onNeedsAuth: (String) -> Unit,
+    /** When true (hosted under Actions tabs), omit the outer top app bar. */
+    embedded: Boolean = false
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -76,19 +78,21 @@ fun ReleasesScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Releases") },
-                navigationIcon = {
-                    onBack?.let { back ->
-                        IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+            if (!embedded) {
+                TopAppBar(
+                    title = { Text("Releases") },
+                    navigationIcon = {
+                        onBack?.let { back ->
+                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
+                            Icon(Icons.Default.Refresh, "Refresh")
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
-                        Icon(Icons.Default.Refresh, "Refresh")
-                    }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {

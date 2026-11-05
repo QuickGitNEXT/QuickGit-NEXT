@@ -132,29 +132,32 @@ fun RepoDetailScreen(
                 }
             }
 
-            // Sub-page navigation under the name — centered on phones
-            androidx.compose.foundation.lazy.LazyRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                item { SubPageButton(Icons.Default.FolderOpen, "Files", onOpenFiles) }
-                item { Spacer(Modifier.width(4.dp)) }
-                item { SubPageButton(Icons.Default.AccountTree, "Branches", onOpenBranches) }
-                item { Spacer(Modifier.width(4.dp)) }
-                // GitLab: MRs / Issues board / Build. GitHub: PRs / Issues / Actions.
-                val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
-                val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
-                val ciLabel = if (state.isGitLabRemote) "Build" else "Actions"
-                item { SubPageButton(Icons.Default.CallMerge, prLabel, onOpenPullRequests) }
-                item { Spacer(Modifier.width(4.dp)) }
-                item { SubPageButton(Icons.Default.BugReport, issuesLabel, onOpenIssues) }
-                item { Spacer(Modifier.width(4.dp)) }
-                item { SubPageButton(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows) }
-                item { Spacer(Modifier.width(4.dp)) }
-                item { SubPageButton(Icons.Default.NewReleases, "Releases", onOpenReleases) }
+            val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
+            // GitLab: MRs / Issues board / Build. GitHub: PRs / Issues / Actions.
+            val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
+            val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
+            val ciLabel = if (state.isGitLabRemote) "Build" else "Actions"
+            // Small phones: sub-pages stay under the title. Large phones: floating bar above commit.
+            if (!largePhone) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    item { SubPageButton(Icons.Default.FolderOpen, "Files", onOpenFiles) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.AccountTree, "Branches", onOpenBranches) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.CallMerge, prLabel, onOpenPullRequests) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.BugReport, issuesLabel, onOpenIssues) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.NewReleases, "Releases", onOpenReleases) }
+                }
             }
 
             var showLfsTrack by remember { mutableStateOf(false) }
@@ -610,6 +613,17 @@ fun RepoDetailScreen(
                         }
 
                         val largePhoneCommit = LocalContext.current.isLargePhoneForFloatingNav()
+                        if (largePhoneCommit) {
+                            RepoSubNavFloatingBar(
+                                items = listOf(
+                                    SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
+                                    SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
+                                    SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
+                                    SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
+                                    SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
+                                )
+                            )
+                        }
                         CommitBar(
                             message = state.commitMessage,
                             onMessageChange = vm::setCommitMessage,
