@@ -614,42 +614,74 @@ fun RepoDetailScreen(
                         }
 
                         val largePhoneCommit = LocalContext.current.isLargePhoneForFloatingNav()
+                        val gitOpsItems = listOf(
+                            SubNavItem(Icons.Default.ArrowDownward, "Pull") {
+                                if (!state.busy) showPullOptions = true
+                            },
+                            SubNavItem(Icons.Default.ArrowUpward, "Push") {
+                                if (!state.busy) showPushOptions = true
+                            },
+                            SubNavItem(Icons.Default.Info, "Status") {
+                                if (!state.busy) showStatusOptions = true
+                            },
+                            SubNavItem(Icons.Default.Storage, "LFS") {
+                                if (!state.busy) showLfsOptions = true
+                            },
+                        )
                         if (largePhoneCommit) {
-                            // Git ops bar (was under the title) — labeled, above commit.
-                            RepoSubNavFloatingBar(
-                                items = listOf(
-                                    SubNavItem(Icons.Default.ArrowDownward, "Pull") {
-                                        if (!state.busy) showPullOptions = true
-                                    },
-                                    SubNavItem(Icons.Default.ArrowUpward, "Push") {
-                                        if (!state.busy) showPushOptions = true
-                                    },
-                                    SubNavItem(Icons.Default.Info, "Status") {
-                                        if (!state.busy) showStatusOptions = true
-                                    },
-                                    SubNavItem(Icons.Default.Storage, "LFS") {
-                                        if (!state.busy) showLfsOptions = true
-                                    },
-                                )
+                            Surface(
+                                shape = MaterialTheme.shapes.extraLarge,
+                                tonalElevation = 3.dp,
+                                shadowElevation = 10.dp,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .imePadding()
+                            ) {
+                                Column(Modifier.fillMaxWidth()) {
+                                    RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
+                                    HorizontalDivider(
+                                        Modifier.padding(horizontal = 12.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                    CommitBar(
+                                        message = state.commitMessage,
+                                        onMessageChange = vm::setCommitMessage,
+                                        suggestedMessage = state.suggestedCommitMessage,
+                                        onUseSuggested = vm::applySuggestedCommitMessage,
+                                        signOff = state.signOff,
+                                        onSignOffChange = vm::setSignOff,
+                                        amend = state.amend,
+                                        onAmendChange = vm::setAmend,
+                                        authorName = state.authorName,
+                                        authorEmail = state.authorEmail,
+                                        enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
+                                        onCommit = vm::commit,
+                                        compactOptions = true,
+                                        bottomInset = 0.dp,
+                                        embedded = true
+                                    )
+                                }
+                            }
+                        } else {
+                            CommitBar(
+                                message = state.commitMessage,
+                                onMessageChange = vm::setCommitMessage,
+                                suggestedMessage = state.suggestedCommitMessage,
+                                onUseSuggested = vm::applySuggestedCommitMessage,
+                                signOff = state.signOff,
+                                onSignOffChange = vm::setSignOff,
+                                amend = state.amend,
+                                onAmendChange = vm::setAmend,
+                                authorName = state.authorName,
+                                authorEmail = state.authorEmail,
+                                enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
+                                onCommit = vm::commit,
+                                compactOptions = false,
+                                bottomInset = 0.dp
                             )
                         }
-                        CommitBar(
-                            message = state.commitMessage,
-                            onMessageChange = vm::setCommitMessage,
-                            suggestedMessage = state.suggestedCommitMessage,
-                            onUseSuggested = vm::applySuggestedCommitMessage,
-                            signOff = state.signOff,
-                            onSignOffChange = vm::setSignOff,
-                            amend = state.amend,
-                            onAmendChange = vm::setAmend,
-                            authorName = state.authorName,
-                            authorEmail = state.authorEmail,
-                            enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
-                            onCommit = vm::commit,
-                            compactOptions = largePhoneCommit,
-                            // Sit just above the floating navbar with a tight gap.
-                            bottomInset = if (largePhoneCommit) 4.dp else 0.dp
-                        )
                     }
                 }
             }
@@ -794,22 +826,17 @@ private fun CommitBar(
     onCommit: () -> Unit,
     /** Large phones: fold amend / sign-off into the commit control. */
     compactOptions: Boolean = false,
-    bottomInset: androidx.compose.ui.unit.Dp = 0.dp
+    bottomInset: androidx.compose.ui.unit.Dp = 0.dp,
+    embedded: Boolean = false
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
-    Surface(
-        shadowElevation = 8.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .imePadding()
-            .padding(bottom = bottomInset)
-    ) {
+    val body: @Composable () -> Unit = {
         Column(
             Modifier.padding(
                 start = 16.dp,
                 end = 16.dp,
-                top = if (compactOptions) 10.dp else 16.dp,
-                bottom = if (compactOptions) 8.dp else 16.dp
+                top = if (compactOptions) 8.dp else 16.dp,
+                bottom = if (compactOptions) 10.dp else 16.dp
             )
         ) {
             OutlinedTextField(
@@ -956,6 +983,19 @@ private fun CommitBar(
             }
         }
     }
+    if (embedded) {
+        body()
+    } else {
+        Surface(
+            shadowElevation = 8.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .padding(bottom = bottomInset)
+        ) {
+            body()
+        }
+    }
 }
 
 
@@ -967,20 +1007,12 @@ private data class SubNavItem(
 
 /** Labeled floating bar of repo sub-pages for large phones (above the commit bar). */
 @Composable
-private fun RepoSubNavFloatingBar(items: List<SubNavItem>) {
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
+private fun RepoSubNavFloatingBar(items: List<SubNavItem>, flat: Boolean = false) {
+    val row = @Composable {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 6.dp),
+                .padding(horizontal = 4.dp, vertical = if (flat) 8.dp else 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1006,6 +1038,21 @@ private fun RepoSubNavFloatingBar(items: List<SubNavItem>) {
                     )
                 }
             }
+        }
+    }
+    if (flat) {
+        row()
+    } else {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            row()
         }
     }
 }
