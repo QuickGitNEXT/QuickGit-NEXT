@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CloudDownload
@@ -21,10 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -38,22 +42,23 @@ import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
+import com.quickgit.app.ui.components.FloatingNavItem
+import com.quickgit.app.ui.components.FloatingTabletNavBar
 import com.quickgit.app.ui.screens.*
+import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.viewmodel.*
 import androidx.compose.runtime.collectAsState
 
 /**
  * Root navigation graph.
  *
- * Desktop layout (left NavigationRail matching the Linux desktop app) is
- * controlled by [com.quickgit.app.data.AppPreferences.desktopLayoutMode]:
- * - AUTO — rail when window is tablet/Chromebook width or wider
- * - ALWAYS — always show the left rail
+ * Wide-layout chrome is controlled by [com.quickgit.app.data.AppPreferences.desktopLayoutMode]:
+ * - AUTO — Chromebook: left [NavigationRail]; Android tablet: floating blurred bottom bar;
+ *   phone: compact layout
+ * - ALWAYS — same split (rail on Chromebook, floating bar on tablet)
  * - NEVER — phone-style navigation only
  *
- * Toggle under Settings → Layout. On phone layout, account management lives under
- * Profiles → Manage accounts. On tablet/desktop layout the rail includes a dedicated
- * Credentials (Creds) item, matching the Linux desktop app.
+ * Toggle under Settings → Layout. Credentials is a top-level item on wide layouts.
  */
 @Composable
 fun QuickGitNavGraph() {
@@ -67,13 +72,18 @@ fun QuickGitNavGraph() {
     val wsc = LocalWindowSizeClass.current
     val app = context.applicationContext as QuickGitApp
     val desktopMode by app.appPreferences.desktopLayoutMode.collectAsState()
-    // Left NavigationRail (same structure as Linux desktop):
-    // ALWAYS = force on, NEVER = force off, AUTO = tablet/Chromebook width and up.
-    val useRail = when (desktopMode) {
+    val isChromebook = remember(context) { context.isChromebookDevice() }
+    // Wide chrome (tablet or Chromebook), subject to layout mode preference.
+    val preferWideChrome = when (desktopMode) {
         DesktopLayoutMode.ALWAYS -> true
         DesktopLayoutMode.NEVER -> false
         DesktopLayoutMode.AUTO -> wsc.isTabletOrWider
     }
+    // Chromebook keeps the permanent left rail; Android tablets get a floating bottom bar.
+    val useRail = preferWideChrome && isChromebook
+    val useFloatingTabletBar = preferWideChrome && !isChromebook
+    // Repo list / detail still use "desktop" content affordances on any wide layout.
+    val isDesktopLayout = preferWideChrome
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -98,7 +108,7 @@ fun QuickGitNavGraph() {
                 onSettings = { navController.navigate(Dest.SETTINGS) { launchSingleTop = true } },
                 onCredentials = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 onLogs = { if (BuildConfig.SHOW_LOGS_UI) navController.navigate(Dest.LOGS) },
-                isDesktopLayout = useRail
+                isDesktopLayout = isDesktopLayout
             )
         }
 
@@ -481,88 +491,119 @@ fun QuickGitNavGraph() {
         }
     }
 
-    if (useRail) {
-        // Chromebook / tablet / desktop-window layout: permanent NavigationRail
-        // structured identically to the Linux Compose Desktop app.
-        Row(Modifier.fillMaxSize()) {
-            NavigationRail(modifier = Modifier.fillMaxHeight()) {
-                RailItem(
-                    icon = Icons.Default.Folder,
-                    label = "Repos",
-                    selected = isSelected(Dest.REPO_LIST) ||
-                        isSelected("repo_detail") || isSelected("history") ||
-                        isSelected("branches") || isSelected("diff") ||
-                        isSelected("merge") || isSelected("files") ||
-                        isSelected("editor") || isSelected("pull_requests") ||
-                        isSelected("issues") || isSelected("workflows") ||
-                        isSelected("releases")
-                ) {
-                    navController.navigate(Dest.REPO_LIST) {
-                        popUpTo(Dest.REPO_LIST) { inclusive = true }
-                        launchSingleTop = true
-                    }
+    fun navItems(): List<FloatingNavItem> {
+        val items = mutableListOf(
+            FloatingNavItem(
+                icon = Icons.Default.Folder,
+                label = "Repos",
+                selected = isSelected(Dest.REPO_LIST) ||
+                    isSelected("repo_detail") || isSelected("history") ||
+                    isSelected("branches") || isSelected("diff") ||
+                    isSelected("merge") || isSelected("files") ||
+                    isSelected("editor") || isSelected("pull_requests") ||
+                    isSelected("issues") || isSelected("workflows") ||
+                    isSelected("releases")
+            ) {
+                navController.navigate(Dest.REPO_LIST) {
+                    popUpTo(Dest.REPO_LIST) { inclusive = true }
+                    launchSingleTop = true
                 }
-                RailItem(
-                    icon = Icons.Default.CloudDownload,
-                    label = "Clone",
-                    selected = isSelected(Dest.CLONE)
-                ) {
-                    navController.navigate(Dest.CLONE) { launchSingleTop = true }
-                }
-                RailItem(
-                    icon = Icons.Default.TravelExplore,
-                    label = "Browse",
-                    selected = isSelected(Dest.BROWSE_GITHUB) ||
-                        isSelected("remote_browse") || isSelected("remote_file")
-                ) {
-                    navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
-                }
-                RailItem(
-                    icon = Icons.Default.Person,
-                    label = "Profile",
-                    selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/")
-                ) {
-                    navController.navigate(Dest.profile()) { launchSingleTop = true }
-                }
-                RailItem(
-                    icon = Icons.Default.Search,
-                    label = "Users",
-                    selected = isSelected(Dest.USER_SEARCH)
-                ) {
-                    navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
-                }
-                Spacer(Modifier.weight(1f))
-                if (BuildConfig.SHOW_LOGS_UI) {
-                    RailItem(
-                        icon = Icons.Default.Article,
-                        label = "Logs",
-                        selected = isSelected(Dest.LOGS)
-                    ) {
-                        navController.navigate(Dest.LOGS) { launchSingleTop = true }
-                    }
-                }
-                RailItem(
-                    icon = Icons.Default.Key,
-                    label = "Creds",
-                    selected = isSelected(Dest.CREDENTIALS)
-                ) {
-                    navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true }
-                }
-                RailItem(
-                    icon = Icons.Default.Settings,
-                    label = "Settings",
-                    selected = isSelected(Dest.SETTINGS)
-                ) {
-                    navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
-                }
-            }
-            VerticalDivider()
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                NavContent()
+            },
+            FloatingNavItem(
+                icon = Icons.Default.CloudDownload,
+                label = "Clone",
+                selected = isSelected(Dest.CLONE)
+            ) {
+                navController.navigate(Dest.CLONE) { launchSingleTop = true }
+            },
+            FloatingNavItem(
+                icon = Icons.Default.TravelExplore,
+                label = "Browse",
+                selected = isSelected(Dest.BROWSE_GITHUB) ||
+                    isSelected("remote_browse") || isSelected("remote_file")
+            ) {
+                navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
+            },
+            FloatingNavItem(
+                icon = Icons.Default.Person,
+                label = "Profile",
+                selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/")
+            ) {
+                navController.navigate(Dest.profile()) { launchSingleTop = true }
+            },
+            FloatingNavItem(
+                icon = Icons.Default.Search,
+                label = "Users",
+                selected = isSelected(Dest.USER_SEARCH)
+            ) {
+                navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+            },
+        )
+        if (BuildConfig.SHOW_LOGS_UI) {
+            items += FloatingNavItem(
+                icon = Icons.Default.Article,
+                label = "Logs",
+                selected = isSelected(Dest.LOGS)
+            ) {
+                navController.navigate(Dest.LOGS) { launchSingleTop = true }
             }
         }
-    } else {
-        NavContent()
+        items += FloatingNavItem(
+            icon = Icons.Default.Key,
+            label = "Creds",
+            selected = isSelected(Dest.CREDENTIALS)
+        ) {
+            navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true }
+        }
+        items += FloatingNavItem(
+            icon = Icons.Default.Settings,
+            label = "Settings",
+            selected = isSelected(Dest.SETTINGS)
+        ) {
+            navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
+        }
+        return items
+    }
+
+    when {
+        // Chromebook (and ARC desktop shells): permanent left NavigationRail.
+        useRail -> {
+            Row(Modifier.fillMaxSize()) {
+                NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                    val items = navItems()
+                    // Primary destinations stay on top; Logs / Creds / Settings sit at the bottom.
+                    val bottomLabels = setOf("Logs", "Creds", "Settings")
+                    items.filter { it.label !in bottomLabels }.forEach { item ->
+                        RailItem(item.icon, item.label, item.selected, item.onClick)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    items.filter { it.label in bottomLabels }.forEach { item ->
+                        RailItem(item.icon, item.label, item.selected, item.onClick)
+                    }
+                }
+                VerticalDivider()
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    NavContent()
+                }
+            }
+        }
+        // Android tablets: M3 floating bottom bar with frosted/blur surface.
+        useFloatingTabletBar -> {
+            Box(Modifier.fillMaxSize()) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 88.dp)
+                ) {
+                    NavContent()
+                }
+                FloatingTabletNavBar(
+                    items = navItems(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+        }
+        else -> NavContent()
     }
 }
 
