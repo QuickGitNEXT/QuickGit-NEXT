@@ -68,6 +68,9 @@ class WorkflowsViewModel(
     private var pollJob: Job? = null
     private var logPollJob: Job? = null
     private val notifier = GitProgressNotifier(app)
+    /** Last seen status per run id — used to fire finish notifications. */
+    private val knownRunStatuses = mutableMapOf<Long, String>()
+    private var backgroundPollJob: Job? = null
 
     fun init(repoPath: String) {
         this.repoPath = repoPath

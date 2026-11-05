@@ -173,7 +173,7 @@ class CloneViewModel(
                     notifier.complete(
                         GitProgressNotifier.Kind.CLONE,
                         "Clone complete",
-                        result.message?.takeIf { it.isNotBlank() } ?: "Repository cloned successfully"
+                        "Repository cloned successfully"
                     )
                 }
                 is GitOpResult.UpToDate -> {
