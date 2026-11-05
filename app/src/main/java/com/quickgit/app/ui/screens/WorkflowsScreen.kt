@@ -51,6 +51,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import com.quickgit.app.ui.adaptive.AdaptiveContent
+import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.viewmodel.WorkflowsViewModel
 import kotlinx.coroutines.launch
 

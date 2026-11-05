@@ -24,6 +24,7 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.adaptive.isCompactHeight
 import com.quickgit.app.ui.adaptive.isTabletOrWider
 import com.quickgit.app.ui.components.PullToRefreshBox
@@ -70,6 +71,7 @@ fun RepoDetailScreen(
 
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
+    var showTaskSuccess by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.lastResult, state.statusMessage) {
         state.statusMessage?.let {
@@ -78,7 +80,7 @@ fun RepoDetailScreen(
             return@LaunchedEffect
         }
         when (val r = state.lastResult) {
-            is GitOpResult.Success -> { snackbarHost.showSnackbar("Done"); vm.consumeResult() }
+            is GitOpResult.Success -> { showTaskSuccess = true }
             is GitOpResult.UpToDate -> { snackbarHost.showSnackbar(r.message); vm.consumeResult() }
             is GitOpResult.Error -> { snackbarHost.showSnackbar(r.message); vm.consumeResult() }
             is GitOpResult.AuthRequired -> { vm.consumeResult(); onNeedsAuth(r.remoteUrl) }
@@ -87,7 +89,8 @@ fun RepoDetailScreen(
         }
     }
 
-    Scaffold(
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         val status = state.status
@@ -646,6 +649,18 @@ fun RepoDetailScreen(
             }
         }
         } // AdaptiveContent
+
+        ExpressiveTaskOverlay(
+            visible = state.busy,
+            label = state.busyLabel.ifBlank { if (state.busy) "Working…" else "" },
+            success = showTaskSuccess,
+            onSuccessConsumed = {
+                showTaskSuccess = false
+                vm.consumeResult()
+            }
+        )
+    } // overlay Box
+
     }
 }
 
@@ -931,6 +946,58 @@ private fun CommitBar(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(label)
+                }
+            }
+        }
+    }
+}
+
+
+private data class SubNavItem(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val onClick: () -> Unit
+)
+
+/** Labeled floating bar of repo sub-pages for large phones (above the commit bar). */
+@Composable
+private fun RepoSubNavFloatingBar(items: List<SubNavItem>) {
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        tonalElevation = 3.dp,
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = item.onClick)
+                        .padding(vertical = 4.dp, horizontal = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        item.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
