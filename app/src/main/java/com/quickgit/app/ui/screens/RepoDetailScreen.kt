@@ -140,7 +140,8 @@ fun RepoDetailScreen(
             val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
             val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
             val ciLabel = if (state.isGitLabRemote) "Build" else "Actions"
-            // Small phones: sub-pages stay under the title. Large phones: floating bar above commit.
+            // Small phones: full sub-page row under the title (incl. Releases).
+            // Large phones: sub-pages sit here (Releases lives under Actions); git ops move above commit.
             if (!largePhone) {
                 androidx.compose.foundation.lazy.LazyRow(
                     Modifier
@@ -161,6 +162,16 @@ fun RepoDetailScreen(
                     item { Spacer(Modifier.width(4.dp)) }
                     item { SubPageButton(Icons.Default.NewReleases, "Releases", onOpenReleases) }
                 }
+            } else {
+                RepoSubNavFloatingBar(
+                    items = listOf(
+                        SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
+                        SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
+                        SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
+                        SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
+                        SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
+                    )
+                )
             }
 
             var showLfsTrack by remember { mutableStateOf(false) }
@@ -173,37 +184,40 @@ fun RepoDetailScreen(
             var showStatusOptions by remember { mutableStateOf(false) }
             var showLfsOptions by remember { mutableStateOf(false) }
 
-            // Phones: single centered row of icon actions (Pull / Push / Status / LFS).
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { showPullOptions = true },
-                    enabled = !state.busy
+            // Small phones only: Pull / Push / Status / LFS under the title.
+            // Large phones: same actions sit in the floating bar above the commit control.
+            if (!largePhone) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.ArrowDownward, contentDescription = "Pull")
-                }
-                IconButton(
-                    onClick = { showPushOptions = true },
-                    enabled = !state.busy
-                ) {
-                    Icon(Icons.Default.ArrowUpward, contentDescription = "Push")
-                }
-                IconButton(
-                    onClick = { showStatusOptions = true },
-                    enabled = !state.busy
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = "Status")
-                }
-                IconButton(
-                    onClick = { showLfsOptions = true },
-                    enabled = !state.busy
-                ) {
-                    Icon(Icons.Default.Storage, contentDescription = "LFS")
+                    IconButton(
+                        onClick = { showPullOptions = true },
+                        enabled = !state.busy
+                    ) {
+                        Icon(Icons.Default.ArrowDownward, contentDescription = "Pull")
+                    }
+                    IconButton(
+                        onClick = { showPushOptions = true },
+                        enabled = !state.busy
+                    ) {
+                        Icon(Icons.Default.ArrowUpward, contentDescription = "Push")
+                    }
+                    IconButton(
+                        onClick = { showStatusOptions = true },
+                        enabled = !state.busy
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = "Status")
+                    }
+                    IconButton(
+                        onClick = { showLfsOptions = true },
+                        enabled = !state.busy
+                    ) {
+                        Icon(Icons.Default.Storage, contentDescription = "LFS")
+                    }
                 }
             }
 
@@ -617,13 +631,21 @@ fun RepoDetailScreen(
 
                         val largePhoneCommit = LocalContext.current.isLargePhoneForFloatingNav()
                         if (largePhoneCommit) {
+                            // Git ops bar (was under the title) — labeled, above commit.
                             RepoSubNavFloatingBar(
                                 items = listOf(
-                                    SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
-                                    SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
-                                    SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
-                                    SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
-                                    SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
+                                    SubNavItem(Icons.Default.ArrowDownward, "Pull") {
+                                        if (!state.busy) showPullOptions = true
+                                    },
+                                    SubNavItem(Icons.Default.ArrowUpward, "Push") {
+                                        if (!state.busy) showPushOptions = true
+                                    },
+                                    SubNavItem(Icons.Default.Info, "Status") {
+                                        if (!state.busy) showStatusOptions = true
+                                    },
+                                    SubNavItem(Icons.Default.Storage, "LFS") {
+                                        if (!state.busy) showLfsOptions = true
+                                    },
                                 )
                             )
                         }
