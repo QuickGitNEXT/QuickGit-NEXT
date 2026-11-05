@@ -61,18 +61,26 @@ fun CloneScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
+            Spacer(Modifier.height(16.dp))
+            Text("Browse repositories", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Pick a repo from your accounts, then come back here to clone. " +
+                    "On large phones, browsing lives here instead of the bottom bar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(10.dp))
+            FilledTonalButton(
                 onClick = onBrowseGitHub,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Browse my GitHub repositories")
+                Text("Browse GitHub / GitLab")
             }
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = { vm.openGerritBrowser() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.gerritConnected || true
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     if (state.gerritConnected)
