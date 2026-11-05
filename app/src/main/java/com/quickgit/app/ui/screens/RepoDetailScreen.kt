@@ -162,16 +162,6 @@ fun RepoDetailScreen(
                     item { Spacer(Modifier.width(4.dp)) }
                     item { SubPageButton(Icons.Default.NewReleases, "Releases", onOpenReleases) }
                 }
-            } else {
-                RepoSubNavFloatingBar(
-                    items = listOf(
-                        SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
-                        SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
-                        SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
-                        SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
-                        SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
-                    )
-                )
             }
 
             var showLfsTrack by remember { mutableStateOf(false) }
@@ -544,127 +534,195 @@ fun RepoDetailScreen(
                 }
             }
 
-            if (status != null && status.conflicting.isNotEmpty()) {
-                Surface(color = GitAmber.copy(alpha = 0.15f), modifier = Modifier.fillMaxWidth().padding(16.dp, 4.dp)) {
-                    Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, null, tint = GitAmber)
-                        Spacer(Modifier.width(8.dp))
-                        Text("${status.conflicting.size} conflicting file(s)", Modifier.weight(1f))
-                        TextButton(onClick = onConflicts) { Text("Resolve") }
+
+            val pageNavItems = listOf(
+                SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
+                SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
+                SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
+                SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
+                SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
+            )
+            val gitOpsItems = listOf(
+                SubNavItem(Icons.Default.ArrowDownward, "Pull") {
+                    if (!state.busy) showPullOptions = true
+                },
+                SubNavItem(Icons.Default.ArrowUpward, "Push") {
+                    if (!state.busy) showPushOptions = true
+                },
+                SubNavItem(Icons.Default.Info, "Status") {
+                    if (!state.busy) showStatusOptions = true
+                },
+                SubNavItem(Icons.Default.Storage, "LFS") {
+                    if (!state.busy) showLfsOptions = true
+                },
+            )
+
+            @Composable
+            fun ConflictBanner() {
+                if (status != null && status.conflicting.isNotEmpty()) {
+                    Surface(color = GitAmber.copy(alpha = 0.15f), modifier = Modifier.fillMaxWidth().padding(12.dp, 4.dp)) {
+                        Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, null, tint = GitAmber)
+                            Spacer(Modifier.width(8.dp))
+                            Text("${status.conflicting.size} conflicting file(s)", Modifier.weight(1f))
+                            TextButton(onClick = onConflicts) { Text("Resolve") }
+                        }
                     }
                 }
             }
 
-            PullToRefreshBox(
-                isRefreshing = state.refreshing,
-                onRefresh = vm::refresh,
-                modifier = Modifier.weight(1f).fillMaxWidth()
-            ) {
+            @Composable
+            fun ChangesLazy(bottomPad: androidx.compose.ui.unit.Dp) {
                 if ((state.busy || state.refreshing) && status == null) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 } else if (status != null) {
-                    Column(Modifier.fillMaxSize()) {
-                        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-                            if (status.staged.isNotEmpty()) {
-                                item {
-                                    Row(Modifier.fillMaxWidth().padding(16.dp, 8.dp, 16.dp, 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text("Staged changes (${status.staged.size})", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                                        TextButton(onClick = { vm.unstageAll() }, enabled = !state.busy) { Text("Unstage all") }
-                                    }
-                                }
-                                items(status.staged, key = { "s_" + it.path }) { fc ->
-                                    ChangeRow(fc, onToggle = { vm.toggleStage(fc.path, true) }, onClick = { onOpenDiff(fc.path, "staged") })
-                                }
-                            }
-                            val unstagedAll = status.unstaged + status.untracked
-                            if (unstagedAll.isNotEmpty()) {
-                                item {
-                                    Row(Modifier.fillMaxWidth().padding(16.dp, 8.dp, 16.dp, 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text("Changes (${unstagedAll.size})", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                                        TextButton(onClick = { vm.discardAll() }, enabled = !state.busy) { Text("Revert all") }
-                                        TextButton(onClick = { vm.stageAll() }) { Text("Stage all") }
-                                    }
-                                }
-                                items(unstagedAll, key = { "u_" + it.path }) { fc ->
-                                    ChangeRow(
-                                        fc,
-                                        onToggle = { vm.toggleStage(fc.path, false) },
-                                        onClick = { onOpenDiff(fc.path, "working") },
-                                        onDiscard = { vm.discard(fc.path) }
-                                    )
-                                }
-                            }
-                            if (status.isClean) {
-                                item {
-                                    Box(Modifier.fillParentMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                        Text("Nothing to commit — working tree clean", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-                            // Extra scroll room for the commit bar; less on short heights / large phones.
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        if (status.staged.isNotEmpty()) {
                             item {
-                                val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
-                                val spacerH = when {
-                                    LocalWindowSizeClass.current.isCompactHeight -> 72.dp
-                                    largePhone -> 88.dp
-                                    else -> 140.dp
+                                Row(
+                                    Modifier.fillMaxWidth().padding(16.dp, 8.dp, 16.dp, 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Staged changes (${status.staged.size})",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(onClick = { vm.unstageAll() }, enabled = !state.busy) {
+                                        Text("Unstage all")
+                                    }
                                 }
-                                Spacer(Modifier.height(spacerH))
+                            }
+                            items(status.staged, key = { "s_" + it.path }) { fc ->
+                                ChangeRow(
+                                    fc,
+                                    onToggle = { vm.toggleStage(fc.path, true) },
+                                    onClick = { onOpenDiff(fc.path, "staged") }
+                                )
                             }
                         }
-
-                        val largePhoneCommit = LocalContext.current.isLargePhoneForFloatingNav()
-                        val gitOpsItems = listOf(
-                            SubNavItem(Icons.Default.ArrowDownward, "Pull") {
-                                if (!state.busy) showPullOptions = true
-                            },
-                            SubNavItem(Icons.Default.ArrowUpward, "Push") {
-                                if (!state.busy) showPushOptions = true
-                            },
-                            SubNavItem(Icons.Default.Info, "Status") {
-                                if (!state.busy) showStatusOptions = true
-                            },
-                            SubNavItem(Icons.Default.Storage, "LFS") {
-                                if (!state.busy) showLfsOptions = true
-                            },
-                        )
-                        if (largePhoneCommit) {
-                            Surface(
-                                shape = MaterialTheme.shapes.extraLarge,
-                                tonalElevation = 3.dp,
-                                shadowElevation = 10.dp,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                                    .imePadding()
-                            ) {
-                                Column(Modifier.fillMaxWidth()) {
-                                    RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
-                                    HorizontalDivider(
-                                        Modifier.padding(horizontal = 12.dp),
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        val unstagedAll = status.unstaged + status.untracked
+                        if (unstagedAll.isNotEmpty()) {
+                            item {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(16.dp, 8.dp, 16.dp, 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Changes (${unstagedAll.size})",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        modifier = Modifier.weight(1f)
                                     )
-                                    CommitBar(
-                                        message = state.commitMessage,
-                                        onMessageChange = vm::setCommitMessage,
-                                        suggestedMessage = state.suggestedCommitMessage,
-                                        onUseSuggested = vm::applySuggestedCommitMessage,
-                                        signOff = state.signOff,
-                                        onSignOffChange = vm::setSignOff,
-                                        amend = state.amend,
-                                        onAmendChange = vm::setAmend,
-                                        authorName = state.authorName,
-                                        authorEmail = state.authorEmail,
-                                        enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
-                                        onCommit = vm::commit,
-                                        compactOptions = true,
-                                        bottomInset = 0.dp,
-                                        embedded = true
+                                    TextButton(onClick = { vm.discardAll() }, enabled = !state.busy) {
+                                        Text("Revert all")
+                                    }
+                                    TextButton(onClick = { vm.stageAll() }) { Text("Stage all") }
+                                }
+                            }
+                            items(unstagedAll, key = { "u_" + it.path }) { fc ->
+                                ChangeRow(
+                                    fc,
+                                    onToggle = { vm.toggleStage(fc.path, false) },
+                                    onClick = { onOpenDiff(fc.path, "working") },
+                                    onDiscard = { vm.discard(fc.path) }
+                                )
+                            }
+                        }
+                        if (status.isClean) {
+                            item {
+                                Box(
+                                    Modifier.fillParentMaxWidth().padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "Nothing to commit — working tree clean",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                        } else {
+                        }
+                        item { Spacer(Modifier.height(bottomPad)) }
+                    }
+                }
+            }
+
+            if (largePhone) {
+                // One floating workspace: page nav → changes → git ops → commit
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 3.dp,
+                    shadowElevation = 10.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .imePadding()
+                ) {
+                    Column(Modifier.fillMaxSize()) {
+                        RepoSubNavFloatingBar(items = pageNavItems, flat = true)
+                        HorizontalDivider(
+                            Modifier.padding(horizontal = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                        )
+                        ConflictBanner()
+                        PullToRefreshBox(
+                            isRefreshing = state.refreshing,
+                            onRefresh = vm::refresh,
+                            modifier = Modifier.weight(1f).fillMaxWidth()
+                        ) {
+                            ChangesLazy(bottomPad = 8.dp)
+                        }
+                        HorizontalDivider(
+                            Modifier.padding(horizontal = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                        )
+                        RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
+                        HorizontalDivider(
+                            Modifier.padding(horizontal = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                        )
+                        if (status != null) {
+                            CommitBar(
+                                message = state.commitMessage,
+                                onMessageChange = vm::setCommitMessage,
+                                suggestedMessage = state.suggestedCommitMessage,
+                                onUseSuggested = vm::applySuggestedCommitMessage,
+                                signOff = state.signOff,
+                                onSignOffChange = vm::setSignOff,
+                                amend = state.amend,
+                                onAmendChange = vm::setAmend,
+                                authorName = state.authorName,
+                                authorEmail = state.authorEmail,
+                                enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
+                                onCommit = vm::commit,
+                                compactOptions = true,
+                                bottomInset = 0.dp,
+                                embedded = true
+                            )
+                        }
+                    }
+                }
+            } else {
+                ConflictBanner()
+                PullToRefreshBox(
+                    isRefreshing = state.refreshing,
+                    onRefresh = vm::refresh,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                ) {
+                    if ((state.busy || state.refreshing) && status == null) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else if (status != null) {
+                        Column(Modifier.fillMaxSize()) {
+                            Box(Modifier.weight(1f).fillMaxWidth()) {
+                                ChangesLazy(
+                                    bottomPad = if (LocalWindowSizeClass.current.isCompactHeight) 72.dp else 140.dp
+                                )
+                            }
                             CommitBar(
                                 message = state.commitMessage,
                                 onMessageChange = vm::setCommitMessage,
