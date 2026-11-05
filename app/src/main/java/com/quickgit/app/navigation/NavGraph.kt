@@ -611,7 +611,7 @@ fun QuickGitNavGraph() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .padding(bottom = if (floatingBarCompact) 96.dp else 88.dp)
+                        .padding(bottom = if (floatingBarCompact) 80.dp else 88.dp)
                 ) {
                     NavContent()
                 }

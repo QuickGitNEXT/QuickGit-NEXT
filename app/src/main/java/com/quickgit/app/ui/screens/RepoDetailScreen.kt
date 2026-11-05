@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,6 +23,7 @@ import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.adaptive.isCompactHeight
 import com.quickgit.app.ui.adaptive.isTabletOrWider
 import com.quickgit.app.ui.components.PullToRefreshBox
@@ -595,13 +597,19 @@ fun RepoDetailScreen(
                                     }
                                 }
                             }
-                            // Extra scroll room for the commit bar; less on short (landscape) heights.
+                            // Extra scroll room for the commit bar; less on short heights / large phones.
                             item {
-                                val spacerH = if (LocalWindowSizeClass.current.isCompactHeight) 72.dp else 140.dp
+                                val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
+                                val spacerH = when {
+                                    LocalWindowSizeClass.current.isCompactHeight -> 72.dp
+                                    largePhone -> 88.dp
+                                    else -> 140.dp
+                                }
                                 Spacer(Modifier.height(spacerH))
                             }
                         }
 
+                        val largePhoneCommit = LocalContext.current.isLargePhoneForFloatingNav()
                         CommitBar(
                             message = state.commitMessage,
                             onMessageChange = vm::setCommitMessage,
@@ -614,7 +622,10 @@ fun RepoDetailScreen(
                             authorName = state.authorName,
                             authorEmail = state.authorEmail,
                             enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
-                            onCommit = vm::commit
+                            onCommit = vm::commit,
+                            compactOptions = largePhoneCommit,
+                            // Sit just above the floating navbar with a tight gap.
+                            bottomInset = if (largePhoneCommit) 4.dp else 0.dp
                         )
                     }
                 }
@@ -745,22 +756,34 @@ private fun CommitBar(
     authorName: String,
     authorEmail: String,
     enabled: Boolean,
-    onCommit: () -> Unit
+    onCommit: () -> Unit,
+    /** Large phones: fold amend / sign-off into the commit control. */
+    compactOptions: Boolean = false,
+    bottomInset: androidx.compose.ui.unit.Dp = 0.dp
 ) {
+    var optionsOpen by remember { mutableStateOf(false) }
     Surface(
         shadowElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
             .imePadding()
+            .padding(bottom = bottomInset)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(
+            Modifier.padding(
+                start = 16.dp,
+                end = 16.dp,
+                top = if (compactOptions) 10.dp else 16.dp,
+                bottom = if (compactOptions) 8.dp else 16.dp
+            )
+        ) {
             OutlinedTextField(
                 value = message,
                 onValueChange = onMessageChange,
                 label = { Text("Commit message") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                maxLines = 4
+                minLines = if (compactOptions) 1 else 2,
+                maxLines = if (compactOptions) 3 else 4
             )
             if (suggestedMessage.isNotBlank() && message.isBlank()) {
                 TextButton(
@@ -777,50 +800,124 @@ private fun CommitBar(
                     Text("Replace with suggested message")
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(checked = signOff, onCheckedChange = onSignOffChange)
-                Column(Modifier.weight(1f).clickableSimple { onSignOffChange(!signOff) }) {
-                    Text("Sign-off", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Signed-off-by: $authorName <$authorEmail>",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+            if (!compactOptions) {
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = signOff, onCheckedChange = onSignOffChange)
+                    Column(Modifier.weight(1f).clickableSimple { onSignOffChange(!signOff) }) {
+                        Text("Sign-off", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Signed-off-by: $authorName <$authorEmail>",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = amend, onCheckedChange = onAmendChange)
+                    Column(Modifier.weight(1f).clickableSimple { onAmendChange(!amend) }) {
+                        Text("Amend previous commit", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "Rewrites the last commit (git commit --amend)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(checked = amend, onCheckedChange = onAmendChange)
-                Column(Modifier.weight(1f).clickableSimple { onAmendChange(!amend) }) {
-                    Text("Amend previous commit", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Rewrites the last commit (git commit --amend)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+            Spacer(Modifier.height(if (compactOptions) 6.dp else 8.dp))
+            val label = when {
+                amend && signOff -> "Amend (signed-off)"
+                amend -> "Amend previous commit"
+                signOff -> "Commit (signed-off)"
+                else -> "Commit to current branch"
             }
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onCommit,
-                enabled = enabled && message.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val label = when {
-                    amend && signOff -> "Amend (signed-off)"
-                    amend -> "Amend previous commit"
-                    signOff -> "Commit (signed-off)"
-                    else -> "Commit to current branch"
+            if (compactOptions) {
+                // Split-style control: primary commit + options menu (amend / sign-off).
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onCommit,
+                        enabled = enabled && message.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium.copy(
+                            topEnd = androidx.compose.foundation.shape.CornerSize(0.dp),
+                            bottomEnd = androidx.compose.foundation.shape.CornerSize(0.dp)
+                        )
+                    ) {
+                        Text(label, maxLines = 1)
+                    }
+                    Box {
+                        FilledIconButton(
+                            onClick = { optionsOpen = true },
+                            shape = MaterialTheme.shapes.medium.copy(
+                                topStart = androidx.compose.foundation.shape.CornerSize(0.dp),
+                                bottomStart = androidx.compose.foundation.shape.CornerSize(0.dp)
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Commit options"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = optionsOpen,
+                            onDismissRequest = { optionsOpen = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = amend, onCheckedChange = null)
+                                        Column {
+                                            Text("Amend previous commit")
+                                            Text(
+                                                "git commit --amend",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = { onAmendChange(!amend) }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = signOff, onCheckedChange = null)
+                                        Column {
+                                            Text("Sign-off")
+                                            Text(
+                                                "$authorName <$authorEmail>",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = { onSignOffChange(!signOff) }
+                            )
+                        }
+                    }
                 }
-                Text(label)
+            } else {
+                Button(
+                    onClick = onCommit,
+                    enabled = enabled && message.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(label)
+                }
             }
         }
     }
