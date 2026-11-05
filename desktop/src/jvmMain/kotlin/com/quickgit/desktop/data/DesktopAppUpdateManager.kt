@@ -14,8 +14,8 @@ import java.util.regex.Pattern
  * Mirrors Android AppUpdateManager but targets platform packages (.msi / .deb / AppImage / .dmg).
  */
 object DesktopAppUpdateConfig {
-    const val OWNER = "SavedByLight"
-    const val REPO = "QuickGitNEXT"
+    const val OWNER = "QuickGitNEXT"
+    const val REPO = "QuickGit-NEXT"
     /** Stamped by CI / packageVersion; override via system property quickgitnext.version. */
     var currentVersionName: String =
         System.getProperty("quickgitnext.version")

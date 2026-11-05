@@ -13,8 +13,8 @@ import com.quickgit.app.data.models.ReleaseAsset
  * inside the app.
  */
 object AppUpdateConfig {
-    const val OWNER = "SavedByLight"
-    const val REPO = "QuickGitNEXT"
+    const val OWNER = "QuickGitNEXT"
+    const val REPO = "QuickGit-NEXT"
 
     fun releasesUrl(): String =
         "https://github.com/$OWNER/$REPO/releases"
