@@ -38,6 +38,7 @@ import com.quickgit.app.BuildConfig
 import com.quickgit.app.data.AccountManager
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.AdaptiveContent
+import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.UserAvatar
 import com.quickgit.app.viewmodel.RepoListViewModel
@@ -120,8 +121,8 @@ fun RepoListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("QuickGitNEXT") },
+            CenterAlignedTopAppBar(
+                title = { AppBrandLogo(size = 40.dp) },
                 actions = {
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
                     if (!hideChromeNav) {

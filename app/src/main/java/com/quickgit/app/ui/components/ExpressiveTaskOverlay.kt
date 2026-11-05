@@ -91,12 +91,8 @@ fun ExpressiveTaskOverlay(
                     color = Color.White
                 )
                 if (!success) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "QuickGitNEXT",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
+                    Spacer(Modifier.height(8.dp))
+                    AppBrandLogo(size = 28.dp)
                 }
             }
         }
