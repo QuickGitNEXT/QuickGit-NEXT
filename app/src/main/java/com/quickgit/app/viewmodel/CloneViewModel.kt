@@ -168,13 +168,29 @@ class CloneViewModel(
             }
             _state.value = _state.value.copy(inProgress = false, result = result)
             when (result) {
-                is GitOpResult.Success -> notifier.finish(GitProgressNotifier.Kind.CLONE, "Clone finished")
-                is GitOpResult.UpToDate -> notifier.finish(GitProgressNotifier.Kind.CLONE, result.message)
+                is GitOpResult.Success -> {
+                    // Clears the ongoing "Cloning…" progress notification, then alerts.
+                    notifier.complete(
+                        GitProgressNotifier.Kind.CLONE,
+                        "Clone complete",
+                        result.message?.takeIf { it.isNotBlank() } ?: "Repository cloned successfully"
+                    )
+                }
+                is GitOpResult.UpToDate -> {
+                    notifier.complete(
+                        GitProgressNotifier.Kind.CLONE,
+                        "Clone complete",
+                        result.message ?: "Already up to date"
+                    )
+                }
                 is GitOpResult.AuthRequired -> notifier.cancel(GitProgressNotifier.Kind.CLONE)
                 is GitOpResult.Conflict -> notifier.cancel(GitProgressNotifier.Kind.CLONE)
                 is GitOpResult.Error -> {
-                    notifier.update(GitProgressNotifier.Kind.CLONE, result.message ?: "Clone failed")
-                    notifier.cancel(GitProgressNotifier.Kind.CLONE)
+                    notifier.complete(
+                        GitProgressNotifier.Kind.CLONE,
+                        "Clone failed",
+                        result.message ?: "Clone failed"
+                    )
                 }
             }
         }

@@ -134,6 +134,8 @@ class WorkflowsViewModel(
                 )
             }
             _state.value = applyResult(_state.value.copy(loading = false, runs = runs), result)
+            trackRunStatuses(runs)
+            ensureBackgroundPoll()
         }
     }
 
@@ -189,14 +191,8 @@ class WorkflowsViewModel(
                     if (!isLive(run.status)) {
                         _state.value = _state.value.copy(watching = false)
                         val conclusion = run.conclusion ?: run.status
-                        when (conclusion.lowercase()) {
-                            "success", "completed" ->
-                                notifier.finish(GitProgressNotifier.Kind.ACTIONS, "$title · $conclusion")
-                            "cancelled", "canceled", "skipped" ->
-                                notifier.finish(GitProgressNotifier.Kind.ACTIONS, "$title · $conclusion")
-                            else ->
-                                notifier.finish(GitProgressNotifier.Kind.ACTIONS, "$title · $conclusion")
-                        }
+                        knownRunStatuses[run.id] = run.status
+                        notifyRunFinished(title, conclusion)
                         val finishedJob = jobs.firstOrNull { it.conclusion != null }
                             ?: jobs.firstOrNull()
                         if (finishedJob != null && _state.value.logJobId == null && !ref.isGitLab) {
@@ -483,6 +479,74 @@ class WorkflowsViewModel(
             statusMessage = null,
             authRequiredHost = null
         )
+    }
+
+    private fun notifyRunFinished(title: String, conclusion: String) {
+        val c = conclusion.lowercase()
+        val headline = when {
+            c in setOf("success", "completed") -> "Workflow succeeded"
+            c in setOf("cancelled", "canceled", "skipped") -> "Workflow cancelled"
+            else -> "Workflow finished"
+        }
+        notifier.complete(
+            GitProgressNotifier.Kind.ACTIONS,
+            headline,
+            "$title · $conclusion"
+        )
+    }
+
+    /**
+     * Detect runs that transitioned from in-progress → terminal and fire a notification.
+     * Seeds [knownRunStatuses] on first sight so we do not alert for already-finished history.
+     */
+    private fun trackRunStatuses(runs: List<WorkflowRun>) {
+        for (run in runs) {
+            val prev = knownRunStatuses[run.id]
+            val status = run.status
+            knownRunStatuses[run.id] = status
+            if (prev != null && isLive(prev) && !isLive(status)) {
+                val title = run.name.ifBlank { "Run #${run.id}" }
+                val conclusion = run.conclusion ?: status
+                // Avoid double-notify if an explicit watch already finished this run.
+                if (!_state.value.watching) {
+                    notifyRunFinished(title, conclusion)
+                }
+            }
+        }
+        // Drop ids no longer in the list to avoid unbounded growth.
+        val ids = runs.map { it.id }.toSet()
+        knownRunStatuses.keys.retainAll(ids)
+    }
+
+    /** Soft-poll while any listed run is still live so finish notifications fire. */
+    private fun ensureBackgroundPoll() {
+        val anyLive = _state.value.runs.any { isLive(it.status) }
+        if (!anyLive) {
+            backgroundPollJob?.cancel()
+            backgroundPollJob = null
+            return
+        }
+        if (backgroundPollJob?.isActive == true) return
+        val ref = project ?: return
+        backgroundPollJob = viewModelScope.launch {
+            while (isActive) {
+                delay(8_000)
+                if (_state.value.watching) continue // explicit watch owns polling
+                val (runs, _) = withContext(Dispatchers.IO) {
+                    workflowManager.listRuns(
+                        ref,
+                        workflowId = _state.value.selectedWorkflowId,
+                        status = _state.value.filter.apiValue
+                    )
+                }
+                if (runs.isNotEmpty()) {
+                    _state.value = _state.value.copy(runs = runs)
+                    trackRunStatuses(runs)
+                }
+                if (runs.none { isLive(it.status) }) break
+            }
+            backgroundPollJob = null
+        }
     }
 
     private fun isLive(status: String) =

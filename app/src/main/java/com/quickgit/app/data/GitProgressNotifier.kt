@@ -116,13 +116,58 @@ class GitProgressNotifier(context: Context) {
     }
 
     fun finish(kind: Kind, text: String = "Done") {
-        post(kind, text, indeterminate = false, percent = 100, ongoing = false, autoCancel = true)
-        mainHandler.postDelayed({ cancel(kind) }, 3500)
+        // Terminal status: drop the ongoing progress notification and show a short alert.
+        complete(kind, titles[kind] ?: kind.defaultTitle, text)
     }
 
     fun finish(text: String = "Done") {
         val kind = titles.keys.lastOrNull() ?: Kind.PUSH
         finish(kind, text)
+    }
+
+    /**
+     * Clear any ongoing progress notification for [kind], then post a one-shot
+     * completion alert (not silent, auto-cancels after a few seconds).
+     */
+    fun complete(kind: Kind, title: String, text: String) {
+        try {
+            nm.cancel(kind.notificationId)
+        } catch (_: Exception) { }
+        titles[kind] = title
+        lastPercent.remove(kind)
+        if (!hasPermission()) return
+        ensureChannel(appContext)
+        val openApp = PendingIntent.getActivity(
+            appContext,
+            kind.notificationId,
+            Intent(appContext, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val builder = NotificationCompat.Builder(appContext, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(openApp)
+            .setOnlyAlertOnce(false)
+            .setSilent(false)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setProgress(0, 0, false)
+        try {
+            nm.notify(kind.notificationId, builder.build())
+        } catch (e: SecurityException) {
+            AppLog.w(TAG, "complete notify failed (permission): ${e.message}")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "complete notify failed", e)
+        }
+        // Keep the result on-screen briefly, then clear.
+        mainHandler.postDelayed({ cancel(kind) }, 6_000)
     }
 
     fun cancel(kind: Kind) {
