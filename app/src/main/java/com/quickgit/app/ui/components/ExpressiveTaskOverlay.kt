@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,25 +27,30 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
 
+// Brand blues from the QuickGitNEXT launcher mark
+private val BrandBlue = Color(0xFF1D4ED8)
+private val BrandNavy = Color(0xFF1E3A8A)
+private val BrandAccent = Color(0xFF2563EB)
+private val BrandDisk = Color(0xFFF0F7FF)
+
 /**
- * Material 3 Expressive–style full-screen task indicator.
+ * QuickGitNEXT branded full-screen task indicator.
  *
- * Morphing rounded shapes replace blocking "Done" dialogs while push/pull/commit
- * and similar git operations run. On success, briefly pulses then dismisses.
+ * Animates the app’s git-branch + N monogram while push/pull/commit (and similar)
+ * operations run. On success, briefly shows a check then dismisses.
  */
 @Composable
 fun ExpressiveTaskOverlay(
@@ -70,16 +74,11 @@ fun ExpressiveTaskOverlay(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                ExpressiveShapesLoader(
-                    accent = if (success) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.tertiary,
-                    secondary = MaterialTheme.colorScheme.secondary,
-                    success = success
-                )
+                QuickGitNextLoader(success = success)
                 Spacer(Modifier.height(20.dp))
                 Text(
                     text = when {
@@ -89,122 +88,201 @@ fun ExpressiveTaskOverlay(
                     },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = Color.White
                 )
+                if (!success) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "QuickGitNEXT",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ExpressiveShapesLoader(
-    accent: Color,
-    secondary: Color,
-    success: Boolean
-) {
-    val transition = rememberInfiniteTransition(label = "m3e-shapes")
-    val spin by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "spin"
-    )
-    val morph by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "morph"
-    )
+private fun QuickGitNextLoader(success: Boolean) {
+    val transition = rememberInfiniteTransition(label = "qgnext-loader")
     val pulse by transition.animateFloat(
-        initialValue = 0.88f,
-        targetValue = 1.08f,
+        initialValue = 0.94f,
+        targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            animation = tween(900, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
     )
+    val travel by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "travel"
+    )
+    val spin by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "spin"
+    )
+    val dash by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dash"
+    )
 
-    Canvas(Modifier.size(96.dp)) {
-        val w = size.minDimension
+    Canvas(Modifier.size(112.dp)) {
+        val s = size.minDimension
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val base = w * 0.28f
+        val scale = if (success) 1.02f else pulse
 
-        // Soft ambient disc
+        // Soft brand disk
         drawCircle(
-            color = accent.copy(alpha = 0.12f),
-            radius = w * 0.48f * if (success) 1.05f else pulse,
+            color = BrandDisk.copy(alpha = 0.95f),
+            radius = s * 0.42f * scale,
             center = Offset(cx, cy)
         )
+        // Outer ring
+        drawCircle(
+            color = BrandBlue.copy(alpha = 0.22f),
+            radius = s * 0.46f * scale,
+            center = Offset(cx, cy),
+            style = Stroke(width = s * 0.02f)
+        )
 
-        rotate(degrees = if (success) 0f else spin * 0.35f, pivot = Offset(cx, cy)) {
-            // Outer morphing rounded square
-            val corner = base * (0.35f + morph * 0.55f)
-            val outer = w * 0.34f * if (success) 1f else pulse
-            drawRoundRect(
-                color = accent.copy(alpha = 0.85f),
-                topLeft = Offset(cx - outer, cy - outer),
-                size = Size(outer * 2, outer * 2),
-                cornerRadius = CornerRadius(corner, corner)
-            )
-        }
+        // Coordinate helpers matching the launcher mark proportions
+        fun px(x: Float) = cx + (x - 54f) / 54f * s * 0.32f * scale
+        fun py(y: Float) = cy + (y - 54f) / 54f * s * 0.32f * scale
 
-        rotate(degrees = if (success) 0f else -spin * 0.55f, pivot = Offset(cx, cy)) {
-            // Inner diamond / squircle that counter-rotates
-            val inset = w * 0.16f * (0.85f + morph * 0.25f)
-            val path = Path().apply {
-                val r = inset * (0.4f + (1f - morph) * 0.35f)
-                addRoundRect(
-                    RoundRect(
-                        left = cx - inset,
-                        top = cy - inset,
-                        right = cx + inset,
-                        bottom = cy + inset,
-                        cornerRadius = CornerRadius(r, r)
-                    )
-                )
-            }
-            scale(if (success) 1.05f else 0.95f + morph * 0.1f, Offset(cx, cy)) {
-                drawPath(path, color = secondary.copy(alpha = 0.9f))
-            }
-        }
+        val trunkTop = Offset(px(38f), py(40f))
+        val trunkMid = Offset(px(38f), py(52f))
+        val trunkBot = Offset(px(38f), py(72f))
+        val branchTip = Offset(px(52f), py(40f))
 
-        // Orbiting dots (expressive motion)
+        val strokeW = s * 0.028f
+        val nodeR = s * 0.028f
+
         if (!success) {
+            // Animated branch strokes
+            drawLine(
+                color = BrandBlue,
+                start = trunkBot,
+                end = trunkTop,
+                strokeWidth = strokeW,
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = BrandBlue,
+                start = trunkMid,
+                end = branchTip,
+                strokeWidth = strokeW * 0.95f,
+                cap = StrokeCap.Round
+            )
+
+            // Nodes
+            listOf(trunkBot, trunkMid, trunkTop, branchTip).forEach {
+                drawCircle(BrandNavy, radius = nodeR, center = it)
+            }
+
+            // Commit “packet” traveling trunk → branch
+            val packet = when {
+                travel < 0.45f -> {
+                    val t = travel / 0.45f
+                    Offset(
+                        trunkBot.x + (trunkTop.x - trunkBot.x) * t,
+                        trunkBot.y + (trunkTop.y - trunkBot.y) * t
+                    )
+                }
+                travel < 0.7f -> {
+                    val t = (travel - 0.45f) / 0.25f
+                    Offset(
+                        trunkMid.x + (branchTip.x - trunkMid.x) * t,
+                        trunkMid.y + (branchTip.y - trunkMid.y) * t
+                    )
+                }
+                else -> branchTip
+            }
+            drawCircle(BrandAccent, radius = nodeR * 1.35f, center = packet)
+            drawCircle(Color.White.copy(alpha = 0.85f), radius = nodeR * 0.45f, center = packet)
+
+            // Stylized N (NEXT)
+            val nLeftTop = Offset(px(62f), py(38f))
+            val nLeftBot = Offset(px(62f), py(72f))
+            val nRightTop = Offset(px(78f), py(38f))
+            val nRightBot = Offset(px(78f), py(72f))
+            val nPath = Path().apply {
+                moveTo(nLeftBot.x, nLeftBot.y)
+                lineTo(nLeftTop.x, nLeftTop.y)
+                lineTo(nRightBot.x, nRightBot.y)
+                lineTo(nRightTop.x, nRightTop.y)
+            }
+            drawPath(
+                path = nPath,
+                color = BrandNavy.copy(alpha = 0.55f + dash * 0.45f),
+                style = Stroke(
+                    width = strokeW * 1.15f,
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round
+                )
+            )
+            // Accent underline under N
+            val barY = py(78f)
+            drawLine(
+                color = BrandAccent.copy(alpha = 0.5f + dash * 0.5f),
+                start = Offset(px(60f), barY),
+                end = Offset(px(80f), barY),
+                strokeWidth = s * 0.018f,
+                cap = StrokeCap.Round
+            )
+
+            // Orbiting status dots around the disk
             for (i in 0 until 3) {
                 val a = Math.toRadians((spin + i * 120.0))
-                val rad = w * 0.42f
+                val rad = s * 0.48f
                 val x = cx + (cos(a) * rad).toFloat()
                 val y = cy + (sin(a) * rad).toFloat()
                 drawCircle(
-                    color = accent.copy(alpha = 0.75f - i * 0.15f),
-                    radius = w * 0.045f,
+                    color = BrandBlue.copy(alpha = 0.8f - i * 0.18f),
+                    radius = s * 0.022f,
                     center = Offset(x, y)
                 )
             }
         } else {
-            // Success check mark
-            val path = Path().apply {
-                moveTo(cx - w * 0.14f, cy)
-                lineTo(cx - w * 0.02f, cy + w * 0.12f)
-                lineTo(cx + w * 0.16f, cy - w * 0.12f)
+            // Success: solid branch + check
+            drawLine(BrandBlue, trunkBot, trunkTop, strokeW, StrokeCap.Round)
+            drawLine(BrandBlue, trunkMid, branchTip, strokeW * 0.95f, StrokeCap.Round)
+            listOf(trunkBot, trunkMid, trunkTop, branchTip).forEach {
+                drawCircle(BrandNavy, radius = nodeR, center = it)
             }
-            drawPath(
-                path = path,
-                color = Color.White,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = w * 0.06f,
-                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                    join = androidx.compose.ui.graphics.StrokeJoin.Round
+            rotate(degrees = 0f, pivot = Offset(cx, cy)) {
+                val check = Path().apply {
+                    moveTo(cx - s * 0.08f, cy + s * 0.02f)
+                    lineTo(cx - s * 0.01f, cy + s * 0.1f)
+                    lineTo(cx + s * 0.12f, cy - s * 0.08f)
+                }
+                drawPath(
+                    path = check,
+                    color = BrandAccent,
+                    style = Stroke(
+                        width = s * 0.045f,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
                 )
-            )
+            }
         }
     }
 }
