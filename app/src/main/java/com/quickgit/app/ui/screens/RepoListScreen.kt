@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -39,6 +40,7 @@ import com.quickgit.app.data.AccountManager
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.components.AppBrandLogo
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.PullToRefreshBox
@@ -65,9 +67,10 @@ fun RepoListScreen(
     isDesktopLayout: Boolean = false,
     // Large phones (≥ ~6.3″) and tablets with the floating bottom navbar:
     // hide duplicate Profile / Settings / global Clone-Browse from the top bar + FAB.
-    useFloatingNav: Boolean = false
+    useFloatingNav: Boolean = false,
+    isChromebookLayout: Boolean = false
 ) {
-    val hideChromeNav = isDesktopLayout || useFloatingNav
+    val hideChromeNav = isDesktopLayout || useFloatingNav || isChromebookLayout
     val repos by vm.repos.collectAsState()
     val loading by vm.loading.collectAsState()
     val account by vm.account.collectAsState()
@@ -123,7 +126,19 @@ fun RepoListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
+            if (isChromebookLayout) {
+                ChromebookReposTopChrome(
+                    onClone = onClone,
+                    onBrowse = onBrowseGitHub,
+                    onUsers = onSearchPeople,
+                    onSettings = onSettings,
+                    onProfile = onOpenProfile,
+                    accountAvatarUrl = account?.avatarUrl,
+                    accountLogin = account?.login
+                )
+            } else {
             CenterAlignedTopAppBar(
+
                 title = { AppScreenTitle("Repos", logoSize = 48.dp) },
                 actions = {
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
@@ -241,6 +256,7 @@ fun RepoListScreen(
                     }
                 }
             )
+            }
         },
         // Phone without floating nav: bottom-right FAB menu.
         // Large phone / tablet floating nav or desktop rail: only local actions if needed.
@@ -642,5 +658,66 @@ private fun RepoRow(repo: RepoInfo, onClick: () -> Unit, onDelete: () -> Unit) {
             )
         }
         IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = "Remove") }
+    }
+}
+
+@Composable
+private fun ChromebookReposTopChrome(
+    onClone: () -> Unit,
+    onBrowse: () -> Unit,
+    onUsers: () -> Unit,
+    onSettings: () -> Unit,
+    onProfile: () -> Unit,
+    accountAvatarUrl: String?,
+    accountLogin: String?
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        // Left floating menu: Repos (current) · Clone · Browse · Users · Settings
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            modifier = Modifier.align(Alignment.CenterStart)
+        ) {
+            Row(
+                Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                IconButton(onClick = { /* already on Repos */ }) {
+                    Icon(Icons.Default.Folder, contentDescription = "Repos", tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(onClick = onClone) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = "Clone")
+                }
+                IconButton(onClick = onBrowse) {
+                    Icon(Icons.Default.TravelExplore, contentDescription = "Browse")
+                }
+                IconButton(onClick = onUsers) {
+                    Icon(Icons.Default.Search, contentDescription = "Users")
+                }
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                }
+            }
+        }
+
+        // Center brand
+        Box(Modifier.align(Alignment.Center)) {
+            AppScreenTitle("Repos", logoSize = 40.dp)
+        }
+
+        // Right: Profile in floating circle (credentials live under Profile)
+        FloatingCircleIconButton(
+            imageVector = Icons.Default.Person,
+            contentDescription = "Profile",
+            onClick = onProfile,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }

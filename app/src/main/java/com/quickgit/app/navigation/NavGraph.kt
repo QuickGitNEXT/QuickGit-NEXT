@@ -86,7 +86,7 @@ fun QuickGitNavGraph() {
         DesktopLayoutMode.AUTO -> wsc.isTabletOrWider
     }
     // Chromebook: permanent left rail when wide chrome is on.
-    val useRail = isChromebook && preferWideChrome
+    val useRail = false // Chromebook/Googlebook: top floating chrome instead of left rail
     // Floating navbar: large phones always; tablets when not Chromebook.
     // Not gated by NEVER for large phones so the navbar actually ships on 6.4″+ handsets.
     val useFloatingBar = !useRail && (isLargePhone || (preferWideChrome && !isChromebook))
@@ -126,7 +126,8 @@ fun QuickGitNavGraph() {
                 onCredentials = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 onLogs = { if (BuildConfig.SHOW_LOGS_UI) navController.navigate(Dest.LOGS) },
                 isDesktopLayout = isDesktopLayout,
-                useFloatingNav = useFloatingBar
+                useFloatingNav = useFloatingBar,
+                isChromebookLayout = isChromebook
             )
         }
 
@@ -156,6 +157,7 @@ fun QuickGitNavGraph() {
                     navController.navigate(Dest.remoteBrowse(repo.ownerLogin, repo.name, repo.defaultBranch))
                 },
                 onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
+                onOpenCredentials = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 // Large phones: user search lives under Profile (no Users tab on the bar).
                 onSearchPeople = if (isLargePhone) {
                     { navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true } }

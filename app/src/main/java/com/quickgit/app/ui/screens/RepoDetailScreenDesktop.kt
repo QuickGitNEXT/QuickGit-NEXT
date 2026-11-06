@@ -3,6 +3,7 @@ package com.quickgit.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+// wrapContentWidth via foundation.layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -137,9 +138,35 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-                        TabRow(selectedTabIndex = tabIndex) {
-                tabs.forEachIndexed { i, title ->
-                    Tab(selected = tabIndex == i, onClick = { tabIndex = i }, text = { Text(title) })
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 3.dp,
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    modifier = Modifier
+                        .widthIn(max = 720.dp)
+                        .fillMaxWidth(0.92f)
+                ) {
+                    ScrollableTabRow(
+                        selectedTabIndex = tabIndex,
+                        edgePadding = 8.dp,
+                        containerColor = Color.Transparent,
+                        divider = {}
+                    ) {
+                        tabs.forEachIndexed { i, title ->
+                            Tab(
+                                selected = tabIndex == i,
+                                onClick = { tabIndex = i },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
                 }
             }
             Box(Modifier.weight(1f).fillMaxSize()) {
@@ -160,20 +187,22 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
                 tonalElevation = 3.dp,
                 shadowElevation = 8.dp,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                modifier = Modifier.wrapContentWidth()
             ) {
                 Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box {
@@ -230,6 +259,7 @@ fun RepoDetailScreenDesktop(
                     }
                 }
             }
+            } // center Box for ops bar
         }
     }
 

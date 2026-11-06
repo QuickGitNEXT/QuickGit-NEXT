@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Code
@@ -38,6 +39,8 @@ fun ProfileScreen(
     onCloneRepo: (GitHubRemoteRepo) -> Unit = {},
     onOpenRepo: (GitHubRemoteRepo) -> Unit = {},
     onNeedsAuth: () -> Unit,
+    /** Opens the credentials manager (merged into Profile on Chromebook / desktop chrome). */
+    onOpenCredentials: (() -> Unit)? = null,
     /** When set (large phones), shows Search people in the top bar. */
     onSearchPeople: (() -> Unit)? = null
 ) {
@@ -81,6 +84,13 @@ fun ProfileScreen(
                     )
                 },
                 actions = {
+                    if (onOpenCredentials != null && state.isSelf) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Key,
+                            contentDescription = "Credentials",
+                            onClick = onOpenCredentials
+                        )
+                    }
                     if (onSearchPeople != null && state.isSelf) {
                         IconButton(onClick = onSearchPeople) {
                             Icon(Icons.Default.Search, contentDescription = "Search people")
@@ -123,6 +133,21 @@ fun ProfileScreen(
                 ) {
                     if (state.isSelf && state.availableProviders.size > 1) {
                         item { ProviderSwitcher(state.selectedProvider, state.availableProviders, vm::selectProvider) }
+                    if (state.isSelf && onOpenCredentials != null) {
+                        item {
+                            OutlinedButton(
+                                onClick = onOpenCredentials,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                            ) {
+                                Icon(Icons.Default.Key, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Manage credentials")
+                            }
+                        }
+                    }
+
                     }
                     item {
                         Text(
