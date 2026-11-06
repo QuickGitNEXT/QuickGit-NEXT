@@ -115,7 +115,8 @@ fun FilesScreen(
                 title = {
                     AppScreenTitle(
                         pageTitle = "Files",
-                        subtitle = if (state.currentDir.isBlank()) "/" else state.currentDir
+                        subtitle = if (state.currentDir.isBlank()) "/" else state.currentDir,
+                        showLogo = onBack != null
                     )
                 },
                 navigationIcon = {

@@ -58,7 +58,7 @@ fun ReleasesScreen(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases") },
+                    title = { AppScreenTitle("Releases", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -87,7 +87,7 @@ fun ReleasesScreen(
         topBar = {
             if (!embedded) {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases") },
+                    title = { AppScreenTitle("Releases", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(

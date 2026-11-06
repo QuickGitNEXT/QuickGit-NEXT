@@ -41,13 +41,17 @@ fun AppScreenTitle(
     pageTitle: String,
     modifier: Modifier = Modifier,
     logoSize: Dp = 36.dp,
-    subtitle: String? = null
+    subtitle: String? = null,
+    /** When false (embedded tablet sub-tabs), only the page title is shown. */
+    showLogo: Boolean = true
 ) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppBrandLogo(size = logoSize)
+        if (showLogo) {
+            AppBrandLogo(size = logoSize)
+        }
         Text(
             text = pageTitle,
             style = MaterialTheme.typography.titleSmall,

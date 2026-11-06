@@ -27,6 +27,8 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
+import com.quickgit.app.ui.components.FloatingCircleIconButton
+import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.viewmodel.BranchesViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
@@ -129,11 +131,17 @@ fun RepoDetailScreenDesktop(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.align(Alignment.CenterStart)
+                Row(
+                    Modifier.align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.ArrowBack, "Back")
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        onClick = onBack
+                    )
+                    AppBrandLogo(size = 36.dp)
                 }
 
                 Surface(
@@ -187,9 +195,11 @@ fun RepoDetailScreenDesktop(
                             strokeWidth = 2.dp
                         )
                     }
-                    IconButton(onClick = { vm.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        onClick = { vm.refresh() }
+                    )
                 }
             }
 

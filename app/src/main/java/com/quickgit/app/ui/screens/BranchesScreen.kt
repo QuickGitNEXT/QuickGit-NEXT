@@ -59,7 +59,7 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { AppScreenTitle("Branches & remotes") },
+                title = { AppScreenTitle("Branches & remotes", showLogo = onBack != null) },
                 navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(

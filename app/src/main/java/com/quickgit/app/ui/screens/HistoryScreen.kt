@@ -101,7 +101,8 @@ fun HistoryScreen(
                 title = {
                     AppScreenTitle(
                         pageTitle = "History",
-                        subtitle = state.logRef?.let { "from $it" }
+                        subtitle = state.logRef?.let { "from $it" },
+                        showLogo = onBack != null
                     )
                 },
                 navigationIcon = {

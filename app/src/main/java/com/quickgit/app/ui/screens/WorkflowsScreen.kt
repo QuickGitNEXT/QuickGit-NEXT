@@ -130,7 +130,7 @@ fun WorkflowsScreen(
         Column(Modifier.fillMaxSize()) {
             if (onBack != null || showReleasesTab) {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -157,7 +157,7 @@ fun WorkflowsScreen(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -187,7 +187,7 @@ fun WorkflowsScreen(
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -383,7 +383,8 @@ private fun RunDetailContent(
                 title = {
                     AppScreenTitle(
                         pageTitle = run.displayTitle.ifBlank { run.name },
-                        subtitle = "Run #${run.runNumber}"
+                        subtitle = "Run #${run.runNumber}",
+                        showLogo = onBack != null
                     )
                 },
                 navigationIcon = {
@@ -632,7 +633,8 @@ private fun JobLogContent(
                             state.logWatching -> "Live log · updating…"
                             state.logJobStatus != null -> "Full workflow log · ${state.logJobStatus}"
                             else -> "Full workflow log"
-                        }
+                        },
+                        showLogo = onBack != null
                     )
                 },
                 navigationIcon = {
@@ -1255,8 +1257,12 @@ private fun LiveJobWebContent(
                 title = {
                     AppScreenTitle(
                         pageTitle = pageTitle,
-                        subtitle = if (!token.isNullOrBlank()) "Live feed · using linked GitHub account"
-                        else "Live feed · connect GitHub in Settings for auth"
+                        subtitle = if (!token.isNullOrBlank()) {
+                            "Live feed · using linked GitHub account"
+                        } else {
+                            "Live feed · connect GitHub in Settings for auth"
+                        },
+                        showLogo = onBack != null
                     )
                 },
                 navigationIcon = {

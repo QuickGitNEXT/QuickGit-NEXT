@@ -59,7 +59,7 @@ fun PullRequestsScreen(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
+                    title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests", showLogo = onBack != null) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -88,7 +88,7 @@ fun PullRequestsScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
+                title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests", showLogo = onBack != null) },
                 navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -205,7 +205,7 @@ private fun PullRequestDetailContent(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { AppScreenTitle(if (pr != null) "PR #${pr.number}" else "Pull request") },
+                title = { AppScreenTitle(if (pr != null) "PR #${pr.number}" else "Pull request", showLogo = onBack != null) },
                 navigationIcon = {
                 FloatingCircleIconButton(
                     imageVector = Icons.Default.ArrowBack,
