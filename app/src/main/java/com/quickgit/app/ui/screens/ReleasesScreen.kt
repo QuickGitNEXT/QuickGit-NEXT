@@ -26,6 +26,7 @@ import com.quickgit.app.data.models.ReleaseAsset
 import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.ReleasesViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +55,8 @@ fun ReleasesScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Releases") },
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Releases") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -79,8 +80,8 @@ fun ReleasesScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             if (!embedded) {
-                TopAppBar(
-                    title = { Text("Releases") },
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Releases") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -193,16 +194,12 @@ private fun ReleaseDetailContent(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            release.name.ifBlank { release.tagName },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(release.tagName, style = MaterialTheme.typography.bodySmall)
-                    }
+                    AppScreenTitle(
+                        pageTitle = release.name.ifBlank { release.tagName },
+                        subtitle = release.tagName
+                    )
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )

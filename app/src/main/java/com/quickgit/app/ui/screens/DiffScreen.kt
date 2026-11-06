@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.DiffLineType
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.DiffViewModel
@@ -29,8 +30,8 @@ fun DiffScreen(repoPath: String, filePath: String, mode: String, vm: DiffViewMod
     val loading by vm.loading.collectAsState()
 
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text(filePath.substringAfterLast('/'), maxLines = 1) },
+        CenterAlignedTopAppBar(
+            title = { AppScreenTitle(filePath.substringAfterLast('/')) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
         )
     }) { padding ->

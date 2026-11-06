@@ -36,6 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.HistoryViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -93,18 +95,12 @@ fun HistoryScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text("History")
-                        state.logRef?.let { ref ->
-                            Text(
-                                "from $ref",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    AppScreenTitle(
+                        pageTitle = "History",
+                        subtitle = state.logRef?.let { "from $it" }
+                    )
                 },
                 navigationIcon = {
                     onBack?.let { back ->

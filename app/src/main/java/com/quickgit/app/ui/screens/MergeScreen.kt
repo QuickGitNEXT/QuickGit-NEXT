@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.SyntaxHighlight
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.ui.theme.GitAmber
@@ -43,8 +44,8 @@ fun MergeScreen(repoPath: String, vm: MergeViewModel, onBack: () -> Unit, onFini
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Resolve conflicts") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle("Resolve conflicts") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )
         }

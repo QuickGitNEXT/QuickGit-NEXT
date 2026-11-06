@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.viewmodel.CommitFileViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,13 +48,8 @@ fun CommitFileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        filePath.substringAfterLast('/'),
-                        maxLines = 1
-                    )
-                },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle(filePath.substringAfterLast('/')) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")

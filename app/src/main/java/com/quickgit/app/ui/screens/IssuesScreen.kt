@@ -23,6 +23,7 @@ import com.quickgit.app.data.models.PrComment
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.IssuesViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,8 +51,8 @@ fun IssuesScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Issues") },
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Issues") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -75,8 +76,8 @@ fun IssuesScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Issues") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle("Issues") },
                 navigationIcon = {
                     onBack?.let { back ->
                         IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -200,8 +201,8 @@ private fun IssueDetailContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (issue != null) "Issue #${issue.number}" else "Issue") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle(if (issue != null) "Issue #${issue.number}" else "Issue") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )
         }

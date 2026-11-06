@@ -24,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.CommitTreeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,19 +57,12 @@ fun CommitTreeScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text("Tree @ ${commitId.take(7)}", maxLines = 1)
-                        if (state.currentPath.isNotBlank()) {
-                            Text(
-                                state.currentPath,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
-                        }
-                    }
+                    AppScreenTitle(
+                        pageTitle = "Tree @ ${commitId.take(7)}",
+                        subtitle = state.currentPath.takeIf { it.isNotBlank() }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = {

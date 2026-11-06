@@ -28,6 +28,7 @@ import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.PullRequestsViewModel
 import kotlinx.coroutines.launch
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +56,8 @@ fun PullRequestsScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(if (state.isGitLab) "Merge requests" else "Pull requests") },
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -80,8 +81,8 @@ fun PullRequestsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (state.isGitLab) "Merge requests" else "Pull requests") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
                 navigationIcon = {
                     onBack?.let { back ->
                         IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -191,8 +192,8 @@ private fun PullRequestDetailContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text(if (pr != null) "PR #${pr.number}" else "Pull request") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle(if (pr != null) "PR #${pr.number}" else "Pull request") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
             )
         }

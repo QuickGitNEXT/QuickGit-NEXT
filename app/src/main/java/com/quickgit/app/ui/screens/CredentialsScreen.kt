@@ -28,6 +28,7 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.security.CredentialsAuthGate
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,8 +132,8 @@ private fun CredentialsScreenContent(
     }
 
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("Credentials") },
+        CenterAlignedTopAppBar(
+            title = { AppScreenTitle("Credentials") },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
         )
     }) { padding ->

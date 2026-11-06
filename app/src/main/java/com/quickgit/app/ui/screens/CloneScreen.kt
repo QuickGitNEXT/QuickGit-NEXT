@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.viewmodel.CloneViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,8 +47,8 @@ fun CloneScreen(
     }
 
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("Clone repository") },
+        CenterAlignedTopAppBar(
+            title = { AppScreenTitle("Clone repository") },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
         )
     }) { padding ->

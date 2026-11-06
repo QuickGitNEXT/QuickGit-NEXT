@@ -25,6 +25,7 @@ import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.data.models.GitLabProject
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.BrowseGitHubViewModel
 import com.quickgit.app.viewmodel.BrowseProviderTab
 import com.quickgit.app.viewmodel.GitHubBrowseScope
@@ -108,8 +109,8 @@ fun BrowseGitHubScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Browse repos") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle("Browse repos") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")

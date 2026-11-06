@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.components.SyntaxHighlight
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.EditorViewModel
@@ -84,22 +85,12 @@ fun EditorScreen(
         modifier = Modifier.imePadding(),
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            relativePath.substringAfterLast('/'),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            relativePath,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    AppScreenTitle(
+                        pageTitle = relativePath.substringAfterLast('/'),
+                        subtitle = relativePath
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }

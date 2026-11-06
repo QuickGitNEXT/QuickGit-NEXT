@@ -16,6 +16,7 @@ import com.quickgit.app.data.models.BranchInfo
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.BranchesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,8 +56,8 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Branches & remotes") },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle("Branches & remotes") },
                 navigationIcon = {
                     onBack?.let { back ->
                         IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }

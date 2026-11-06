@@ -25,6 +25,7 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.components.AppBrandLogo
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.adaptive.isCompactHeight
 import com.quickgit.app.ui.adaptive.isTabletOrWider
@@ -116,17 +117,10 @@ fun RepoDetailScreen(
                         .padding(horizontal = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    AppBrandLogo(size = 40.dp)
-                    Text(
-                        repoName,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
-                    )
-                    Text(
-                        state.branch,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    AppScreenTitle(
+                        pageTitle = repoName,
+                        logoSize = 40.dp,
+                        subtitle = state.branch
                     )
                 }
                 IconButton(

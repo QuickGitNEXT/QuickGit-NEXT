@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.components.SyntaxHighlight
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.viewmodel.RemoteFileViewModel
 
@@ -71,8 +73,8 @@ fun RemoteFileScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(path.substringAfterLast('/')) },
+            CenterAlignedTopAppBar(
+                title = { AppScreenTitle(path.substringAfterLast('/')) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
                 }

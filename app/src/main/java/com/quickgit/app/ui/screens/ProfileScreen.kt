@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.ProfileProvider
 import com.quickgit.app.viewmodel.ProfileViewModel
 
@@ -57,10 +58,10 @@ fun ProfileScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        when {
+                    AppScreenTitle(
+                        pageTitle = when {
                             state.isSelf -> when (state.selectedProvider) {
                                 ProfileProvider.GITLAB -> "GitLab profile"
                                 ProfileProvider.GITHUB -> "GitHub profile"

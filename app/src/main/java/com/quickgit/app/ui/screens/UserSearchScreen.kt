@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
+import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.UserSearchKind
 import com.quickgit.app.viewmodel.UserSearchProvider
 import com.quickgit.app.viewmodel.UserSearchViewModel
@@ -56,10 +57,10 @@ fun UserSearchScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        when (state.searchKind) {
+                    AppScreenTitle(
+                        pageTitle = when (state.searchKind) {
                             UserSearchKind.PEOPLE -> "Search people"
                             UserSearchKind.REPOS -> "Search repositories"
                         }

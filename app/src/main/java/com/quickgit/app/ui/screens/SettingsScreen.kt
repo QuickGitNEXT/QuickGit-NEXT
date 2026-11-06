@@ -23,6 +23,7 @@ import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,8 +39,8 @@ fun SettingsScreen(
     ) { uri -> uri?.let { vm.setReposRoot(it) } }
 
     Scaffold(topBar = {
-        TopAppBar(
-            title = { Text("Settings") },
+        CenterAlignedTopAppBar(
+            title = { AppScreenTitle("Settings") },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
         )
     }) { padding ->

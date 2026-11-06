@@ -54,6 +54,7 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.viewmodel.WorkflowsViewModel
 import kotlinx.coroutines.launch
+import com.quickgit.app.ui.components.AppScreenTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,8 +127,8 @@ fun WorkflowsScreen(
     ) {
         Column(Modifier.fillMaxSize()) {
             if (onBack != null || showReleasesTab) {
-                TopAppBar(
-                    title = { Text(if (state.isGitLab) "Build" else "Actions") },
+                CenterAlignedCenterAlignedTopAppBar(
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -149,8 +150,8 @@ fun WorkflowsScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text(if (state.isGitLab) "Build" else "Actions") },
+                CenterAlignedCenterAlignedTopAppBar(
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -175,8 +176,8 @@ fun WorkflowsScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             Column {
-                TopAppBar(
-                    title = { Text(if (state.isGitLab) "Build" else "Actions") },
+                CenterAlignedCenterAlignedTopAppBar(
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
                             IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -364,19 +365,12 @@ private fun RunDetailContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            run.displayTitle.ifBlank { run.name },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            "Run #${run.runNumber}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    AppScreenTitle(
+                        pageTitle = run.displayTitle.ifBlank { run.name },
+                        subtitle = "Run #${run.runNumber}"
+                    )
                 },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } },
                 actions = {
@@ -610,35 +604,16 @@ private fun JobLogContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            state.logJobName ?: "Job log",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                when {
-                                    state.logWatching -> "Live log · updating…"
-                                    state.logJobStatus != null ->
-                                        "Full workflow log · ${state.logJobStatus}"
-                                    else -> "Full workflow log"
-                                },
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            if (state.logWatching) {
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "● LIVE",
-                                    color = GitAmber,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                    AppScreenTitle(
+                        pageTitle = state.logJobName ?: "Job log",
+                        subtitle = when {
+                            state.logWatching -> "Live log · updating…"
+                            state.logJobStatus != null -> "Full workflow log · ${state.logJobStatus}"
+                            else -> "Full workflow log"
                         }
-                    }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
@@ -1256,16 +1231,13 @@ private fun LiveJobWebContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
-                    Column {
-                        Text(pageTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            if (!token.isNullOrBlank()) "Live feed · using linked GitHub account"
-                            else "Live feed · connect GitHub in Settings for auth",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    AppScreenTitle(
+                        pageTitle = pageTitle,
+                        subtitle = if (!token.isNullOrBlank()) "Live feed · using linked GitHub account"
+                        else "Live feed · connect GitHub in Settings for auth"
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
