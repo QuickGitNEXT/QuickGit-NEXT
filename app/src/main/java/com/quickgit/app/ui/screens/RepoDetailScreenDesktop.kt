@@ -124,22 +124,56 @@ fun RepoDetailScreenDesktop(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Row(
-                Modifier.fillMaxWidth().padding(8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
                 Text(
                     repoName,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    modifier = Modifier.widthIn(max = 140.dp).padding(end = 8.dp)
                 )
+                // Floating tab window — same row as the repo title (below multi-window pill)
+                Box(
+                    Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        tonalElevation = 4.dp,
+                        shadowElevation = 10.dp,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                        modifier = Modifier
+                            .widthIn(max = 720.dp)
+                            .fillMaxWidth()
+                    ) {
+                        ScrollableTabRow(
+                            selectedTabIndex = tabIndex,
+                            edgePadding = 8.dp,
+                            containerColor = Color.Transparent,
+                            divider = {}
+                        ) {
+                            tabs.forEachIndexed { i, title ->
+                                Tab(
+                                    selected = tabIndex == i,
+                                    onClick = { tabIndex = i },
+                                    text = { Text(title) }
+                                )
+                            }
+                        }
+                    }
+                }
                 if (state.busy) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        Modifier.padding(start = 8.dp).size(20.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
             }
 
-            // Room for the floating top-center tab window
-            Spacer(Modifier.height(64.dp))
             Box(Modifier.weight(1f).fillMaxSize()) {
                 when (tabIndex) {
                     0 -> ChangesTabDesktop(vm)
@@ -231,41 +265,6 @@ fun RepoDetailScreenDesktop(
                 }
             }
             } // center Box for ops bar
-        }
-    }
-
-    // Floating tab window at the top center of the app (tablet / wide layout)
-    Box(
-        Modifier
-            .align(Alignment.TopCenter)
-            .fillMaxWidth()
-            .padding(top = 10.dp)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 4.dp,
-            shadowElevation = 10.dp,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-            modifier = Modifier
-                .widthIn(max = 720.dp)
-                .fillMaxWidth(0.92f)
-        ) {
-            ScrollableTabRow(
-                selectedTabIndex = tabIndex,
-                edgePadding = 8.dp,
-                containerColor = Color.Transparent,
-                divider = {}
-            ) {
-                tabs.forEachIndexed { i, title ->
-                    Tab(
-                        selected = tabIndex == i,
-                        onClick = { tabIndex = i },
-                        text = { Text(title) }
-                    )
-                }
-            }
         }
     }
 
