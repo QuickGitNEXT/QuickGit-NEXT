@@ -144,42 +144,192 @@ fun RepoDetailScreenDesktop(
                     AppBrandLogo(size = 36.dp)
                 }
 
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 4.dp,
-                    shadowElevation = 10.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .wrapContentWidth()
+                // Three matching text-only floating bars: Pull/Push | tabs | Status/LFS
+                Row(
+                    Modifier.align(Alignment.Center),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        tonalElevation = 4.dp,
+                        shadowElevation = 10.dp,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                        modifier = Modifier.wrapContentWidth()
                     ) {
-                        tabs.forEachIndexed { i, title ->
-                            val selected = tabIndex == i
-                            TextButton(
-                                onClick = { tabIndex = i },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = if (selected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box {
+                                TextButton(
+                                    onClick = { pullMenuExpanded = true },
+                                    enabled = !state.busy,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("Pull", style = MaterialTheme.typography.labelLarge)
+                                }
+                                DropdownMenu(
+                                    expanded = pullMenuExpanded,
+                                    onDismissRequest = { pullMenuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Git pull") },
+                                        onClick = { pullMenuExpanded = false; vm.pull() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Pull with rebase") },
+                                        onClick = { pullMenuExpanded = false; vm.pullRebase() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("LFS pull only") },
+                                        onClick = { pullMenuExpanded = false; vm.fetchLfs() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Git pull + LFS") },
+                                        onClick = { pullMenuExpanded = false; vm.pullWithLfs() }
+                                    )
+                                }
+                            }
+                            Box {
+                                TextButton(
+                                    onClick = { pushMenuExpanded = true },
+                                    enabled = !state.busy,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("Push", style = MaterialTheme.typography.labelLarge)
+                                }
+                                DropdownMenu(
+                                    expanded = pushMenuExpanded,
+                                    onDismissRequest = { pushMenuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Git push") },
+                                        onClick = { pushMenuExpanded = false; vm.push(force = false) }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Push with rebase") },
+                                        onClick = { pushMenuExpanded = false; vm.pushRebase() }
+                                    )
+                                    if (state.isGerritRemote) {
+                                        DropdownMenuItem(
+                                            text = { Text("Push for review") },
+                                            onClick = { pushMenuExpanded = false; vm.pushForReview() }
+                                        )
                                     }
+                                    DropdownMenuItem(
+                                        text = { Text("LFS push only") },
+                                        onClick = { pushMenuExpanded = false; vm.pushLfs() }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Git push + LFS") },
+                                        onClick = { pushMenuExpanded = false; vm.pushWithLfs() }
+                                    )
+                                    HorizontalDivider()
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Force with lease…",
+                                                color = com.quickgit.app.ui.theme.GitRed
+                                            )
+                                        },
+                                        onClick = {
+                                            pushMenuExpanded = false
+                                            forcePushUseLease = true
+                                            showForcePushConfirm = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Force (no lease)…",
+                                                color = com.quickgit.app.ui.theme.GitRed
+                                            )
+                                        },
+                                        onClick = {
+                                            pushMenuExpanded = false
+                                            forcePushUseLease = false
+                                            showForcePushConfirm = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        tonalElevation = 4.dp,
+                        shadowElevation = 10.dp,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            tabs.forEachIndexed { i, title ->
+                                val selected = tabIndex == i
+                                TextButton(
+                                    onClick = { tabIndex = i },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                ) {
+                                    Text(
+                                        title,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = if (selected) {
+                                            androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        } else {
+                                            androidx.compose.ui.text.font.FontWeight.Normal
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Surface(
+                        shape = MaterialTheme.shapes.extraLarge,
+                        tonalElevation = 4.dp,
+                        shadowElevation = 10.dp,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                        modifier = Modifier.wrapContentWidth()
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { showStatusOptions = true },
+                                enabled = !state.busy,
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             ) {
-                                Text(
-                                    title,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (selected) {
-                                        androidx.compose.ui.text.font.FontWeight.SemiBold
-                                    } else {
-                                        androidx.compose.ui.text.font.FontWeight.Normal
-                                    }
+                                Text("Status", style = MaterialTheme.typography.labelLarge)
+                            }
+                            TextButton(
+                                onClick = { showLfsOptions = true },
+                                enabled = !state.busy,
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            ) {
+                                Text("LFS", style = MaterialTheme.typography.labelLarge)
                             }
                         }
                     }
@@ -260,79 +410,6 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 3.dp,
-                shadowElevation = 8.dp,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                modifier = Modifier.wrapContentWidth()
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box {
-                        TextButton(onClick = { pullMenuExpanded = true }, enabled = !state.busy) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.ArrowDownward, contentDescription = "Pull")
-                                Text("Pull", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        DropdownMenu(expanded = pullMenuExpanded, onDismissRequest = { pullMenuExpanded = false }) {
-                            DropdownMenuItem(text = { Text("Git pull") }, onClick = { pullMenuExpanded = false; vm.pull() })
-                            DropdownMenuItem(text = { Text("Pull with rebase") }, onClick = { pullMenuExpanded = false; vm.pullRebase() })
-                            DropdownMenuItem(text = { Text("LFS pull only") }, onClick = { pullMenuExpanded = false; vm.fetchLfs() })
-                            DropdownMenuItem(text = { Text("Git pull + LFS") }, onClick = { pullMenuExpanded = false; vm.pullWithLfs() })
-                        }
-                    }
-                    Box {
-                        TextButton(onClick = { pushMenuExpanded = true }, enabled = !state.busy) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.ArrowUpward, contentDescription = "Push")
-                                Text("Push", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        DropdownMenu(expanded = pushMenuExpanded, onDismissRequest = { pushMenuExpanded = false }) {
-                            DropdownMenuItem(text = { Text("Git push") }, onClick = { pushMenuExpanded = false; vm.push(force = false) })
-                            DropdownMenuItem(text = { Text("Push with rebase") }, onClick = { pushMenuExpanded = false; vm.pushRebase() })
-                            if (state.isGerritRemote) {
-                                DropdownMenuItem(text = { Text("Push for review") }, onClick = { pushMenuExpanded = false; vm.pushForReview() })
-                            }
-                            DropdownMenuItem(text = { Text("LFS push only") }, onClick = { pushMenuExpanded = false; vm.pushLfs() })
-                            DropdownMenuItem(text = { Text("Git push + LFS") }, onClick = { pushMenuExpanded = false; vm.pushWithLfs() })
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("Force with lease…", color = com.quickgit.app.ui.theme.GitRed) },
-                                onClick = { pushMenuExpanded = false; forcePushUseLease = true; showForcePushConfirm = true }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Force (no lease)…", color = com.quickgit.app.ui.theme.GitRed) },
-                                onClick = { pushMenuExpanded = false; forcePushUseLease = false; showForcePushConfirm = true }
-                            )
-                        }
-                    }
-                    TextButton(onClick = { showStatusOptions = true }, enabled = !state.busy) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Info, contentDescription = "Status")
-                            Text("Status", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                    TextButton(onClick = { showLfsOptions = true }, enabled = !state.busy) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Storage, contentDescription = "LFS")
-                            Text("LFS", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-            }
-            } // center Box for ops bar
         }
     }
 
