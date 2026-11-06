@@ -125,7 +125,8 @@ fun RepoDetailScreenDesktop(
     val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "History")
     var tabIndex by remember { mutableStateOf(0) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
-    var gitActionsExpanded by remember { mutableStateOf(false) }
+    /** Portrait Git Actions sheet: null = closed, "root" | "pull" | "push". */
+    var gitActionsStep by remember { mutableStateOf<String?>(null) }
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -435,93 +436,11 @@ fun RepoDetailScreenDesktop(
                     }
                 }
                 if (isPortrait) {
-                    Box {
-                        OutlinedButton(
-                            onClick = { gitActionsExpanded = true },
-                            enabled = !state.busy,
-                            modifier = Modifier.padding(start = 6.dp)
-                        ) { Text("Git Actions") }
-                        DropdownMenu(
-                            expanded = gitActionsExpanded,
-                            onDismissRequest = { gitActionsExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Git pull") },
-                                onClick = { gitActionsExpanded = false; vm.pull() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Pull with rebase") },
-                                onClick = { gitActionsExpanded = false; vm.pullRebase() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("LFS pull only") },
-                                onClick = { gitActionsExpanded = false; vm.fetchLfs() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Git pull + LFS") },
-                                onClick = { gitActionsExpanded = false; vm.pullWithLfs() }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("Git push") },
-                                onClick = { gitActionsExpanded = false; vm.push(force = false) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Push with rebase") },
-                                onClick = { gitActionsExpanded = false; vm.pushRebase() }
-                            )
-                            if (state.isGerritRemote) {
-                                DropdownMenuItem(
-                                    text = { Text("Push for review") },
-                                    onClick = { gitActionsExpanded = false; vm.pushForReview() }
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text("LFS push only") },
-                                onClick = { gitActionsExpanded = false; vm.pushLfs() }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Git push + LFS") },
-                                onClick = { gitActionsExpanded = false; vm.pushWithLfs() }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "Force with lease…",
-                                        color = com.quickgit.app.ui.theme.GitRed
-                                    )
-                                },
-                                onClick = {
-                                    gitActionsExpanded = false
-                                    forcePushUseLease = true
-                                    showForcePushConfirm = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "Force (no lease)…",
-                                        color = com.quickgit.app.ui.theme.GitRed
-                                    )
-                                },
-                                onClick = {
-                                    gitActionsExpanded = false
-                                    forcePushUseLease = false
-                                    showForcePushConfirm = true
-                                }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("Status") },
-                                onClick = { gitActionsExpanded = false; showStatusOptions = true }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("LFS…") },
-                                onClick = { gitActionsExpanded = false; showLfsOptions = true }
-                            )
-                        }
-                    }
+                    OutlinedButton(
+                        onClick = { gitActionsStep = "root" },
+                        enabled = !state.busy,
+                        modifier = Modifier.padding(start = 6.dp)
+                    ) { Text("Git Actions") }
                 }
             }
 
@@ -545,6 +464,128 @@ fun RepoDetailScreenDesktop(
             }
 
         }
+    }
+
+
+    if (gitActionsStep == "root") {
+        AlertDialog(
+            onDismissRequest = { gitActionsStep = null },
+            title = { Text("Git Actions") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(
+                        onClick = { gitActionsStep = "pull" },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Pull") }
+                    FilledTonalButton(
+                        onClick = { gitActionsStep = "push" },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Push") }
+                    FilledTonalButton(
+                        onClick = {
+                            gitActionsStep = null
+                            showStatusOptions = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Status") }
+                    FilledTonalButton(
+                        onClick = {
+                            gitActionsStep = null
+                            showLfsOptions = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("LFS") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { gitActionsStep = null }) { Text("Close") }
+            }
+        )
+    }
+    if (gitActionsStep == "pull") {
+        AlertDialog(
+            onDismissRequest = { gitActionsStep = "root" },
+            title = { Text("Pull") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pull() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Git pull") }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pullRebase() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Pull with rebase") }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.fetchLfs() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("LFS pull only") }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pullWithLfs() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Git pull + LFS") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { gitActionsStep = "root" }) { Text("Back") }
+            }
+        )
+    }
+    if (gitActionsStep == "push") {
+        AlertDialog(
+            onDismissRequest = { gitActionsStep = "root" },
+            title = { Text("Push") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.push(force = false) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Git push") }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pushRebase() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Push with rebase") }
+                    if (state.isGerritRemote) {
+                        TextButton(
+                            onClick = { gitActionsStep = null; vm.pushForReview() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Push for review") }
+                    }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pushLfs() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("LFS push only") }
+                    TextButton(
+                        onClick = { gitActionsStep = null; vm.pushWithLfs() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Git push + LFS") }
+                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                    TextButton(
+                        onClick = {
+                            gitActionsStep = null
+                            forcePushUseLease = true
+                            showForcePushConfirm = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Force with lease…", color = com.quickgit.app.ui.theme.GitRed)
+                    }
+                    TextButton(
+                        onClick = {
+                            gitActionsStep = null
+                            forcePushUseLease = false
+                            showForcePushConfirm = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Force (no lease)…", color = com.quickgit.app.ui.theme.GitRed)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { gitActionsStep = "root" }) { Text("Back") }
+            }
+        )
     }
 
     if (showStatusOptions) {
