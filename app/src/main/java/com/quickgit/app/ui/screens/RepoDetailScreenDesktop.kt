@@ -223,6 +223,10 @@ fun RepoDetailScreenDesktop(
                             onClick = { vm.unstageAll() },
                             enabled = !state.busy
                         ) { Text("Unstage all") }
+                        OutlinedButton(
+                            onClick = { vm.discardAll() },
+                            enabled = !state.busy
+                        ) { Text("Discard") }
                     }
                 }
             }
@@ -543,7 +547,7 @@ fun RepoDetailScreenDesktop(
  * Changes tab for tablet / rail layout.
  *
  * Shows **Staged** and **Changes** as separate sections so staging is obvious,
- * with Stage all / Stage / Unstage / Discard on the selection and a Commit button.
+ * Staging bulk actions live in the tablet header; this tab lists staged/unstaged files.
  */
 @Composable
 private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
@@ -556,44 +560,6 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
     val stagedPaths = remember(staged) { staged.map { it.path }.toSet() }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { vm.stageAll() }, enabled = !state.busy) { Text("Stage all") }
-            OutlinedButton(
-                onClick = {
-                    val toStage = selected.filter { it !in stagedPaths }
-                    if (toStage.isNotEmpty()) vm.stagePaths(toStage)
-                    selected = emptySet()
-                },
-                enabled = selected.any { it !in stagedPaths } && !state.busy
-            ) { Text("Stage") }
-            OutlinedButton(
-                onClick = {
-                    val toUnstage = selected.filter { it in stagedPaths }
-                    if (toUnstage.isNotEmpty()) vm.unstagePaths(toUnstage)
-                    selected = emptySet()
-                },
-                enabled = selected.any { it in stagedPaths } && !state.busy
-            ) { Text("Unstage") }
-            OutlinedButton(
-                onClick = {
-                    selected.forEach { path -> vm.discard(path) }
-                    selected = emptySet()
-                },
-                enabled = selected.isNotEmpty() && !state.busy
-            ) { Text("Discard") }
-            Spacer(Modifier.weight(1f))
-            if (staged.isNotEmpty()) {
-                Text(
-                    "${staged.size} staged",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = GitGreen,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-            }
-            IconButton(onClick = { vm.refresh() }) { Icon(Icons.Default.Refresh, null) }
-        }
-        Spacer(Modifier.height(8.dp))
-
         if (state.busy && status == null) {
             CircularProgressIndicator()
         } else if (staged.isEmpty() && unstagedAll.isEmpty()) {
@@ -602,23 +568,12 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 if (staged.isNotEmpty()) {
                     item(key = "hdr_staged") {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Staged changes (${staged.size})",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = GitGreen,
-                                modifier = Modifier.weight(1f)
-                            )
-                            TextButton(
-                                onClick = { vm.unstageAll() },
-                                enabled = !state.busy
-                            ) { Text("Unstage all") }
-                        }
+                        Text(
+                            "Staged changes (${staged.size})",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = GitGreen,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                     }
                     items(staged, key = { "s_${it.path}" }) { fc ->
                         DesktopChangeRow(
