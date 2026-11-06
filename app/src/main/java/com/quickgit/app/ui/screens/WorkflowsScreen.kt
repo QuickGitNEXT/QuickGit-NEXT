@@ -127,7 +127,7 @@ fun WorkflowsScreen(
     ) {
         Column(Modifier.fillMaxSize()) {
             if (onBack != null || showReleasesTab) {
-                CenterAlignedCenterAlignedTopAppBar(
+                CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
@@ -150,7 +150,7 @@ fun WorkflowsScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                CenterAlignedCenterAlignedTopAppBar(
+                CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
@@ -176,7 +176,7 @@ fun WorkflowsScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             Column {
-                CenterAlignedCenterAlignedTopAppBar(
+                CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
                         onBack?.let { back ->
