@@ -690,7 +690,7 @@ private fun ChromebookReposTopChrome(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 IconButton(onClick = { /* already on Repos */ }) {
-                    Icon(Icons.Default.Folder, contentDescription = "Repos", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.FolderOpen, contentDescription = "Repos", tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onClone) {
                     Icon(Icons.Default.CloudDownload, contentDescription = "Clone")
