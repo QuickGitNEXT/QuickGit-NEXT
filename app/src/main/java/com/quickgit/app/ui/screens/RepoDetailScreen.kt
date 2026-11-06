@@ -24,6 +24,7 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.adaptive.isCompactHeight
 import com.quickgit.app.ui.adaptive.isTabletOrWider
@@ -115,9 +116,10 @@ fun RepoDetailScreen(
                         .padding(horizontal = 48.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    AppBrandLogo(size = 40.dp)
                     Text(
                         repoName,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )

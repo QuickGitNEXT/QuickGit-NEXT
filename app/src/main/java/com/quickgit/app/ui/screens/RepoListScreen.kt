@@ -122,7 +122,7 @@ fun RepoListScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { AppBrandLogo(size = 40.dp) },
+                title = { AppBrandLogo(size = 52.dp) },
                 actions = {
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
                     if (!hideChromeNav) {
