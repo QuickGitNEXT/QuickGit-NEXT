@@ -24,6 +24,7 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
@@ -571,8 +572,8 @@ fun RepoDetailScreen(
             fun ChangesLazy(bottomPad: androidx.compose.ui.unit.Dp) {
                 if ((state.busy || state.refreshing) && status == null) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    BrandLoadingPlaceholder()
+                }
                 } else if (status != null) {
                     LazyColumn(Modifier.fillMaxSize()) {
                         if (status.staged.isNotEmpty()) {
@@ -710,8 +711,8 @@ fun RepoDetailScreen(
                 ) {
                     if ((state.busy || state.refreshing) && status == null) {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                    BrandLoadingPlaceholder()
+                }
                     } else if (status != null) {
                         Column(Modifier.fillMaxSize()) {
                             Box(Modifier.weight(1f).fillMaxWidth()) {

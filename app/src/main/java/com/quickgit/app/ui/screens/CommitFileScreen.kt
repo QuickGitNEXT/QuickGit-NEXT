@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.viewmodel.CommitFileViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +61,7 @@ fun CommitFileScreen(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                loading -> BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 error != null -> Text(
                     error ?: "Error",
                     Modifier.align(Alignment.Center).padding(16.dp),

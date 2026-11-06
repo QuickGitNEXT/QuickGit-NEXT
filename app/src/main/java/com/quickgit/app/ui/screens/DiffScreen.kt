@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.DiffLineType
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
@@ -41,7 +42,7 @@ fun DiffScreen(repoPath: String, filePath: String, mode: String, vm: DiffViewMod
             modifier = Modifier.padding(padding).fillMaxSize()
         ) {
             when {
-                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                loading -> BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 diff == null || (diff!!.lines.isEmpty() && !diff!!.isBinary) ->
                     Text("No changes to show", Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 diff!!.isBinary -> Text("Binary file — diff not shown", Modifier.align(Alignment.Center))

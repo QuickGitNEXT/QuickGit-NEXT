@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.ProfileProvider
 import com.quickgit.app.viewmodel.ProfileViewModel
@@ -87,7 +88,7 @@ fun ProfileScreen(
         when {
             state.loading && state.user == null -> {
                 Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    BrandLoadingPlaceholder()
                 }
             }
             state.user == null && state.connectedProviders.isEmpty() -> {
@@ -234,7 +235,7 @@ fun ProfileScreen(
                     if (state.loading) {
                         item {
                             Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                BrandLoadingPlaceholder(label = "Loading…", modifier = Modifier.padding(16.dp))
                             }
                         }
                     } else if (state.repos.isEmpty()) {

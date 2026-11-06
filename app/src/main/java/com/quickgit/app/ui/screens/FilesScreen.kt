@@ -58,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.FilesViewModel
 
@@ -201,7 +202,7 @@ fun FilesScreen(
         ) {
             when {
                 state.loading && state.entries.isEmpty() && state.currentDir.isBlank() -> {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 }
                 else -> {
                     LazyColumn(Modifier.fillMaxSize()) {
@@ -307,7 +308,7 @@ fun FilesScreen(
                         }
                     }
                     if (state.loading && state.entries.isEmpty() && state.currentDir.isNotBlank()) {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
+                        BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                     }
                 }
             }

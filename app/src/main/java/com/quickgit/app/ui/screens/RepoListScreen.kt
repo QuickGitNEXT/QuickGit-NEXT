@@ -39,6 +39,7 @@ import com.quickgit.app.data.AccountManager
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.components.AppBrandLogo
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.UserAvatar
@@ -337,7 +338,7 @@ fun RepoListScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         if (loading && repos.isEmpty()) {
-                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                            BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                         } else if (repos.isEmpty()) {
                             Column(
                                 Modifier.align(Alignment.Center).padding(32.dp),

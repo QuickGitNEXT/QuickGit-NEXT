@@ -55,6 +55,7 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.viewmodel.WorkflowsViewModel
 import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -256,7 +257,7 @@ fun WorkflowsScreen(
                 Box(Modifier.fillMaxSize()) {
                     when {
                         state.loading && state.runs.isEmpty() -> {
-                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                            BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                         }
                         state.runs.isEmpty() -> {
                             Text(
@@ -401,8 +402,8 @@ private fun RunDetailContent(
     ) { padding ->
         if (state.detailLoading && state.jobs.isEmpty()) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+                    BrandLoadingPlaceholder()
+                }
             return@Scaffold
         }
 

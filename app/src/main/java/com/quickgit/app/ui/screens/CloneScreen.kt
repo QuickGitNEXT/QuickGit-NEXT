@@ -16,6 +16,8 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.viewmodel.CloneViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +54,23 @@ fun CloneScreen(
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
         )
     }) { padding ->
+        Box(Modifier.fillMaxSize()) {
         AdaptiveContent(Modifier.padding(padding), fillHeight = false) {
-        Column(Modifier.padding(16.dp).fillMaxWidth()) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+        Column(
+            Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
@@ -166,20 +183,20 @@ fun CloneScreen(
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Clone") }
 
-            if (state.inProgress) {
-                Spacer(Modifier.height(16.dp))
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                Spacer(Modifier.height(8.dp))
-                Text(state.progressText, style = MaterialTheme.typography.bodySmall)
-            }
-
             val error = state.result as? GitOpResult.Error
             if (error != null) {
                 Spacer(Modifier.height(16.dp))
                 Text(error.message, color = MaterialTheme.colorScheme.error)
             }
-        }
+        } // Column
+        } // Surface
         } // AdaptiveContent
+
+        ExpressiveTaskOverlay(
+            visible = state.inProgress,
+            label = state.progressText.ifBlank { "Cloning…" }
+        )
+        } // Box
     }
 
     if (state.showGerritBrowser) {
@@ -189,7 +206,10 @@ fun CloneScreen(
             text = {
                 Column(Modifier.heightIn(max = 420.dp)) {
                     if (state.gerritLoading) {
-                        CircularProgressIndicator()
+                        BrandLoadingPlaceholder(
+                            label = "Loading projects…",
+                            modifier = Modifier.fillMaxWidth().padding(24.dp)
+                        )
                     } else if (state.gerritError != null) {
                         Text(state.gerritError!!, color = MaterialTheme.colorScheme.error)
                     } else if (state.gerritProjects.isEmpty()) {

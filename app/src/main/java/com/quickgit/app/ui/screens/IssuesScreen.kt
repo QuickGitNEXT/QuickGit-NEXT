@@ -24,6 +24,7 @@ import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.IssuesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,7 +106,9 @@ fun IssuesScreen(
             }
 
             if (state.loading && state.issues.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    BrandLoadingPlaceholder()
+                }
             } else if (state.issues.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(
@@ -209,8 +212,8 @@ private fun IssueDetailContent(
     ) { padding ->
         if (state.detailLoading || issue == null) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+                    BrandLoadingPlaceholder()
+                }
             return@Scaffold
         }
 

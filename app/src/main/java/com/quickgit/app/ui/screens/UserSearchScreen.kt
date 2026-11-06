@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.UserSearchKind
 import com.quickgit.app.viewmodel.UserSearchProvider
@@ -159,7 +160,7 @@ fun UserSearchScreen(
 
             if (state.loading && !state.loadingMore) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    BrandLoadingPlaceholder()
                 }
                 return@Column
             }

@@ -29,6 +29,7 @@ import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.PullRequestsViewModel
 import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +111,9 @@ fun PullRequestsScreen(
             }
 
             if (state.loading && state.pullRequests.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    BrandLoadingPlaceholder()
+                }
             } else if (state.pullRequests.isEmpty()) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text("No ${state.filter.label.lowercase()} pull requests", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -199,7 +202,9 @@ private fun PullRequestDetailContent(
         }
     ) { padding ->
         if (state.detailLoading || pr == null) {
-            Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                    BrandLoadingPlaceholder()
+                }
             return@Scaffold
         }
 

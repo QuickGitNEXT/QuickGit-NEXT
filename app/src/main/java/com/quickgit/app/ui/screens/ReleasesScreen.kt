@@ -27,6 +27,7 @@ import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +100,7 @@ fun ReleasesScreen(
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
                 state.loading && state.releases.isEmpty() -> {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 }
                 state.releases.isEmpty() -> {
                     Text(
@@ -207,8 +208,8 @@ private fun ReleaseDetailContent(
     ) { padding ->
         if (loading) {
             Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+                    BrandLoadingPlaceholder()
+                }
             return@Scaffold
         }
 

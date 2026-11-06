@@ -14,6 +14,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -100,7 +101,7 @@ fun ExpressiveTaskOverlay(
 }
 
 @Composable
-private fun QuickGitNextLoader(success: Boolean) {
+fun QuickGitNextLoader(success: Boolean = false) {
     val transition = rememberInfiniteTransition(label = "qgnext-loader")
     val pulse by transition.animateFloat(
         initialValue = 0.94f,
@@ -280,5 +281,29 @@ private fun QuickGitNextLoader(success: Boolean) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Centered brand loader for full-screen or large in-content loading states
+ * (profile, clone destination lists, repo list, etc.).
+ */
+@Composable
+fun BrandLoadingPlaceholder(
+    label: String = "Loading…",
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        QuickGitNextLoader(success = false)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

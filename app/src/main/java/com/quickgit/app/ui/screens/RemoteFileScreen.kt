@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.components.SyntaxHighlight
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.viewmodel.RemoteFileViewModel
@@ -83,7 +84,7 @@ fun RemoteFileScreen(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                state.loading -> BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 state.error != null -> {
                     Text(
                         state.error ?: "Couldn't load this file",
