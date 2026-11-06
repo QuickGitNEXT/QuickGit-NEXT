@@ -86,7 +86,7 @@ fun FloatingTabletNavBar(
 ) {
     val navPad = WindowInsets.navigationBars.asPaddingValues()
     val shape = RoundedCornerShape(if (compact) 22.dp else 28.dp)
-    val hPad = if (compact) 8.dp else 16.dp
+    val hPad = if (compact) 28.dp else 16.dp
     val vPad = if (compact) 6.dp else 12.dp
 
     Box(
@@ -98,8 +98,8 @@ fun FloatingTabletNavBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = if (compact) 520.dp else 720.dp)
-                .fillMaxWidth()
+                .widthIn(max = if (compact) 400.dp else 720.dp)
+                .then(if (compact) Modifier.fillMaxWidth(0.88f) else Modifier.fillMaxWidth())
                 .clip(shape)
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

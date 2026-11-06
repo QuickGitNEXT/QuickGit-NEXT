@@ -259,7 +259,13 @@ fun QuickGitNavGraph() {
 
         composable(Dest.SETTINGS) {
             val vm: SettingsViewModel = viewModel(factory = factory)
-            SettingsScreen(vm = vm, onBack = { navController.popBackStack() })
+            SettingsScreen(
+                vm = vm,
+                onBack = { navController.popBackStack() },
+                onOpenLogs = if (BuildConfig.SHOW_LOGS_UI) {
+                    { navController.navigate(Dest.LOGS) { launchSingleTop = true } }
+                } else null
+            )
         }
 
         composable(Dest.CREDENTIALS) {
@@ -503,7 +509,11 @@ fun QuickGitNavGraph() {
         }
     }
 
-    fun navItems(includeBrowse: Boolean = true, includeUsers: Boolean = true): List<FloatingNavItem> {
+    fun navItems(
+        includeBrowse: Boolean = true,
+        includeUsers: Boolean = true,
+        includeLogs: Boolean = true
+    ): List<FloatingNavItem> {
         val items = mutableListOf(
             FloatingNavItem(
                 icon = Icons.Default.Folder,
@@ -559,7 +569,7 @@ fun QuickGitNavGraph() {
                 navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
             }
         }
-        if (BuildConfig.SHOW_LOGS_UI) {
+        if (includeLogs && BuildConfig.SHOW_LOGS_UI) {
             items += FloatingNavItem(
                 icon = Icons.Default.Article,
                 label = "Logs",
@@ -618,7 +628,12 @@ fun QuickGitNavGraph() {
                     NavContent()
                 }
                 FloatingTabletNavBar(
-                    items = navItems(includeBrowse = !isLargePhone, includeUsers = !isLargePhone),
+                    // Large phones: drop Browse/Users/Logs from the bar (Logs lives in Settings).
+                    items = navItems(
+                        includeBrowse = !isLargePhone,
+                        includeUsers = !isLargePhone,
+                        includeLogs = !isLargePhone
+                    ),
                     compact = floatingBarCompact,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )

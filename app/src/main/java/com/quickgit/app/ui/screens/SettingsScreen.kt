@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.quickgit.app.BuildConfig
 import com.quickgit.app.data.AppUpdateConfig
 import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.ui.adaptive.AdaptiveContent
@@ -29,7 +31,8 @@ import com.quickgit.app.ui.components.AppScreenTitle
 @Composable
 fun SettingsScreen(
     vm: SettingsViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenLogs: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val context = LocalContext.current
@@ -120,6 +123,26 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(label, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+
+            if (BuildConfig.SHOW_LOGS_UI && onOpenLogs != null) {
+                HorizontalDivider(Modifier.padding(vertical = 20.dp))
+                Text("Debug", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "App operation logs for troubleshooting clone, push, and auth issues.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onOpenLogs,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Article, contentDescription = null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Open logs")
                 }
             }
 
