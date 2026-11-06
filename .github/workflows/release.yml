@@ -141,20 +141,59 @@ jobs:
           done
 
       - name: Decode keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/quickgitnext-release.jks"
+          set -euo pipefail
+          missing=()
+          [ -z "${SIGNING_KEYSTORE_BASE64:-}" ] && missing+=("SIGNING_KEYSTORE_BASE64")
+          [ -z "${SIGNING_STORE_PASSWORD:-}" ] && missing+=("SIGNING_STORE_PASSWORD")
+          [ -z "${SIGNING_KEY_ALIAS:-}" ] && missing+=("SIGNING_KEY_ALIAS")
+          [ -z "${SIGNING_KEY_PASSWORD:-}" ] && missing+=("SIGNING_KEY_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing GitHub Actions secrets: ${missing[*]}" >&2
+            echo "Repo → Settings → Secrets and variables → Actions → New repository secret" >&2
+            echo "See README / docs for creating a release keystore and encoding it as base64." >&2
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/quickgitnext-release.jks"
+          if [ ! -s "$RUNNER_TEMP/quickgitnext-release.jks" ]; then
+            echo "Decoded keystore is empty — check SIGNING_KEYSTORE_BASE64 encoding." >&2
+            exit 1
+          fi
           echo "SIGNING_STORE_FILE=$RUNNER_TEMP/quickgitnext-release.jks" >> "$GITHUB_ENV"
-          echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_ALIAS=${{ secrets.SIGNING_KEY_ALIAS }}" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_PASSWORD=${{ secrets.SIGNING_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "Keystore decoded ($(wc -c < "$RUNNER_TEMP/quickgitnext-release.jks") bytes), alias=$SIGNING_KEY_ALIAS"
 
       - name: Build phone store + logging (debug) release APKs and Wear release APK
+        env:
+          # Packaging + lintVital + L8 can peak above the default 2G heap on CI runners.
+          GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false
         run: |
-          gradle \
+          set -euo pipefail
+          # Retry on transient Maven/CDN failures (e.g. GitHub 504 for kotlin-compiler-embeddable)
+          attempts=3
+          n=1
+          until gradle \
             :app:assembleStoreRelease \
             :app:assembleLoggingRelease \
             :wear:assembleRelease \
-            --no-daemon
+            --no-daemon \
+            --stacktrace
+          do
+            if [ "$n" -ge "$attempts" ]; then
+              echo "Gradle build failed after $attempts attempts" >&2
+              exit 1
+            fi
+            echo "Gradle build failed (attempt $n/$attempts) — retrying in 30s…"
+            n=$((n + 1))
+            sleep 30
+          done
 
       - name: Stage Android artifacts
         run: |
