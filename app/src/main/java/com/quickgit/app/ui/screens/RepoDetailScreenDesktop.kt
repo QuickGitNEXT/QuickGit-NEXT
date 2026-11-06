@@ -123,73 +123,113 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Row(
+            // Top: back left · tab bar truly centered · refresh right
+            Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
-                Text(
-                    repoName,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    modifier = Modifier.widthIn(max = 140.dp).padding(end = 8.dp)
-                )
-                // Floating tab window — same row as the repo title (below multi-window pill)
-                Box(
-                    Modifier.weight(1f),
-                    contentAlignment = Alignment.Center
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
                 ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        tonalElevation = 4.dp,
-                        shadowElevation = 10.dp,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                        modifier = Modifier.wrapContentWidth()
+                    Icon(Icons.Default.ArrowBack, "Back")
+                }
+
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 4.dp,
+                    shadowElevation = 10.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .wrapContentWidth()
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            tabs.forEachIndexed { i, title ->
-                                val selected = tabIndex == i
-                                TextButton(
-                                    onClick = { tabIndex = i },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = if (selected) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                ) {
-                                    Text(
-                                        title,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = if (selected) {
-                                            androidx.compose.ui.text.font.FontWeight.SemiBold
-                                        } else {
-                                            androidx.compose.ui.text.font.FontWeight.Normal
-                                        }
-                                    )
-                                }
+                        tabs.forEachIndexed { i, title ->
+                            val selected = tabIndex == i
+                            TextButton(
+                                onClick = { tabIndex = i },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            ) {
+                                Text(
+                                    title,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) {
+                                        androidx.compose.ui.text.font.FontWeight.SemiBold
+                                    } else {
+                                        androidx.compose.ui.text.font.FontWeight.Normal
+                                    }
+                                )
                             }
                         }
                     }
                 }
-                if (state.busy) {
-                    CircularProgressIndicator(
-                        Modifier.padding(start = 8.dp).size(20.dp),
-                        strokeWidth = 2.dp
+
+                Row(
+                    Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (state.busy) {
+                        CircularProgressIndicator(
+                            Modifier.padding(end = 4.dp).size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    IconButton(onClick = { vm.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            }
+
+            // Repo name + branch on the left; bulk staging on the right (Changes tab)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        repoName,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
                     )
+                    Text(
+                        state.branch,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+                if (tabIndex == 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        OutlinedButton(
+                            onClick = { vm.stageAll() },
+                            enabled = !state.busy
+                        ) { Text("Stage all") }
+                        OutlinedButton(
+                            onClick = { vm.unstageAll() },
+                            enabled = !state.busy
+                        ) { Text("Unstage all") }
+                    }
                 }
             }
 
             Box(Modifier.weight(1f).fillMaxSize()) {
                 when (tabIndex) {
+
                     0 -> ChangesTabDesktop(vm)
                     1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
