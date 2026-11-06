@@ -32,6 +32,7 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
+import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.viewmodel.BranchesViewModel
@@ -134,7 +135,7 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left · tab bar truly centered · refresh right
+            // Top: back left · stage/git actions right (no refresh — pull to refresh instead)
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -155,79 +156,39 @@ fun RepoDetailScreenDesktop(
                     }
                 }
 
-                // Tab bar only — Pull/Push/Status/LFS live under Git Actions on all orientations.
-                Row(
-                    Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        tonalElevation = 4.dp,
-                        shadowElevation = 10.dp,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                        modifier = Modifier.wrapContentWidth()
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            tabs.forEachIndexed { i, title ->
-                                val selected = tabIndex == i
-                                val selectedBg = if (selected) {
-                                    com.quickgit.app.ui.theme.GitGreen.copy(alpha = 0.2f)
-                                } else {
-                                    Color.Transparent
-                                }
-                                TextButton(
-                                    onClick = { tabIndex = i },
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = if (selected) {
-                                            com.quickgit.app.ui.theme.GitGreen
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    ),
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(selectedBg)
-                                ) {
-                                    Text(
-                                        title,
-                                        maxLines = 1,
-                                        style = MaterialTheme.typography.labelLarge,
-                                        fontWeight = if (selected) {
-                                            androidx.compose.ui.text.font.FontWeight.SemiBold
-                                        } else {
-                                            androidx.compose.ui.text.font.FontWeight.Normal
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
                 Row(
                     Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (state.busy) {
                         CircularProgressIndicator(
-                            Modifier.padding(end = 4.dp).size(20.dp),
+                            Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                     }
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        onClick = { vm.refresh() }
-                    )
+                    if (tabIndex == 0) {
+                        OutlinedButton(
+                            onClick = { vm.stageAll() },
+                            enabled = !state.busy
+                        ) { Text("Stage all") }
+                        OutlinedButton(
+                            onClick = { vm.unstageAll() },
+                            enabled = !state.busy
+                        ) { Text("Unstage all") }
+                        OutlinedButton(
+                            onClick = { vm.discardAll() },
+                            enabled = !state.busy
+                        ) { Text("Discard") }
+                    }
+                    OutlinedButton(
+                        onClick = { gitActionsStep = "root" },
+                        enabled = !state.busy
+                    ) { Text("Git Actions") }
                 }
             }
 
-            // Repo name + branch; Files path/controls; Changes staging actions
+            // Repo name + branch; Files path/controls on the Files tab
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -273,33 +234,14 @@ fun RepoDetailScreenDesktop(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                if (tabIndex == 0) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(
-                            onClick = { vm.stageAll() },
-                            enabled = !state.busy
-                        ) { Text("Stage all") }
-                        OutlinedButton(
-                            onClick = { vm.unstageAll() },
-                            enabled = !state.busy
-                        ) { Text("Unstage all") }
-                        OutlinedButton(
-                            onClick = { vm.discardAll() },
-                            enabled = !state.busy
-                        ) { Text("Discard") }
-                    }
-                }
-                OutlinedButton(
-                        onClick = { gitActionsStep = "root" },
-                        enabled = !state.busy,
-                        modifier = Modifier.padding(start = 6.dp)
-                    ) { Text("Git Actions") }
-
             }
 
-            Box(Modifier.weight(1f).fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = state.busy,
+                onRefresh = { vm.refresh() },
+                modifier = Modifier.weight(1f).fillMaxSize()
+            ) {
                 when (tabIndex) {
-
                     0 -> ChangesTabDesktop(vm)
                     1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
@@ -315,6 +257,62 @@ fun RepoDetailScreenDesktop(
                     6 -> HistoryScreen(repoPath = repoPath, vm = historyVm, onBack = null)
                 }
             }
+
+            // Tabs floating bar where the app bottom nav normally sits
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.extraLarge,
+                    tonalElevation = 4.dp,
+                    shadowElevation = 10.dp,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                    modifier = Modifier.wrapContentWidth()
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        tabs.forEachIndexed { i, title ->
+                            val selected = tabIndex == i
+                            val selectedBg = if (selected) {
+                                com.quickgit.app.ui.theme.GitGreen.copy(alpha = 0.2f)
+                            } else {
+                                Color.Transparent
+                            }
+                            TextButton(
+                                onClick = { tabIndex = i },
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (selected) {
+                                        com.quickgit.app.ui.theme.GitGreen
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                ),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(selectedBg)
+                            ) {
+                                Text(
+                                    title,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) {
+                                        androidx.compose.ui.text.font.FontWeight.SemiBold
+                                    } else {
+                                        androidx.compose.ui.text.font.FontWeight.Normal
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
 
         }
     }

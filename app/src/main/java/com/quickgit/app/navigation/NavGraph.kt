@@ -95,6 +95,9 @@ fun QuickGitNavGraph() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    // Tablets: hide app bottom nav on repo detail (tabs live in-screen at the bottom).
+    val onRepoDetailRoute = currentRoute?.startsWith("repo_detail") == true
+    val hideFloatingBarOnRepoDetail = onRepoDetailRoute && useFloatingBar && !isLargePhone
 
     fun isSelected(prefix: String): Boolean {
         return currentRoute == prefix || currentRoute?.startsWith(prefix) == true
@@ -645,20 +648,28 @@ fun QuickGitNavGraph() {
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .padding(bottom = if (floatingBarCompact) 80.dp else 88.dp)
+                        .padding(
+                            bottom = when {
+                                hideFloatingBarOnRepoDetail -> 0.dp
+                                floatingBarCompact -> 80.dp
+                                else -> 88.dp
+                            }
+                        )
                 ) {
                     NavContent()
                 }
-                FloatingTabletNavBar(
-                    // Large phones: drop Browse/Users/Logs from the bar (Logs lives in Settings).
-                    items = navItems(
-                        includeBrowse = !isLargePhone,
-                        includeUsers = !isLargePhone,
-                        includeLogs = !isLargePhone
-                    ),
-                    compact = floatingBarCompact,
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                )
+                if (!hideFloatingBarOnRepoDetail) {
+                    FloatingTabletNavBar(
+                        // Large phones: drop Browse/Users/Logs from the bar (Logs lives in Settings).
+                        items = navItems(
+                            includeBrowse = !isLargePhone,
+                            includeUsers = !isLargePhone,
+                            includeLogs = !isLargePhone
+                        ),
+                        compact = floatingBarCompact,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
             }
         }
         else -> NavContent()
