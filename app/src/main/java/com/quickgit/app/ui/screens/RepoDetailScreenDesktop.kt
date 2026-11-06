@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import android.content.res.Configuration
@@ -149,7 +150,9 @@ fun RepoDetailScreenDesktop(
                         contentDescription = "Back",
                         onClick = onBack
                     )
-                    AppBrandLogo(size = 36.dp)
+                    if (!isPortrait) {
+                        AppBrandLogo(size = 36.dp)
+                    }
                 }
 
                 // Landscape: Pull/Push | tabs | Status/LFS. Portrait: tabs only (ops in Git Actions).
@@ -792,6 +795,17 @@ fun RepoDetailScreenDesktop(
             }
         )
     }
+
+        // Portrait: larger brand mark as a soft watermark above the bottom edge.
+        if (isPortrait) {
+            AppBrandLogo(
+                size = 112.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 28.dp)
+                    .graphicsLayer { alpha = 0.14f }
+            )
+        }
 
         ExpressiveTaskOverlay(
             visible = state.busy,
