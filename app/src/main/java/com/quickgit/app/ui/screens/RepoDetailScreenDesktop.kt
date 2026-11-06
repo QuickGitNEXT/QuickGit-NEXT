@@ -146,22 +146,36 @@ fun RepoDetailScreenDesktop(
                         tonalElevation = 4.dp,
                         shadowElevation = 10.dp,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                        modifier = Modifier
-                            .widthIn(max = 720.dp)
-                            .fillMaxWidth()
+                        modifier = Modifier.wrapContentWidth()
                     ) {
-                        ScrollableTabRow(
-                            selectedTabIndex = tabIndex,
-                            edgePadding = 8.dp,
-                            containerColor = Color.Transparent,
-                            divider = {}
+                        Row(
+                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             tabs.forEachIndexed { i, title ->
-                                Tab(
-                                    selected = tabIndex == i,
+                                val selected = tabIndex == i
+                                TextButton(
                                     onClick = { tabIndex = i },
-                                    text = { Text(title) }
-                                )
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                ) {
+                                    Text(
+                                        title,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = if (selected) {
+                                            androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        } else {
+                                            androidx.compose.ui.text.font.FontWeight.Normal
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
