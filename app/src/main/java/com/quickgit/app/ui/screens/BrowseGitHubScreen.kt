@@ -25,6 +25,7 @@ import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.data.models.GitLabProject
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.BrowseGitHubViewModel
 import com.quickgit.app.viewmodel.BrowseProviderTab
@@ -112,10 +113,12 @@ fun BrowseGitHubScreen(
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle("Browse repos") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            },
                 actions = {
                     val canCreate =
                         (state.selectedTab == BrowseProviderTab.GITHUB && state.githubConnected) ||

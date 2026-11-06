@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.SyntaxHighlight
 import com.quickgit.app.ui.components.rememberSyntaxPalette
@@ -46,7 +47,13 @@ fun MergeScreen(repoPath: String, vm: MergeViewModel, onBack: () -> Unit, onFini
         topBar = {
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle("Resolve conflicts") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+                navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
             )
         }
     ) { padding ->

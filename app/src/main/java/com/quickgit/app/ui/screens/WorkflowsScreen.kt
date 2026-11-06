@@ -55,6 +55,7 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.viewmodel.WorkflowsViewModel
 import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,10 +132,14 @@ fun WorkflowsScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
+                }
                 )
                 TabRow(selectedTabIndex = section) {
                     Tab(selected = section == 0, onClick = { section = 0 }, text = { Text(if (state.isGitLab) "Pipelines" else "Workflows") })
@@ -154,10 +159,14 @@ fun WorkflowsScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
+                }
                 )
             }
         ) { padding ->
@@ -180,10 +189,14 @@ fun WorkflowsScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
-                    },
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
+                    }
+                },
                     actions = {
                         IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
                             Icon(Icons.Default.Refresh, "Refresh")
@@ -373,7 +386,13 @@ private fun RunDetailContent(
                         subtitle = "Run #${run.runNumber}"
                     )
                 },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } },
+                navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            },
                 actions = {
                     if (state.watching) {
                         IconButton(onClick = { vm.stopWatching() }) {

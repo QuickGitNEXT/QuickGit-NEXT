@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.viewmodel.CommitFileViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,10 +53,12 @@ fun CommitFileScreen(
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle(filePath.substringAfterLast('/')) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
             )
         }
     ) { padding ->

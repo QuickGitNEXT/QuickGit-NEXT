@@ -31,6 +31,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -99,7 +102,16 @@ fun QuickGitNavGraph() {
 
     @Composable
     fun NavContent() {
-        NavHost(navController = navController, startDestination = Dest.REPO_LIST, modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = Dest.REPO_LIST,
+            modifier = Modifier.fillMaxSize(),
+            // Snappy tab switches for the floating bottom bar (phones ≥ 6.3" / tablets).
+            enterTransition = { fadeIn(animationSpec = tween(80)) },
+            exitTransition = { fadeOut(animationSpec = tween(60)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(80)) },
+            popExitTransition = { fadeOut(animationSpec = tween(60)) }
+        ) {
 
         composable(Dest.REPO_LIST) {
             val vm: RepoListViewModel = viewModel(factory = factory)
@@ -509,7 +521,18 @@ fun QuickGitNavGraph() {
         }
     }
 
-    fun navItems(
+    /** Bottom-bar style navigate: reuse back stack entries and avoid deep stacks. */
+    fun tabNavigate(route: String) {
+        navController.navigate(route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(Dest.REPO_LIST) {
+                saveState = true
+            }
+        }
+    }
+
+        fun navItems(
         includeBrowse: Boolean = true,
         includeUsers: Boolean = true,
         includeLogs: Boolean = true
@@ -526,10 +549,7 @@ fun QuickGitNavGraph() {
                     isSelected("issues") || isSelected("workflows") ||
                     isSelected("releases")
             ) {
-                navController.navigate(Dest.REPO_LIST) {
-                    popUpTo(Dest.REPO_LIST) { inclusive = true }
-                    launchSingleTop = true
-                }
+                tabNavigate(Dest.REPO_LIST)
             },
             FloatingNavItem(
                 icon = Icons.Default.CloudDownload,
@@ -539,7 +559,7 @@ fun QuickGitNavGraph() {
                     (!includeBrowse && (isSelected(Dest.BROWSE_GITHUB) ||
                         isSelected("remote_browse") || isSelected("remote_file")))
             ) {
-                navController.navigate(Dest.CLONE) { launchSingleTop = true }
+                tabNavigate(Dest.CLONE)
             },
         )
         if (includeBrowse) {
@@ -549,7 +569,7 @@ fun QuickGitNavGraph() {
                 selected = isSelected(Dest.BROWSE_GITHUB) ||
                     isSelected("remote_browse") || isSelected("remote_file")
             ) {
-                navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
+                tabNavigate(Dest.BROWSE_GITHUB)
             }
         }
         items += FloatingNavItem(
@@ -558,7 +578,7 @@ fun QuickGitNavGraph() {
             selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/") ||
                 (!includeUsers && isSelected(Dest.USER_SEARCH))
         ) {
-            navController.navigate(Dest.profile()) { launchSingleTop = true }
+            tabNavigate(Dest.profile())
         }
         if (includeUsers) {
             items += FloatingNavItem(
@@ -566,7 +586,7 @@ fun QuickGitNavGraph() {
                 label = "Users",
                 selected = isSelected(Dest.USER_SEARCH)
             ) {
-                navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+                tabNavigate(Dest.USER_SEARCH)
             }
         }
         if (includeLogs && BuildConfig.SHOW_LOGS_UI) {
@@ -575,7 +595,7 @@ fun QuickGitNavGraph() {
                 label = "Logs",
                 selected = isSelected(Dest.LOGS)
             ) {
-                navController.navigate(Dest.LOGS) { launchSingleTop = true }
+                tabNavigate(Dest.LOGS)
             }
         }
         items += FloatingNavItem(
@@ -583,14 +603,14 @@ fun QuickGitNavGraph() {
             label = "Creds",
             selected = isSelected(Dest.CREDENTIALS)
         ) {
-            navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true }
+            tabNavigate(Dest.CREDENTIALS)
         }
         items += FloatingNavItem(
             icon = Icons.Default.Settings,
             label = "Settings",
             selected = isSelected(Dest.SETTINGS)
         ) {
-            navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
+            tabNavigate(Dest.SETTINGS)
         }
         return items
     }

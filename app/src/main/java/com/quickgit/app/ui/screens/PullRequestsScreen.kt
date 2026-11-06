@@ -29,6 +29,7 @@ import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.PullRequestsViewModel
 import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,10 +61,14 @@ fun PullRequestsScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
+                }
                 )
             }
         ) { padding ->
@@ -86,7 +91,11 @@ fun PullRequestsScreen(
                 title = { AppScreenTitle(if (state.isGitLab) "Merge requests" else "Pull requests") },
                 navigationIcon = {
                     onBack?.let { back ->
-                        IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
                 }
             )
@@ -197,7 +206,13 @@ private fun PullRequestDetailContent(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle(if (pr != null) "PR #${pr.number}" else "Pull request") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+                navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
             )
         }
     ) { padding ->

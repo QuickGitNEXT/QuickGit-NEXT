@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.RemoteBrowseViewModel
@@ -91,7 +92,11 @@ fun RemoteBrowseScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back") }
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        onClick = onBack
+                    )
                 },
                 actions = {
                     if (state.currentPath.isNotBlank()) {

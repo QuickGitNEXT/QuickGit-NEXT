@@ -26,6 +26,7 @@ import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppBrandLogo
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.adaptive.isCompactHeight
@@ -106,12 +107,12 @@ fun RepoDetailScreen(
                     .fillMaxWidth()
                     .padding(top = 4.dp, bottom = 2.dp)
             ) {
-                IconButton(
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
                     onClick = onBack,
                     modifier = Modifier.align(Alignment.CenterStart)
-                ) {
-                    Icon(Icons.Default.ArrowBack, "Back")
-                }
+                )
                 Column(
                     Modifier
                         .align(Alignment.Center)
@@ -124,12 +125,12 @@ fun RepoDetailScreen(
                         subtitle = state.branch
                     )
                 }
-                IconButton(
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "History",
                     onClick = onOpenHistory,
                     modifier = Modifier.align(Alignment.CenterEnd)
-                ) {
-                    Icon(Icons.Default.History, "History")
-                }
+                )
             }
 
             val largePhone = LocalContext.current.isLargePhoneForFloatingNav()

@@ -24,6 +24,7 @@ import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.IssuesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,10 +56,14 @@ fun IssuesScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle("Issues") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
+                }
                 )
             }
         ) { padding ->
@@ -81,7 +86,11 @@ fun IssuesScreen(
                 title = { AppScreenTitle("Issues") },
                 navigationIcon = {
                     onBack?.let { back ->
-                        IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
                 }
             )
@@ -206,7 +215,13 @@ private fun IssueDetailContent(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle(if (issue != null) "Issue #${issue.number}" else "Issue") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+                navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
             )
         }
     ) { padding ->

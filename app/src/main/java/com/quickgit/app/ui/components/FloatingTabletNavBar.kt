@@ -173,7 +173,7 @@ private fun FloatingNavBarItem(
             .background(selectedBg)
             .clickable(
                 interactionSource = interaction,
-                indication = rememberRipple(bounded = true, color = GitGreen),
+                indication = null,
                 onClick = item.onClick
             )
             .padding(vertical = if (compact) 3.dp else 5.dp, horizontal = 1.dp),

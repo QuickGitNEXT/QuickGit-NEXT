@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.DiffLineType
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.theme.GitGreen
@@ -33,7 +34,13 @@ fun DiffScreen(repoPath: String, filePath: String, mode: String, vm: DiffViewMod
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
             title = { AppScreenTitle(filePath.substringAfterLast('/')) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+            navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
         )
     }) { padding ->
         PullToRefreshBox(

@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +69,11 @@ fun LogsScreen(
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle("Logs") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        onClick = onBack
+                    )
                 },
                 actions = {
                     IconButton(

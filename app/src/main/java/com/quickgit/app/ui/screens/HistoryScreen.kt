@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.HistoryViewModel
@@ -105,9 +106,11 @@ fun HistoryScreen(
                 },
                 navigationIcon = {
                     onBack?.let { back ->
-                        IconButton(onClick = back) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
                 },
                 actions = {

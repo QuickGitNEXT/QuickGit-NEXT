@@ -26,6 +26,7 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,13 @@ fun SettingsScreen(
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
             title = { AppScreenTitle("Settings") },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+            navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
         )
     }) { padding ->
         AdaptiveContent(Modifier.padding(padding), fillHeight = false) {

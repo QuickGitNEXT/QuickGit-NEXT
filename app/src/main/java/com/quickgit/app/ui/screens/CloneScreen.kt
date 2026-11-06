@@ -16,6 +16,7 @@ import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.viewmodel.CloneViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 
@@ -51,7 +52,13 @@ fun CloneScreen(
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
             title = { AppScreenTitle("Clone repository") },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+            navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
         )
     }) { padding ->
         Box(Modifier.fillMaxSize()) {

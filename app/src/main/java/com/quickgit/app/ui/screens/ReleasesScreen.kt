@@ -27,6 +27,7 @@ import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,10 +60,14 @@ fun ReleasesScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle("Releases") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
                     }
+                }
                 )
             }
         ) { padding ->
@@ -84,10 +89,14 @@ fun ReleasesScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle("Releases") },
                     navigationIcon = {
-                        onBack?.let { back ->
-                            IconButton(onClick = back) { Icon(Icons.Default.ArrowBack, "Back") }
-                        }
-                    },
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
+                    }
+                },
                     actions = {
                         IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
                             Icon(Icons.Default.Refresh, "Refresh")
@@ -202,7 +211,13 @@ private fun ReleaseDetailContent(
                         subtitle = release.tagName
                     )
                 },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") } }
+                navigationIcon = {
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    onClick = onBack
+                )
+            }
             )
         }
     ) { padding ->
