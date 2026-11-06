@@ -20,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import android.content.res.Configuration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -122,6 +124,8 @@ fun RepoDetailScreenDesktop(
     // Changes first, then Files, Branches, Issues, PRs, Actions, Releases, History last — same order as desktop.
     val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "History")
     var tabIndex by remember { mutableStateOf(0) }
+    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    var gitActionsExpanded by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -147,119 +151,121 @@ fun RepoDetailScreenDesktop(
                     AppBrandLogo(size = 36.dp)
                 }
 
-                // Three matching text-only floating bars: Pull/Push | tabs | Status/LFS
+                // Landscape: Pull/Push | tabs | Status/LFS. Portrait: tabs only (ops in Git Actions).
                 Row(
                     Modifier.align(Alignment.Center),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        tonalElevation = 4.dp,
-                        shadowElevation = 10.dp,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                        modifier = Modifier.wrapContentWidth()
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (!isPortrait) {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            tonalElevation = 4.dp,
+                            shadowElevation = 10.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                            modifier = Modifier.wrapContentWidth()
                         ) {
-                            Box {
-                                TextButton(
-                                    onClick = { pullMenuExpanded = true },
-                                    enabled = !state.busy,
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text("Pull", style = MaterialTheme.typography.labelLarge)
-                                }
-                                DropdownMenu(
-                                    expanded = pullMenuExpanded,
-                                    onDismissRequest = { pullMenuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Git pull") },
-                                        onClick = { pullMenuExpanded = false; vm.pull() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Pull with rebase") },
-                                        onClick = { pullMenuExpanded = false; vm.pullRebase() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("LFS pull only") },
-                                        onClick = { pullMenuExpanded = false; vm.fetchLfs() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Git pull + LFS") },
-                                        onClick = { pullMenuExpanded = false; vm.pullWithLfs() }
-                                    )
-                                }
-                            }
-                            Box {
-                                TextButton(
-                                    onClick = { pushMenuExpanded = true },
-                                    enabled = !state.busy,
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text("Push", style = MaterialTheme.typography.labelLarge)
-                                }
-                                DropdownMenu(
-                                    expanded = pushMenuExpanded,
-                                    onDismissRequest = { pushMenuExpanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Git push") },
-                                        onClick = { pushMenuExpanded = false; vm.push(force = false) }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Push with rebase") },
-                                        onClick = { pushMenuExpanded = false; vm.pushRebase() }
-                                    )
-                                    if (state.isGerritRemote) {
+                            Row(
+                                Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box {
+                                    TextButton(
+                                        onClick = { pullMenuExpanded = true },
+                                        enabled = !state.busy,
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    ) {
+                                        Text("Pull", style = MaterialTheme.typography.labelLarge)
+                                    }
+                                    DropdownMenu(
+                                        expanded = pullMenuExpanded,
+                                        onDismissRequest = { pullMenuExpanded = false }
+                                    ) {
                                         DropdownMenuItem(
-                                            text = { Text("Push for review") },
-                                            onClick = { pushMenuExpanded = false; vm.pushForReview() }
+                                            text = { Text("Git pull") },
+                                            onClick = { pullMenuExpanded = false; vm.pull() }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Pull with rebase") },
+                                            onClick = { pullMenuExpanded = false; vm.pullRebase() }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("LFS pull only") },
+                                            onClick = { pullMenuExpanded = false; vm.fetchLfs() }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Git pull + LFS") },
+                                            onClick = { pullMenuExpanded = false; vm.pullWithLfs() }
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text("LFS push only") },
-                                        onClick = { pushMenuExpanded = false; vm.pushLfs() }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Git push + LFS") },
-                                        onClick = { pushMenuExpanded = false; vm.pushWithLfs() }
-                                    )
-                                    HorizontalDivider()
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "Force with lease…",
-                                                color = com.quickgit.app.ui.theme.GitRed
+                                }
+                                Box {
+                                    TextButton(
+                                        onClick = { pushMenuExpanded = true },
+                                        enabled = !state.busy,
+                                        colors = ButtonDefaults.textButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    ) {
+                                        Text("Push", style = MaterialTheme.typography.labelLarge)
+                                    }
+                                    DropdownMenu(
+                                        expanded = pushMenuExpanded,
+                                        onDismissRequest = { pushMenuExpanded = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Git push") },
+                                            onClick = { pushMenuExpanded = false; vm.push(force = false) }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Push with rebase") },
+                                            onClick = { pushMenuExpanded = false; vm.pushRebase() }
+                                        )
+                                        if (state.isGerritRemote) {
+                                            DropdownMenuItem(
+                                                text = { Text("Push for review") },
+                                                onClick = { pushMenuExpanded = false; vm.pushForReview() }
                                             )
-                                        },
-                                        onClick = {
-                                            pushMenuExpanded = false
-                                            forcePushUseLease = true
-                                            showForcePushConfirm = true
                                         }
-                                    )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "Force (no lease)…",
-                                                color = com.quickgit.app.ui.theme.GitRed
-                                            )
-                                        },
-                                        onClick = {
-                                            pushMenuExpanded = false
-                                            forcePushUseLease = false
-                                            showForcePushConfirm = true
-                                        }
-                                    )
+                                        DropdownMenuItem(
+                                            text = { Text("LFS push only") },
+                                            onClick = { pushMenuExpanded = false; vm.pushLfs() }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Git push + LFS") },
+                                            onClick = { pushMenuExpanded = false; vm.pushWithLfs() }
+                                        )
+                                        HorizontalDivider()
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    "Force with lease…",
+                                                    color = com.quickgit.app.ui.theme.GitRed
+                                                )
+                                            },
+                                            onClick = {
+                                                pushMenuExpanded = false
+                                                forcePushUseLease = true
+                                                showForcePushConfirm = true
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    "Force (no lease)…",
+                                                    color = com.quickgit.app.ui.theme.GitRed
+                                                )
+                                            },
+                                            onClick = {
+                                                pushMenuExpanded = false
+                                                forcePushUseLease = false
+                                                showForcePushConfirm = true
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -312,35 +318,37 @@ fun RepoDetailScreenDesktop(
                         }
                     }
 
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        tonalElevation = 4.dp,
-                        shadowElevation = 10.dp,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                        modifier = Modifier.wrapContentWidth()
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (!isPortrait) {
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            tonalElevation = 4.dp,
+                            shadowElevation = 10.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                            modifier = Modifier.wrapContentWidth()
                         ) {
-                            TextButton(
-                                onClick = { showStatusOptions = true },
-                                enabled = !state.busy,
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Row(
+                                Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Status", style = MaterialTheme.typography.labelLarge)
-                            }
-                            TextButton(
-                                onClick = { showLfsOptions = true },
-                                enabled = !state.busy,
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            ) {
-                                Text("LFS", style = MaterialTheme.typography.labelLarge)
+                                TextButton(
+                                    onClick = { showStatusOptions = true },
+                                    enabled = !state.busy,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("Status", style = MaterialTheme.typography.labelLarge)
+                                }
+                                TextButton(
+                                    onClick = { showLfsOptions = true },
+                                    enabled = !state.busy,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("LFS", style = MaterialTheme.typography.labelLarge)
+                                }
                             }
                         }
                     }
@@ -424,6 +432,95 @@ fun RepoDetailScreenDesktop(
                             onClick = { vm.discardAll() },
                             enabled = !state.busy
                         ) { Text("Discard") }
+                    }
+                }
+                if (isPortrait) {
+                    Box {
+                        OutlinedButton(
+                            onClick = { gitActionsExpanded = true },
+                            enabled = !state.busy,
+                            modifier = Modifier.padding(start = 6.dp)
+                        ) { Text("Git Actions") }
+                        DropdownMenu(
+                            expanded = gitActionsExpanded,
+                            onDismissRequest = { gitActionsExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Git pull") },
+                                onClick = { gitActionsExpanded = false; vm.pull() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Pull with rebase") },
+                                onClick = { gitActionsExpanded = false; vm.pullRebase() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("LFS pull only") },
+                                onClick = { gitActionsExpanded = false; vm.fetchLfs() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Git pull + LFS") },
+                                onClick = { gitActionsExpanded = false; vm.pullWithLfs() }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Git push") },
+                                onClick = { gitActionsExpanded = false; vm.push(force = false) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Push with rebase") },
+                                onClick = { gitActionsExpanded = false; vm.pushRebase() }
+                            )
+                            if (state.isGerritRemote) {
+                                DropdownMenuItem(
+                                    text = { Text("Push for review") },
+                                    onClick = { gitActionsExpanded = false; vm.pushForReview() }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("LFS push only") },
+                                onClick = { gitActionsExpanded = false; vm.pushLfs() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Git push + LFS") },
+                                onClick = { gitActionsExpanded = false; vm.pushWithLfs() }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Force with lease…",
+                                        color = com.quickgit.app.ui.theme.GitRed
+                                    )
+                                },
+                                onClick = {
+                                    gitActionsExpanded = false
+                                    forcePushUseLease = true
+                                    showForcePushConfirm = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Force (no lease)…",
+                                        color = com.quickgit.app.ui.theme.GitRed
+                                    )
+                                },
+                                onClick = {
+                                    gitActionsExpanded = false
+                                    forcePushUseLease = false
+                                    showForcePushConfirm = true
+                                }
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Status") },
+                                onClick = { gitActionsExpanded = false; showStatusOptions = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("LFS…") },
+                                onClick = { gitActionsExpanded = false; showLfsOptions = true }
+                            )
+                        }
                     }
                 }
             }
