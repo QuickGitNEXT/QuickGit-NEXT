@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -82,6 +86,8 @@ fun RepoDetailScreenDesktop(
     val snackbarHost = remember { SnackbarHostState() }
     var showTaskSuccess by remember { mutableStateOf(false) }
     var pullMenuExpanded by remember { mutableStateOf(false) }
+    var showStatusOptions by remember { mutableStateOf(false) }
+    var showLfsOptions by remember { mutableStateOf(false) }
     var pushMenuExpanded by remember { mutableStateOf(false) }
     var lfsMenuExpanded by remember { mutableStateOf(false) }
     var showForcePushConfirm by remember { mutableStateOf(false) }
@@ -108,7 +114,7 @@ fun RepoDetailScreenDesktop(
     }
 
     // Changes first, then Files, Branches, Issues, PRs, Actions, Releases, History last — same order as desktop.
-    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases", "History")
+    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "History")
     var tabIndex by remember { mutableStateOf(0) }
 
     Box(Modifier.fillMaxSize()) {
@@ -126,135 +132,12 @@ fun RepoDetailScreenDesktop(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
-                Box {
-                    Button(onClick = { pullMenuExpanded = true }, enabled = !state.busy) {
-                        Text("Pull ▾")
-                    }
-                    DropdownMenu(
-                        expanded = pullMenuExpanded,
-                        onDismissRequest = { pullMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Git pull") },
-                            onClick = { pullMenuExpanded = false; vm.pull() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Pull with rebase") },
-                            onClick = { pullMenuExpanded = false; vm.pullRebase() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("LFS pull only") },
-                            onClick = { pullMenuExpanded = false; vm.fetchLfs() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Git pull + LFS") },
-                            onClick = { pullMenuExpanded = false; vm.pullWithLfs() }
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Box {
-                    Button(onClick = { pushMenuExpanded = true }, enabled = !state.busy) {
-                        Text("Push ▾")
-                    }
-                    DropdownMenu(
-                        expanded = pushMenuExpanded,
-                        onDismissRequest = { pushMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Git push") },
-                            onClick = {
-                                pushMenuExpanded = false
-                                vm.push(force = false)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Push with rebase") },
-                            onClick = {
-                                pushMenuExpanded = false
-                                vm.pushRebase()
-                            }
-                        )
-                        if (state.isGerritRemote) {
-                            DropdownMenuItem(
-                                text = { Text("Push for review") },
-                                onClick = {
-                                    pushMenuExpanded = false
-                                    vm.pushForReview()
-                                }
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("LFS push only") },
-                            onClick = { pushMenuExpanded = false; vm.pushLfs() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Git push + LFS") },
-                            onClick = { pushMenuExpanded = false; vm.pushWithLfs() }
-                        )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "Force with lease…",
-                                    color = com.quickgit.app.ui.theme.GitRed
-                                )
-                            },
-                            onClick = {
-                                pushMenuExpanded = false
-                                forcePushUseLease = true
-                                showForcePushConfirm = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "Force (no lease)…",
-                                    color = com.quickgit.app.ui.theme.GitRed
-                                )
-                            },
-                            onClick = {
-                                pushMenuExpanded = false
-                                forcePushUseLease = false
-                                showForcePushConfirm = true
-                            }
-                        )
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Box {
-                    OutlinedButton(onClick = { lfsMenuExpanded = true }, enabled = !state.busy) {
-                        Text("LFS ▾")
-                    }
-                    DropdownMenu(
-                        expanded = lfsMenuExpanded,
-                        onDismissRequest = { lfsMenuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("LFS install") },
-                            onClick = { lfsMenuExpanded = false; vm.lfsInstall() }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("LFS track…") },
-                            onClick = { lfsMenuExpanded = false; showLfsTrack = true }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("LFS untrack…") },
-                            onClick = { lfsMenuExpanded = false; showLfsUntrack = true }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("LFS status") },
-                            onClick = { lfsMenuExpanded = false; vm.lfsStatus() }
-                        )
-                        // LFS pull / push live under the Pull and Push menus
-                    }
-                }
                 if (state.busy) {
-                    Spacer(Modifier.width(8.dp))
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 }
             }
-            TabRow(selectedTabIndex = tabIndex) {
+
+                        TabRow(selectedTabIndex = tabIndex) {
                 tabs.forEachIndexed { i, title ->
                     Tab(selected = tabIndex == i, onClick = { tabIndex = i }, text = { Text(title) })
                 }
@@ -266,12 +149,132 @@ fun RepoDetailScreenDesktop(
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
                     3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
                     4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                    5 -> WorkflowsScreen(vm = workflowsVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                    6 -> ReleasesScreen(vm = releasesVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                    7 -> HistoryScreen(repoPath = repoPath, vm = historyVm, onBack = null)
+                    5 -> WorkflowsScreen(
+                        vm = workflowsVm,
+                        onBack = null,
+                        onNeedsAuth = onNeedsAuth,
+                        repoPath = repoPath,
+                        showReleasesTab = true
+                    )
+                    6 -> HistoryScreen(repoPath = repoPath, vm = historyVm, onBack = null)
+                }
+            }
+
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box {
+                        TextButton(onClick = { pullMenuExpanded = true }, enabled = !state.busy) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ArrowDownward, contentDescription = "Pull")
+                                Text("Pull", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        DropdownMenu(expanded = pullMenuExpanded, onDismissRequest = { pullMenuExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Git pull") }, onClick = { pullMenuExpanded = false; vm.pull() })
+                            DropdownMenuItem(text = { Text("Pull with rebase") }, onClick = { pullMenuExpanded = false; vm.pullRebase() })
+                            DropdownMenuItem(text = { Text("LFS pull only") }, onClick = { pullMenuExpanded = false; vm.fetchLfs() })
+                            DropdownMenuItem(text = { Text("Git pull + LFS") }, onClick = { pullMenuExpanded = false; vm.pullWithLfs() })
+                        }
+                    }
+                    Box {
+                        TextButton(onClick = { pushMenuExpanded = true }, enabled = !state.busy) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ArrowUpward, contentDescription = "Push")
+                                Text("Push", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        DropdownMenu(expanded = pushMenuExpanded, onDismissRequest = { pushMenuExpanded = false }) {
+                            DropdownMenuItem(text = { Text("Git push") }, onClick = { pushMenuExpanded = false; vm.push(force = false) })
+                            DropdownMenuItem(text = { Text("Push with rebase") }, onClick = { pushMenuExpanded = false; vm.pushRebase() })
+                            if (state.isGerritRemote) {
+                                DropdownMenuItem(text = { Text("Push for review") }, onClick = { pushMenuExpanded = false; vm.pushForReview() })
+                            }
+                            DropdownMenuItem(text = { Text("LFS push only") }, onClick = { pushMenuExpanded = false; vm.pushLfs() })
+                            DropdownMenuItem(text = { Text("Git push + LFS") }, onClick = { pushMenuExpanded = false; vm.pushWithLfs() })
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Force with lease…", color = com.quickgit.app.ui.theme.GitRed) },
+                                onClick = { pushMenuExpanded = false; forcePushUseLease = true; showForcePushConfirm = true }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Force (no lease)…", color = com.quickgit.app.ui.theme.GitRed) },
+                                onClick = { pushMenuExpanded = false; forcePushUseLease = false; showForcePushConfirm = true }
+                            )
+                        }
+                    }
+                    TextButton(onClick = { showStatusOptions = true }, enabled = !state.busy) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Info, contentDescription = "Status")
+                            Text("Status", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    TextButton(onClick = { showLfsOptions = true }, enabled = !state.busy) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Storage, contentDescription = "LFS")
+                            Text("LFS", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
         }
+    }
+
+
+    if (showStatusOptions) {
+        AlertDialog(
+            onDismissRequest = { showStatusOptions = false },
+            title = { Text("Git status") },
+            text = {
+                Text(
+                    state.status?.let { s ->
+                        "Branch: ${state.branch}\nStaged: ${s.staged.size}\nUnstaged: ${s.unstaged.size}\nUntracked: ${s.untracked.size}" +
+                            if (s.conflicting.isNotEmpty()) "\nConflicts: ${s.conflicting.size}" else ""
+                    } ?: "No status loaded yet."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showStatusOptions = false; vm.refresh() }) { Text("Refresh") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStatusOptions = false }) { Text("Close") }
+            }
+        )
+    }
+    if (showLfsOptions) {
+        AlertDialog(
+            onDismissRequest = { showLfsOptions = false },
+            title = { Text("Git LFS") },
+            text = {
+                Column {
+                    TextButton(onClick = { showLfsOptions = false; showLfsTrack = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Track pattern…")
+                    }
+                    TextButton(onClick = { showLfsOptions = false; vm.fetchLfs() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("LFS fetch/pull")
+                    }
+                    TextButton(onClick = { showLfsOptions = false; vm.pushLfs() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("LFS push")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLfsOptions = false }) { Text("Close") }
+            }
+        )
     }
 
     if (showLfsTrack) {

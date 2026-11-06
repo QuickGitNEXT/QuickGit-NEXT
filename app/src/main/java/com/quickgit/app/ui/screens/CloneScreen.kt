@@ -14,6 +14,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.ui.adaptive.AdaptiveContent
+import com.quickgit.app.ui.security.isChromebookDevice
+import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.viewmodel.CloneViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
@@ -31,6 +33,8 @@ fun CloneScreen(
 ) {
     var url by remember { mutableStateOf("") }
     val state by vm.state.collectAsState()
+    var showBrowseChooser by remember { mutableStateOf(false) }
+    val isChromebook = LocalContext.current.isChromebookDevice()
 
     val destinationPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -90,29 +94,40 @@ fun CloneScreen(
             Text("Browse repositories", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Pick a repo from your accounts, then come back here to clone. " +
-                    "On large phones, browsing lives here instead of the bottom bar.",
+                if (isChromebook)
+                    "Pick a repo from GitHub, GitLab, or Gerrit, then come back here to clone."
+                else
+                    "Browse repos from your connected accounts, then return here to clone.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
-            FilledTonalButton(
-                onClick = onBrowseGitHub,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Browse GitHub / GitLab")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { vm.openGerritBrowser() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    if (state.gerritConnected)
-                        "Browse Gerrit projects (${state.gerritHost})"
-                    else
-                        "Browse Gerrit projects (connect under Credentials)"
-                )
+            if (isChromebook) {
+                FilledTonalButton(
+                    onClick = onBrowseGitHub,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Browse GitHub / GitLab")
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { vm.openGerritBrowser() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (state.gerritConnected)
+                            "Browse Gerrit projects (${state.gerritHost})"
+                        else
+                            "Browse Gerrit projects (connect under Credentials)"
+                    )
+                }
+            } else {
+                FilledTonalButton(
+                    onClick = { showBrowseChooser = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Browse my repos")
+                }
             }
             Spacer(Modifier.height(8.dp))
             Text(
@@ -204,6 +219,48 @@ fun CloneScreen(
             label = state.progressText.ifBlank { "Cloning…" }
         )
         } // Box
+    }
+
+
+    if (showBrowseChooser) {
+        AlertDialog(
+            onDismissRequest = { showBrowseChooser = false },
+            title = { Text("Browse my repos") },
+            text = {
+                Column {
+                    Text(
+                        "Choose a host to pick a repository to clone.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    FilledTonalButton(
+                        onClick = {
+                            showBrowseChooser = false
+                            onBrowseGitHub()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("GitHub / GitLab") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            showBrowseChooser = false
+                            vm.openGerritBrowser()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (state.gerritConnected)
+                                "Gerrit (${state.gerritHost})"
+                            else
+                                "Gerrit (connect under Credentials)"
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBrowseChooser = false }) { Text("Cancel") }
+            }
+        )
     }
 
     if (state.showGerritBrowser) {
