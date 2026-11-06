@@ -37,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -106,6 +107,11 @@ fun FilesScreen(
             onOpenFile(it)
             vm.consumeOpenAfterCreate()
         }
+    }
+
+    // System back / gesture: walk up directories before leaving the Files screen.
+    BackHandler(enabled = state.currentDir.isNotBlank()) {
+        vm.goUp()
     }
 
     Scaffold(
