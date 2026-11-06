@@ -138,37 +138,8 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    modifier = Modifier
-                        .widthIn(max = 720.dp)
-                        .fillMaxWidth(0.92f)
-                ) {
-                    ScrollableTabRow(
-                        selectedTabIndex = tabIndex,
-                        edgePadding = 8.dp,
-                        containerColor = Color.Transparent,
-                        divider = {}
-                    ) {
-                        tabs.forEachIndexed { i, title ->
-                            Tab(
-                                selected = tabIndex == i,
-                                onClick = { tabIndex = i },
-                                text = { Text(title) }
-                            )
-                        }
-                    }
-                }
-            }
+            // Room for the floating top-center tab window
+            Spacer(Modifier.height(64.dp))
             Box(Modifier.weight(1f).fillMaxSize()) {
                 when (tabIndex) {
                     0 -> ChangesTabDesktop(vm)
@@ -263,6 +234,40 @@ fun RepoDetailScreenDesktop(
         }
     }
 
+    // Floating tab window at the top center of the app (tablet / wide layout)
+    Box(
+        Modifier
+            .align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .padding(top = 10.dp)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 4.dp,
+            shadowElevation = 10.dp,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+            modifier = Modifier
+                .widthIn(max = 720.dp)
+                .fillMaxWidth(0.92f)
+        ) {
+            ScrollableTabRow(
+                selectedTabIndex = tabIndex,
+                edgePadding = 8.dp,
+                containerColor = Color.Transparent,
+                divider = {}
+            ) {
+                tabs.forEachIndexed { i, title ->
+                    Tab(
+                        selected = tabIndex == i,
+                        onClick = { tabIndex = i },
+                        text = { Text(title) }
+                    )
+                }
+            }
+        }
+    }
 
     if (showStatusOptions) {
         AlertDialog(
