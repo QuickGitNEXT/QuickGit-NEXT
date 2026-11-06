@@ -111,44 +111,44 @@ fun FilesScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    AppScreenTitle(
-                        pageTitle = "Files",
-                        subtitle = if (state.currentDir.isBlank()) "/" else state.currentDir,
-                        showLogo = onBack != null
-                    )
-                },
-                navigationIcon = {
-                    onBack?.let { back ->
+            // Tablet embeds Files without a second header; path/controls live on the parent chrome.
+            if (onBack != null) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = "Files",
+                            subtitle = if (state.currentDir.isBlank()) "/" else state.currentDir,
+                            showLogo = true
+                        )
+                    },
+                    navigationIcon = {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            onClick = back
+                            onClick = onBack
                         )
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = vm::goUp,
+                            enabled = state.currentDir.isNotBlank()
+                        ) {
+                            Text(
+                                "…",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (state.currentDir.isNotBlank())
+                                    MaterialTheme.colorScheme.onSurface
+                                else
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
+                        }
+                        IconButton(onClick = { vm.openDir(state.currentDir) }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
                     }
-                },
-                actions = {
-                    // "…" go up one directory — same affordance as the desktop path bar
-                    IconButton(
-                        onClick = vm::goUp,
-                        enabled = state.currentDir.isNotBlank()
-                    ) {
-                        Text(
-                            "…",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (state.currentDir.isNotBlank())
-                                MaterialTheme.colorScheme.onSurface
-                            else
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        )
-                    }
-                    IconButton(onClick = { vm.openDir(state.currentDir) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
-            )
+                )
+            }
         },
         floatingActionButton = {
             // All create actions live on the bottom-right FAB menu.

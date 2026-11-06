@@ -58,29 +58,38 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { AppScreenTitle("Branches & remotes", showLogo = onBack != null) },
-                navigationIcon = {
-                    onBack?.let { back ->
+            if (onBack != null) {
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Branches & remotes", showLogo = true) },
+                    navigationIcon = {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            onClick = back
+                            onClick = onBack
                         )
+                    },
+                    actions = {
+                        IconButton(onClick = { showAddRemote = true }) {
+                            Icon(Icons.Default.CloudUpload, "Add remote")
+                        }
+                        IconButton(onClick = { showCreate = true }) {
+                            Icon(Icons.Default.Add, "New branch")
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { showAddRemote = true }) {
-                        Icon(Icons.Default.CloudUpload, "Add remote")
-                    }
-                    IconButton(onClick = { showCreate = true }) {
-                        Icon(Icons.Default.Add, "New branch")
-                    }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         AdaptiveContent(Modifier.padding(padding)) {
+        if (onBack == null) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(onClick = { showAddRemote = true }) { Text("Add remote") }
+                TextButton(onClick = { showCreate = true }) { Text("New branch") }
+            }
+        }
         PullToRefreshBox(
             isRefreshing = state.refreshing,
             onRefresh = vm::refresh,

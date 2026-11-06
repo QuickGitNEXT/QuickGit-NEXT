@@ -97,29 +97,29 @@ fun HistoryScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    AppScreenTitle(
-                        pageTitle = "History",
-                        subtitle = state.logRef?.let { "from $it" },
-                        showLogo = onBack != null
-                    )
-                },
-                navigationIcon = {
-                    onBack?.let { back ->
+            if (onBack != null) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = "History",
+                            subtitle = state.logRef?.let { "from $it" },
+                            showLogo = true
+                        )
+                    },
+                    navigationIcon = {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            onClick = back
+                            onClick = onBack
                         )
+                    },
+                    actions = {
+                        IconButton(onClick = vm::refreshHistory) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = vm::refreshHistory) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {

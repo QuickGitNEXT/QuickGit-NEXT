@@ -53,8 +53,8 @@ fun IssuesScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Issues", showLogo = onBack != null) },
+                if (onBack != null) CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Issues", showLogo = true) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -82,8 +82,8 @@ fun IssuesScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { AppScreenTitle("Issues", showLogo = onBack != null) },
+            if (onBack != null) CenterAlignedTopAppBar(
+                title = { AppScreenTitle("Issues", showLogo = true) },
                 navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -213,8 +213,8 @@ private fun IssueDetailContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { AppScreenTitle(if (issue != null) "Issue #${issue.number}" else "Issue", showLogo = onBack != null) },
+            if (onBack != null) CenterAlignedTopAppBar(
+                title = { AppScreenTitle(if (issue != null) "Issue #${issue.number}" else "Issue", showLogo = true) },
                 navigationIcon = {
                 FloatingCircleIconButton(
                     imageVector = Icons.Default.ArrowBack,

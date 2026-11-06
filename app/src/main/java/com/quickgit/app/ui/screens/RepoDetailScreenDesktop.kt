@@ -2,6 +2,8 @@ package com.quickgit.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 // wrapContentWidth via foundation.layout
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,6 +65,7 @@ fun RepoDetailScreenDesktop(
 
     val branchesVm: BranchesViewModel = viewModel(factory = factory)
     val filesVm: FilesViewModel = viewModel(factory = factory)
+    val filesState by filesVm.state.collectAsState()
     val issuesVm: IssuesViewModel = viewModel(factory = factory)
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
@@ -276,15 +279,23 @@ fun RepoDetailScreenDesktop(
                         ) {
                             tabs.forEachIndexed { i, title ->
                                 val selected = tabIndex == i
+                                val selectedBg = if (selected) {
+                                    com.quickgit.app.ui.theme.GitGreen.copy(alpha = 0.2f)
+                                } else {
+                                    Color.Transparent
+                                }
                                 TextButton(
                                     onClick = { tabIndex = i },
                                     colors = ButtonDefaults.textButtonColors(
                                         contentColor = if (selected) {
-                                            MaterialTheme.colorScheme.primary
+                                            com.quickgit.app.ui.theme.GitGreen
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
                                         }
-                                    )
+                                    ),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(selectedBg)
                                 ) {
                                     Text(
                                         title,
@@ -353,14 +364,29 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Repo name + branch on the left; bulk staging on the right (Changes tab)
+            // Repo name + branch; Files path/controls; Changes staging actions
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(Modifier.weight(1f)) {
+                if (tabIndex == 1) {
+                    TextButton(
+                        onClick = { filesVm.goUp() },
+                        enabled = filesState.currentDir.isNotBlank()
+                    ) {
+                        Text(
+                            "…",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                    }
+                    IconButton(onClick = { filesVm.openDir(filesState.currentDir) }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+                Column {
                     Text(
                         repoName,
                         style = MaterialTheme.typography.titleMedium,
@@ -372,6 +398,17 @@ fun RepoDetailScreenDesktop(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
+                }
+                if (tabIndex == 1) {
+                    Text(
+                        if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
                 }
                 if (tabIndex == 0) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

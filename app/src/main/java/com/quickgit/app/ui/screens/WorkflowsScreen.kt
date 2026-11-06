@@ -130,7 +130,7 @@ fun WorkflowsScreen(
         Column(Modifier.fillMaxSize()) {
             if (onBack != null || showReleasesTab) {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -156,18 +156,18 @@ fun WorkflowsScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
-                    navigationIcon = {
-                    onBack?.let { back ->
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = back
-                        )
-                    }
+                if (onBack != null) {
+                    CenterAlignedTopAppBar(
+                        title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
+                        navigationIcon = {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = onBack
+                            )
+                        }
+                    )
                 }
-                )
             }
         ) { padding ->
             Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -186,23 +186,23 @@ fun WorkflowsScreen(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             Column {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = onBack != null) },
-                    navigationIcon = {
-                    onBack?.let { back ->
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = back
-                        )
-                    }
-                },
-                    actions = {
-                        IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
-                            Icon(Icons.Default.Refresh, "Refresh")
+                if (onBack != null) {
+                    CenterAlignedTopAppBar(
+                        title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
+                        navigationIcon = {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = onBack
+                            )
+                        },
+                        actions = {
+                            IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
+                                Icon(Icons.Default.Refresh, "Refresh")
+                            }
                         }
-                    }
-                )
+                    )
+                }
                 if (showReleasesTab) {
                     TabRow(selectedTabIndex = section) {
                         Tab(

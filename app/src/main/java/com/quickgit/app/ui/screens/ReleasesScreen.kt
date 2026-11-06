@@ -57,8 +57,8 @@ fun ReleasesScreen(
     if (!state.supported) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases", showLogo = onBack != null) },
+                if (onBack != null) CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Releases", showLogo = true) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -87,7 +87,7 @@ fun ReleasesScreen(
         topBar = {
             if (!embedded) {
                 CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases", showLogo = onBack != null) },
+                    title = { AppScreenTitle("Releases", showLogo = true) },
                     navigationIcon = {
                     onBack?.let { back ->
                         FloatingCircleIconButton(
@@ -204,7 +204,7 @@ private fun ReleaseDetailContent(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            if (onBack != null) CenterAlignedTopAppBar(
                 title = {
                     AppScreenTitle(
                         pageTitle = release.name.ifBlank { release.tagName },
