@@ -138,8 +138,10 @@ fun RepoListScreen(
                 )
             } else {
             CenterAlignedTopAppBar(
-
                 title = { AppScreenTitle("Repos", logoSize = 48.dp) },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
+                ),
                 actions = {
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
                     if (!hideChromeNav) {
@@ -339,16 +341,7 @@ fun RepoListScreen(
                     )
                 }
 
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    PullToRefreshBox(
+                PullToRefreshBox(
                         isRefreshing = loading,
                         onRefresh = vm::refresh,
                         modifier = Modifier.fillMaxSize()
@@ -444,7 +437,6 @@ fun RepoListScreen(
                         }
                     }
                     }
-                }
             }
         }
     }

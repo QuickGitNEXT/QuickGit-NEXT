@@ -1,12 +1,19 @@
 package com.quickgit.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -102,9 +109,13 @@ fun RepoDetailScreen(
         Column(Modifier.fillMaxSize()) {
 
             // Back (left) + centered repo name / branch + History (right, icon only)
+            // Full-width top bar, same surface treatment as the floating nav bar.
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
+                    )
                     .padding(top = 4.dp, bottom = 2.dp)
             ) {
                 FloatingCircleIconButton(
@@ -647,19 +658,13 @@ fun RepoDetailScreen(
             }
 
             if (largePhone) {
-                // One floating workspace: page nav → changes → git ops → commit
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 10.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    modifier = Modifier
+                // Flat workspace (no floating card): page nav → changes → git ops → commit
+                Column(
+                    Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
                         .imePadding()
                 ) {
-                    Column(Modifier.fillMaxSize()) {
                         RepoSubNavFloatingBar(items = pageNavItems, flat = true)
                         HorizontalDivider(
                             Modifier.padding(horizontal = 12.dp),
@@ -702,7 +707,6 @@ fun RepoDetailScreen(
                             )
                         }
                     }
-                }
             } else {
                 ConflictBanner()
                 PullToRefreshBox(

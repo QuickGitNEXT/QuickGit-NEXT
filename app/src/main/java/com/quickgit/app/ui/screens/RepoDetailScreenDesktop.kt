@@ -135,10 +135,13 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left · stage/git actions right (no refresh — pull to refresh instead)
+            // Top bar edge-to-edge (matches floating nav surface) around stage/git actions.
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
+                    )
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 Row(
