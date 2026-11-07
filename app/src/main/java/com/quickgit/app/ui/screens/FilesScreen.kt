@@ -57,10 +57,12 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.FilesViewModel
@@ -78,6 +80,7 @@ fun FilesScreen(
     LaunchedEffect(repoPath) { vm.init(repoPath) }
 
     val state by vm.state.collectAsState()
+    val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
     val snackbarHostState = remember { SnackbarHostState() }
     var createMenuExpanded by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -152,8 +155,11 @@ fun FilesScreen(
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         }
-                        IconButton(onClick = { vm.openDir(state.currentDir) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        // Large phones: refresh via pull-to-refresh; hide the top action.
+                        if (!largePhone) {
+                            IconButton(onClick = { vm.openDir(state.currentDir) }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            }
                         }
                         if (onOpenHistory != null) {
                             FloatingCircleIconButton(
