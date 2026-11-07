@@ -8,6 +8,7 @@ import com.quickgit.app.data.GitLabAccountManager
 import com.quickgit.app.data.GitProgressNotifier
 import com.quickgit.app.data.RepoManager
 import com.quickgit.app.data.models.GitHubRemoteRepo
+import com.quickgit.app.data.github.GitHubApi
 import com.quickgit.app.data.models.GitLabProject
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.data.models.PrOpResult
@@ -67,7 +68,14 @@ data class ProfileUiState(
     val cloneProgress: String? = null,
     /** More repo pages available (100 per page). */
     val hasMoreRepos: Boolean = false,
-    val loadingMoreRepos: Boolean = false
+    val loadingMoreRepos: Boolean = false,
+    /** Followers / following list sheet (GitHub). */
+    val peopleListTitle: String? = null,
+    val peopleList: List<GitHubApi.GitHubUserSummary> = emptyList(),
+    val peopleListLoading: Boolean = false,
+    val peopleListError: String? = null,
+    val peopleListHasMore: Boolean = false,
+    val peopleListLoadingMore: Boolean = false
 )
 
 class ProfileViewModel(
@@ -85,6 +93,9 @@ class ProfileViewModel(
     private var reposPage = 1
     private var profileLoginForRepos: String? = null
     private val pageSize = 100
+    private var peopleRelation: String? = null // "followers" | "following"
+    private var peoplePage = 1
+    private var peopleLogin: String? = null
     private val notifier = GitProgressNotifier(app)
 
     fun load(login: String?) {
@@ -498,6 +509,105 @@ class ProfileViewModel(
                     cloningRepoId = null,
                     cloneProgress = null,
                     statusMessage = "Cloned ${repo.name}"
+                )
+            }
+        }
+    }
+
+
+    fun openFollowers() {
+        val login = _state.value.user?.login ?: return
+        openPeopleList(login, "followers", "Followers")
+    }
+
+    fun openFollowing() {
+        val login = _state.value.user?.login ?: return
+        openPeopleList(login, "following", "Following")
+    }
+
+    fun closePeopleList() {
+        peopleRelation = null
+        peopleLogin = null
+        peoplePage = 1
+        _state.value = _state.value.copy(
+            peopleListTitle = null,
+            peopleList = emptyList(),
+            peopleListLoading = false,
+            peopleListError = null,
+            peopleListHasMore = false,
+            peopleListLoadingMore = false
+        )
+    }
+
+    private fun openPeopleList(login: String, relation: String, title: String) {
+        peopleRelation = relation
+        peopleLogin = login
+        peoplePage = 1
+        _state.value = _state.value.copy(
+            peopleListTitle = title,
+            peopleList = emptyList(),
+            peopleListLoading = true,
+            peopleListError = null,
+            peopleListHasMore = false,
+            peopleListLoadingMore = false
+        )
+        viewModelScope.launch {
+            val (batch, hasMore, result) = withContext(Dispatchers.IO) {
+                when (relation) {
+                    "followers" -> accountManager.listFollowers(login, page = 1, perPage = 30)
+                    else -> accountManager.listFollowing(login, page = 1, perPage = 30)
+                }
+            }
+            when (result) {
+                is PrOpResult.Success -> {
+                    _state.value = _state.value.copy(
+                        peopleList = batch,
+                        peopleListLoading = false,
+                        peopleListHasMore = hasMore,
+                        peopleListError = null
+                    )
+                }
+                is PrOpResult.AuthRequired -> {
+                    _state.value = _state.value.copy(
+                        peopleListLoading = false,
+                        peopleListError = "Sign in to GitHub to view $title",
+                        authRequired = true
+                    )
+                }
+                else -> {
+                    _state.value = _state.value.copy(
+                        peopleListLoading = false,
+                        peopleListError = (result as? PrOpResult.Error)?.message ?: "Failed to load $title"
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadMorePeople() {
+        val relation = peopleRelation ?: return
+        val login = peopleLogin ?: return
+        if (_state.value.peopleListLoadingMore || !_state.value.peopleListHasMore) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(peopleListLoadingMore = true)
+            val next = peoplePage + 1
+            val (batch, hasMore, result) = withContext(Dispatchers.IO) {
+                when (relation) {
+                    "followers" -> accountManager.listFollowers(login, page = next, perPage = 30)
+                    else -> accountManager.listFollowing(login, page = next, perPage = 30)
+                }
+            }
+            if (result is PrOpResult.Success) {
+                peoplePage = next
+                _state.value = _state.value.copy(
+                    peopleList = _state.value.peopleList + batch,
+                    peopleListHasMore = hasMore,
+                    peopleListLoadingMore = false
+                )
+            } else {
+                _state.value = _state.value.copy(
+                    peopleListLoadingMore = false,
+                    peopleListError = (result as? PrOpResult.Error)?.message
                 )
             }
         }

@@ -121,6 +121,35 @@ class GitHubApi(private val token: String?) {
         (0 until arr.length()).map { i -> arr.getJSONObject(i).toRemoteRepo() }
     }
 
+    /** Followers of [login] (GitHub Users API). [page] is 1-based. */
+    fun listFollowers(login: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        listUserRelation(login, "followers", perPage, page)
+    }
+
+    /** Users that [login] follows. */
+    fun listFollowing(login: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        listUserRelation(login, "following", perPage, page)
+    }
+
+    private fun listUserRelation(
+        login: String,
+        relation: String,
+        perPage: Int,
+        page: Int
+    ): List<GitHubUserSummary> {
+        val path = "/users/${login.trim()}/$relation?per_page=$perPage&page=$page"
+        val arr = request("GET", path) as JSONArray
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            GitHubUserSummary(
+                login = o.getString("login"),
+                avatarUrl = o.optString("avatar_url").takeIf { it.isNotBlank() },
+                htmlUrl = o.optString("html_url", ""),
+                type = o.optString("type", "User")
+            )
+        }
+    }
+
     private fun JSONObject.toGitHubUser(): GitHubUser = GitHubUser(
         login = getString("login"),
         name = if (isNull("name")) null else optString("name").takeIf { it.isNotBlank() },

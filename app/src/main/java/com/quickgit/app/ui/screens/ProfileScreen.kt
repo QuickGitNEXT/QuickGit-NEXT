@@ -61,6 +61,63 @@ fun ProfileScreen(
         if (state.statusMessage != null || state.forkError != null) vm.consumeMessages()
     }
 
+
+    if (state.peopleListTitle != null) {
+        AlertDialog(
+            onDismissRequest = { vm.closePeopleList() },
+            title = { Text(state.peopleListTitle ?: "") },
+            text = {
+                when {
+                    state.peopleListLoading && state.peopleList.isEmpty() -> {
+                        Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
+                            BrandLoadingPlaceholder()
+                        }
+                    }
+                    state.peopleListError != null && state.peopleList.isEmpty() -> {
+                        Text(state.peopleListError ?: "", color = MaterialTheme.colorScheme.error)
+                    }
+                    state.peopleList.isEmpty() -> {
+                        Text("No users to show", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    else -> {
+                        LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                            items(state.peopleList, key = { it.login }) { person ->
+                                ListItem(
+                                    headlineContent = { Text(person.login) },
+                                    leadingContent = {
+                                        UserAvatar(
+                                            avatarUrl = person.avatarUrl,
+                                            login = person.login,
+                                            size = 36.dp
+                                        )
+                                    },
+                                    modifier = Modifier.clickable {
+                                        vm.closePeopleList()
+                                        onOpenUser(person.login)
+                                    }
+                                )
+                            }
+                            if (state.peopleListHasMore) {
+                                item {
+                                    TextButton(
+                                        onClick = { vm.loadMorePeople() },
+                                        enabled = !state.peopleListLoadingMore,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(if (state.peopleListLoadingMore) "Loading…" else "Load more")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.closePeopleList() }) { Text("Close") }
+            }
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
@@ -240,8 +297,16 @@ fun ProfileScreen(
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                 StatChip(user.publicRepos.toString(), "Repos")
                                 if (state.selectedProvider == ProfileProvider.GITHUB) {
-                                    StatChip(user.followers.toString(), "Followers")
-                                    StatChip(user.following.toString(), "Following")
+                                    StatChip(
+                                        user.followers.toString(),
+                                        "Followers",
+                                        onClick = { vm.openFollowers() }
+                                    )
+                                    StatChip(
+                                        user.following.toString(),
+                                        "Following",
+                                        onClick = { vm.openFollowing() }
+                                    )
                                 }
                             }
 
@@ -356,8 +421,9 @@ private fun ProviderSwitcher(
 }
 
 @Composable
-private fun StatChip(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun StatChip(value: String, label: String, onClick: (() -> Unit)? = null) {
+    val mod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = mod.padding(horizontal = 4.dp)) {
         Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

@@ -365,6 +365,35 @@ class GitHubAccountManager(
         return byId.values.sortedByDescending { it.updatedAt }.toList() to PrOpResult.Success
     }
 
+
+    fun listFollowers(
+        login: String,
+        page: Int = 1,
+        perPage: Int = 30
+    ): Triple<List<GitHubApi.GitHubUserSummary>, Boolean, PrOpResult> {
+        if (!isConnected()) {
+            return Triple(emptyList(), false, PrOpResult.AuthRequired(host))
+        }
+        val result = api.listFollowers(login, perPage = perPage, page = page)
+        val batch = result.getOrNull() ?: emptyList()
+        val hasMore = batch.size >= perPage
+        return Triple(batch, hasMore, result.toPrOpResult(host))
+    }
+
+    fun listFollowing(
+        login: String,
+        page: Int = 1,
+        perPage: Int = 30
+    ): Triple<List<GitHubApi.GitHubUserSummary>, Boolean, PrOpResult> {
+        if (!isConnected()) {
+            return Triple(emptyList(), false, PrOpResult.AuthRequired(host))
+        }
+        val result = api.listFollowing(login, perPage = perPage, page = page)
+        val batch = result.getOrNull() ?: emptyList()
+        val hasMore = batch.size >= perPage
+        return Triple(batch, hasMore, result.toPrOpResult(host))
+    }
+
     fun getUserProfile(login: String? = null): Pair<GitHubApi.GitHubUser?, PrOpResult> {
         if (!isConnected()) return null to PrOpResult.AuthRequired(host)
         val result = if (login.isNullOrBlank()) {
