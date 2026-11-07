@@ -270,6 +270,54 @@ class GitHubApi(private val token: String?) {
         String(bytes, StandardCharsets.UTF_8)
     }
 
+    /** Branch names of a repo (API order, up to 3 pages of 100), without cloning. */
+    fun listRepoBranches(owner: String, repo: String): Result<List<String>> = runCatching {
+        val names = mutableListOf<String>()
+        var page = 1
+        while (page <= 3) {
+            val arr = request("GET", "/repos/$owner/$repo/branches?per_page=100&page=$page") as JSONArray
+            for (i in 0 until arr.length()) names += arr.getJSONObject(i).getString("name")
+            if (arr.length() < 100) break
+            page++
+        }
+        names
+    }
+
+    /** One page of commits reachable from [branch] (newest first), without cloning. */
+    fun listRepoCommits(
+        owner: String,
+        repo: String,
+        branch: String,
+        perPage: Int = 30,
+        page: Int = 1
+    ): Result<List<RemoteCommit>> = runCatching {
+        val encoded = java.net.URLEncoder.encode(branch, "UTF-8")
+        val arr = request(
+            "GET",
+            "/repos/$owner/$repo/commits?sha=$encoded&per_page=$perPage&page=$page"
+        ) as JSONArray
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            val commit = o.getJSONObject("commit")
+            val author = commit.optJSONObject("author")
+            RemoteCommit(
+                sha = o.getString("sha"),
+                message = commit.optString("message", ""),
+                authorName = author?.optString("name").orEmpty(),
+                date = author?.optString("date").orEmpty()
+            )
+        }
+    }
+
+    /** A commit in a repo's history, as shown in the remote code browser. */
+    data class RemoteCommit(
+        val sha: String,
+        val message: String,
+        val authorName: String,
+        /** ISO-8601 author date, e.g. 2026-03-14T09:26:53Z. */
+        val date: String
+    )
+
     /** A file or directory entry from the Contents API. */
     data class RemoteEntry(
         val name: String,

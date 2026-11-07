@@ -486,6 +486,29 @@ class GitHubAccountManager(
         return (result.getOrNull() ?: emptyList()) to result.toPrOpResult(host)
     }
 
+    /** Branch names of someone else's (or your own) repo, without cloning it. */
+    fun listRepoBranches(owner: String, repo: String): Pair<List<String>, PrOpResult> {
+        if (!isConnected()) return emptyList<String>() to PrOpResult.AuthRequired(host)
+        val result = api.listRepoBranches(owner, repo)
+        return (result.getOrNull() ?: emptyList()) to result.toPrOpResult(host)
+    }
+
+    /** One page of commit history for [branch]; the Boolean is true when another page may exist. */
+    fun listRepoCommits(
+        owner: String,
+        repo: String,
+        branch: String,
+        page: Int,
+        perPage: Int
+    ): Triple<List<GitHubApi.RemoteCommit>, Boolean, PrOpResult> {
+        if (!isConnected()) {
+            return Triple(emptyList(), false, PrOpResult.AuthRequired(host))
+        }
+        val result = api.listRepoCommits(owner, repo, branch, perPage = perPage, page = page)
+        val batch = result.getOrNull() ?: emptyList()
+        return Triple(batch, batch.size >= perPage, result.toPrOpResult(host))
+    }
+
     /** Fetches a single file's text content at a path/ref, without cloning the repo. */
     fun getFileContent(
         owner: String,

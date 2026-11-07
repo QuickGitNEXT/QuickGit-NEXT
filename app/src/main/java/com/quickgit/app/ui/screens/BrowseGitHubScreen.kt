@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
@@ -37,6 +38,8 @@ fun BrowseGitHubScreen(
     vm: BrowseGitHubViewModel,
     onBack: () -> Unit,
     onCloned: () -> Unit,
+    /** Open a GitHub search result read-only (browse code, switch branch, view old commits). */
+    onOpenCode: (GitHubRemoteRepo) -> Unit = {},
     onNeedsAuth: () -> Unit
 ) {
     val state by vm.state.collectAsState()
@@ -302,7 +305,8 @@ fun BrowseGitHubScreen(
                                 onCloneToFolder = {
                                     pendingFolderAction = { vm.cloneGitHubRepoAfterPickingFolder(repo) }
                                     destinationPicker.launch(null)
-                                }
+                                },
+                                onViewCode = { onOpenCode(repo) }
                             )
                             HorizontalDivider(Modifier.padding(start = 50.dp))
                         }
@@ -412,7 +416,8 @@ private fun GitHubRepoRow(
     cloning: Boolean,
     enabled: Boolean,
     onClone: () -> Unit,
-    onCloneToFolder: () -> Unit
+    onCloneToFolder: () -> Unit,
+    onViewCode: () -> Unit
 ) {
     RemoteRepoRow(
         title = repo.fullName,
@@ -431,7 +436,8 @@ private fun GitHubRepoRow(
         cloning = cloning,
         enabled = enabled,
         onClone = onClone,
-        onCloneToFolder = onCloneToFolder
+        onCloneToFolder = onCloneToFolder,
+        onViewCode = onViewCode
     )
 }
 
@@ -443,7 +449,9 @@ private fun RemoteRepoRow(
     cloning: Boolean,
     enabled: Boolean,
     onClone: () -> Unit,
-    onCloneToFolder: () -> Unit
+    onCloneToFolder: () -> Unit,
+    /** When set, shows a button that opens the repo's code read-only instead of cloning. */
+    onViewCode: (() -> Unit)? = null
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -476,6 +484,11 @@ private fun RemoteRepoRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+        }
+        if (onViewCode != null && !cloning) {
+            IconButton(onClick = onViewCode, enabled = enabled) {
+                Icon(Icons.Default.FolderOpen, "Browse code")
             }
         }
         if (cloning) {

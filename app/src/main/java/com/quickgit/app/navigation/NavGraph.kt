@@ -240,7 +240,10 @@ fun QuickGitNavGraph() {
                 path = path,
                 vm = vm,
                 onBack = { navController.popBackStack() },
-                onOpenFile = { filePath -> navController.navigate(Dest.remoteFile(owner, repo, ref, filePath)) },
+                // Open the file at whatever branch / commit the browser is currently on.
+                onOpenFile = { filePath, currentRef ->
+                    navController.navigate(Dest.remoteFile(owner, repo, currentRef, filePath))
+                },
                 onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } }
             )
         }
@@ -297,6 +300,10 @@ fun QuickGitNavGraph() {
                 onBack = { navController.popBackStack() },
                 onCloned = {
                     navController.popBackStack(Dest.REPO_LIST, inclusive = false)
+                },
+                // Search results can be opened read-only (branch / commit picker included).
+                onOpenCode = { repo ->
+                    navController.navigate(Dest.remoteBrowse(repo.ownerLogin, repo.name, repo.defaultBranch))
                 },
                 onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } }
             )
