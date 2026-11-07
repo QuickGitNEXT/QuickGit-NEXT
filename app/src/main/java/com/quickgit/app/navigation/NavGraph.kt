@@ -540,7 +540,8 @@ fun QuickGitNavGraph() {
         fun navItems(
         includeBrowse: Boolean = true,
         includeUsers: Boolean = true,
-        includeLogs: Boolean = true
+        includeLogs: Boolean = true,
+        includeCreds: Boolean = true
     ): List<FloatingNavItem> {
         val items = mutableListOf(
             FloatingNavItem(
@@ -603,12 +604,14 @@ fun QuickGitNavGraph() {
                 tabNavigate(Dest.LOGS)
             }
         }
-        items += FloatingNavItem(
-            icon = Icons.Default.Key,
-            label = "Creds",
-            selected = isSelected(Dest.CREDENTIALS)
-        ) {
-            tabNavigate(Dest.CREDENTIALS)
+        if (includeCreds) {
+            items += FloatingNavItem(
+                icon = Icons.Default.Key,
+                label = "Creds",
+                selected = isSelected(Dest.CREDENTIALS)
+            ) {
+                tabNavigate(Dest.CREDENTIALS)
+            }
         }
         items += FloatingNavItem(
             icon = Icons.Default.Settings,
@@ -664,7 +667,9 @@ fun QuickGitNavGraph() {
                         items = navItems(
                             includeBrowse = !isLargePhone,
                             includeUsers = !isLargePhone,
-                            includeLogs = !isLargePhone
+                            includeLogs = !isLargePhone,
+                            // Large phones: credentials live under Profile only.
+                            includeCreds = !isLargePhone
                         ),
                         compact = floatingBarCompact,
                         modifier = Modifier.align(Alignment.BottomCenter)
