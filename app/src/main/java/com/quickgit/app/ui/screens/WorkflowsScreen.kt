@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +67,9 @@ fun WorkflowsScreen(
     onNeedsAuth: (String) -> Unit,
     /** When set, Actions hosts a Releases tab (large-phone nav no longer has a separate Releases entry). */
     repoPath: String? = null,
-    showReleasesTab: Boolean = false
+    showReleasesTab: Boolean = false,
+    /** Opens Issues from the Actions top bar (replaces Refresh). */
+    onOpenIssues: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -197,12 +200,13 @@ fun WorkflowsScreen(
                             )
                         },
                         actions = {
-                            FloatingCircleIconButton(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh",
-                                onClick = { vm.refresh() },
-                                enabled = !state.loading
-                            )
+                            if (onOpenIssues != null) {
+                                FloatingCircleIconButton(
+                                    imageVector = Icons.Default.BugReport,
+                                    contentDescription = "Issues",
+                                    onClick = onOpenIssues
+                                )
+                            }
                         }
                     )
                 }
@@ -224,6 +228,11 @@ fun WorkflowsScreen(
         }
     ) { padding ->
         AdaptiveContent(Modifier.padding(padding)) {
+            PullToRefreshBox(
+                isRefreshing = state.loading,
+                onRefresh = { vm.refresh() },
+                modifier = Modifier.fillMaxSize()
+            ) {
             Column(Modifier.fillMaxSize()) {
                 // Workflow filter chips
                 if (state.workflows.isNotEmpty()) {
@@ -298,6 +307,7 @@ fun WorkflowsScreen(
                         LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
                     }
                 }
+            }
             }
         }
     }
