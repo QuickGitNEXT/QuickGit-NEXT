@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,6 +25,7 @@ import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.ProfileProvider
 import com.quickgit.app.viewmodel.ProfileViewModel
@@ -149,12 +149,6 @@ fun ProfileScreen(
                             onClick = onOpenCredentials
                         )
                     }
-                    // Top-right refresh (large-phone profile and general reload)
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        onClick = { vm.load(login) }
-                    )
                 }
             )
         },
@@ -167,16 +161,20 @@ fun ProfileScreen(
             }
         }
     ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = state.loading,
+            onRefresh = { vm.load(login) },
+            modifier = Modifier.padding(padding).fillMaxSize()
+        ) {
         when {
             state.loading && state.user == null -> {
-                Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     BrandLoadingPlaceholder()
                 }
             }
             state.user == null && state.connectedProviders.isEmpty() -> {
                 Column(
                     Modifier
-                        .padding(padding)
                         .fillMaxSize()
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -195,7 +193,7 @@ fun ProfileScreen(
             }
             state.user == null -> {
                 LazyColumn(
-                    Modifier.padding(padding).fillMaxSize(),
+                    Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     if (state.isSelf && state.availableProviders.size > 1) {
@@ -252,7 +250,7 @@ fun ProfileScreen(
             else -> {
                 val user = state.user!!
                 LazyColumn(
-                    Modifier.padding(padding).fillMaxSize(),
+                    Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     if (state.isSelf && state.availableProviders.size > 1) {
@@ -386,6 +384,7 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
         }
     }
 }
