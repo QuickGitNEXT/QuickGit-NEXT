@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 /**
  * Single top-bar action/back control as a floating circular chip.
  * Used when a screen only has a corner icon (no dense action row).
+ *
+ * Filled lighter than the title bar / floating nav (`surfaceContainerHigh`)
+ * so the circles read as secondary chrome on top of those surfaces.
  */
 @Composable
 fun FloatingCircleIconButton(
@@ -28,9 +31,10 @@ fun FloatingCircleIconButton(
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        tonalElevation = 3.dp,
-        shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+        tonalElevation = 1.dp,
+        shadowElevation = 3.dp,
+        // Lighter than title/nav bars (surfaceContainerHigh ~0.96)
+        color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.92f),
         modifier = modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
