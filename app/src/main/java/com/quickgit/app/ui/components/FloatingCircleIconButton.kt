@@ -9,17 +9,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.quickgit.app.ui.theme.GitGreen
 
 /**
  * Single top-bar action/back control as a floating circular chip.
- *
- * Filled lighter than the title bar / floating nav (`surfaceContainerHigh`)
- * by lerping toward white so chips never read as black in dark theme.
+ * Green highlight matches the selected floating navigation item treatment.
  */
 @Composable
 fun FloatingCircleIconButton(
@@ -29,25 +26,19 @@ fun FloatingCircleIconButton(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp
 ) {
-    val chipColor = lerp(
-        MaterialTheme.colorScheme.surfaceContainerHigh,
-        Color.White,
-        0.55f
-    ).copy(alpha = 0.95f)
-
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        tonalElevation = 0.dp,
-        shadowElevation = 2.dp,
-        color = chipColor,
+        tonalElevation = 2.dp,
+        shadowElevation = 4.dp,
+        color = GitGreen.copy(alpha = 0.2f),
         modifier = modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = imageVector,
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = GitGreen
             )
         }
     }

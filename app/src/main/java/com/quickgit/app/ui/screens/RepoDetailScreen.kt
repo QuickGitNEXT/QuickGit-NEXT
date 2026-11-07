@@ -109,13 +109,9 @@ fun RepoDetailScreen(
         Column(Modifier.fillMaxSize()) {
 
             // Back (left) + centered repo name / branch + History (right, icon only)
-            // Full-width top bar, same surface treatment as the floating nav bar.
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
-                    )
                     .padding(top = 4.dp, bottom = 2.dp)
             ) {
                 FloatingCircleIconButton(

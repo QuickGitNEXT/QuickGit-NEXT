@@ -1,5 +1,7 @@
 package com.quickgit.app.ui.components
 
+import com.quickgit.app.ui.theme.GitGreen
+
 import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
@@ -152,21 +154,8 @@ private fun FloatingNavBarItem(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-    // Match FloatingCircleIconButton: lighten surfaceContainerHigh toward white.
-    val selectedBg = if (item.selected) {
-        androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.surfaceContainerHigh,
-            Color.White,
-            0.55f
-        ).copy(alpha = 0.95f)
-    } else {
-        Color.Transparent
-    }
-    val contentColor = if (item.selected) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val selectedBg = if (item.selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
+    val contentColor = if (item.selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
     val shortLabel = when (item.label) {
         "Repos" -> "Repos"
         "Clone" -> "Clone"

@@ -139,9 +139,6 @@ fun RepoListScreen(
             } else {
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle("Repos", logoSize = 48.dp) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
-                ),
                 actions = {
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
                     if (!hideChromeNav) {
