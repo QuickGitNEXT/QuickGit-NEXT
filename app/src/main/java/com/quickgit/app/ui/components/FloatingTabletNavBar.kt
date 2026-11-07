@@ -36,7 +36,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.quickgit.app.ui.theme.GitGreen
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -153,8 +152,17 @@ private fun FloatingNavBarItem(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-    val selectedBg = if (item.selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
-    val contentColor = if (item.selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+    // Match FloatingCircleIconButton fill so selected tabs share the lighter chip look.
+    val selectedBg = if (item.selected) {
+        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.92f)
+    } else {
+        Color.Transparent
+    }
+    val contentColor = if (item.selected) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val shortLabel = when (item.label) {
         "Repos" -> "Repos"
         "Clone" -> "Clone"
