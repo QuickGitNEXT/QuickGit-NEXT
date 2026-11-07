@@ -95,9 +95,9 @@ fun QuickGitNavGraph() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    // Tablets: hide app bottom nav on repo detail (tabs live in-screen at the bottom).
+    // Tablets + large phones: hide app bottom nav on repo detail (in-screen bars take over).
     val onRepoDetailRoute = currentRoute?.startsWith("repo_detail") == true
-    val hideFloatingBarOnRepoDetail = onRepoDetailRoute && useFloatingBar && !isLargePhone
+    val hideFloatingBarOnRepoDetail = onRepoDetailRoute && useFloatingBar
 
     fun isSelected(prefix: String): Boolean {
         return currentRoute == prefix || currentRoute?.startsWith(prefix) == true
@@ -361,7 +361,8 @@ fun QuickGitNavGraph() {
                 repoPath = repoPath,
                 vm = vm,
                 onBack = { navController.popBackStack() },
-                onOpenFile = { filePath -> navController.navigate(Dest.editor(repoPath, filePath)) }
+                onOpenFile = { filePath -> navController.navigate(Dest.editor(repoPath, filePath)) },
+                onOpenHistory = { navController.navigate(Dest.history(repoPath)) }
             )
         }
 

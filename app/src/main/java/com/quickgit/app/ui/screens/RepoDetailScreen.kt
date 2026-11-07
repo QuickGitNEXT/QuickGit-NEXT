@@ -107,8 +107,9 @@ fun RepoDetailScreen(
         val status = state.status
         AdaptiveContent(Modifier.padding(padding)) {
         Column(Modifier.fillMaxSize()) {
+            val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
 
-            // Back (left) + centered repo name / branch + History (right, icon only)
+            // Back (left) · repo title · Issues (large phone) or History (small phone)
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -132,15 +133,22 @@ fun RepoDetailScreen(
                         subtitle = state.branch
                     )
                 }
-                FloatingCircleIconButton(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "History",
-                    onClick = onOpenHistory,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
+                if (largePhone) {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.BugReport,
+                        contentDescription = "Issues",
+                        onClick = onOpenIssues,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
+                } else {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "History",
+                        onClick = onOpenHistory,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
+                }
             }
-
-            val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
             // GitLab: MRs / Issues board / Build. GitHub: PRs / Issues / Actions.
             val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
             val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
@@ -540,11 +548,11 @@ fun RepoDetailScreen(
             }
 
 
+            // Large phone: 4 bottom options (Issues is top-right; History opens from Files).
             val pageNavItems = listOf(
                 SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
                 SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
                 SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
-                SubNavItem(Icons.Default.BugReport, issuesLabel, onOpenIssues),
                 SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
             )
             val gitOpsItems = listOf(
@@ -654,18 +662,13 @@ fun RepoDetailScreen(
             }
 
             if (largePhone) {
-                // Flat workspace (no floating card): page nav → changes → git ops → commit
+                // Flat workspace: changes → git ops → commit; page nav sits at bottom of screen
                 Column(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
                         .imePadding()
                 ) {
-                        RepoSubNavFloatingBar(items = pageNavItems, flat = true)
-                        HorizontalDivider(
-                            Modifier.padding(horizontal = 12.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                        )
                         ConflictBanner()
                         PullToRefreshBox(
                             isRefreshing = state.refreshing,
@@ -746,6 +749,11 @@ fun RepoDetailScreen(
                         }
                     }
                 }
+            }
+
+            // Large phone: 4 sub-pages as bottom floating bar (replaces app nav on this screen).
+            if (largePhone) {
+                RepoSubNavFloatingBar(items = pageNavItems, flat = false)
             }
         }
         } // AdaptiveContent

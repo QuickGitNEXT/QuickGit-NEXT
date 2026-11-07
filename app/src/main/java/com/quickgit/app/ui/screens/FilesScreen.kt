@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
@@ -70,7 +71,9 @@ fun FilesScreen(
     repoPath: String,
     vm: FilesViewModel,
     onBack: (() -> Unit)? = null,
-    onOpenFile: (String) -> Unit
+    onOpenFile: (String) -> Unit,
+    /** When set (e.g. large-phone flow), History opens from Files instead of repo-detail chrome. */
+    onOpenHistory: (() -> Unit)? = null
 ) {
     LaunchedEffect(repoPath) { vm.init(repoPath) }
 
@@ -151,6 +154,13 @@ fun FilesScreen(
                         }
                         IconButton(onClick = { vm.openDir(state.currentDir) }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
+                        if (onOpenHistory != null) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "History",
+                                onClick = onOpenHistory
+                            )
                         }
                     }
                 )
