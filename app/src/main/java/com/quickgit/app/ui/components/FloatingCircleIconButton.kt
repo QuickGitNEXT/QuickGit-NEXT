@@ -12,11 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.quickgit.app.ui.theme.GitGreen
 
 /**
  * Single top-bar action/back control as a floating circular chip.
- * Green highlight matches the selected floating navigation item treatment.
+ * Background matches the floating navigation bar surface.
  */
 @Composable
 fun FloatingCircleIconButton(
@@ -29,16 +28,17 @@ fun FloatingCircleIconButton(
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        tonalElevation = 2.dp,
-        shadowElevation = 4.dp,
-        color = GitGreen.copy(alpha = 0.2f),
+        tonalElevation = 3.dp,
+        shadowElevation = 6.dp,
+        // Same surface treatment as [FloatingTabletNavBar]
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
         modifier = modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = imageVector,
                 contentDescription = contentDescription,
-                tint = GitGreen
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
