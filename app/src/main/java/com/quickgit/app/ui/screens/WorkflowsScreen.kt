@@ -197,9 +197,12 @@ fun WorkflowsScreen(
                             )
                         },
                         actions = {
-                            IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
-                                Icon(Icons.Default.Refresh, "Refresh")
-                            }
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                onClick = { vm.refresh() },
+                                enabled = !state.loading
+                            )
                         }
                     )
                 }
@@ -413,9 +416,12 @@ private fun RunDetailContent(
                             Icon(Icons.Default.Replay, "Re-run")
                         }
                     }
-                    IconButton(onClick = { vm.openRun(run.id) }, enabled = !state.detailLoading) {
-                        Icon(Icons.Default.Refresh, "Refresh")
-                    }
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        onClick = { vm.openRun(run.id) },
+                        enabled = !state.detailLoading
+                    )
                 }
             )
         }
@@ -675,12 +681,12 @@ private fun JobLogContent(
                                 Icon(Icons.Default.PlayArrow, "Watch live")
                             }
                         }
-                        IconButton(
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reload log",
                             onClick = { vm.refreshJobLog() },
                             enabled = !state.logLoading
-                        ) {
-                            Icon(Icons.Default.Refresh, "Reload log")
-                        }
+                        )
                     }
                 }
             )
@@ -1269,7 +1275,9 @@ private fun LiveJobWebContent(
                     IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
                 },
                 actions = {
-                    IconButton(
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Reload",
                         onClick = {
                             val wv = webView
                             if (wv != null) {
@@ -1278,9 +1286,7 @@ private fun LiveJobWebContent(
                             }
                         },
                         enabled = !loading
-                    ) {
-                        Icon(Icons.Default.Refresh, "Reload")
-                    }
+                    )
                 }
             )
         }
