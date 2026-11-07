@@ -47,6 +47,8 @@ import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
 import com.quickgit.app.ui.components.FloatingNavItem
 import com.quickgit.app.ui.components.FloatingTabletNavBar
+import com.quickgit.app.ui.components.RepoDetailBottomBar
+import com.quickgit.app.ui.components.RepoDetailBottomTab
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.screens.*
 import com.quickgit.app.ui.security.isChromebookDevice
@@ -95,9 +97,42 @@ fun QuickGitNavGraph() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    // Tablets + large phones: hide app bottom nav on repo detail (in-screen bars take over).
+    // Tablets: hide app nav on repo detail. Large phones: hide on detail + Files/Branches/PRs/Actions
+    // and show the compact repo sub-nav bar instead.
     val onRepoDetailRoute = currentRoute?.startsWith("repo_detail") == true
-    val hideFloatingBarOnRepoDetail = onRepoDetailRoute && useFloatingBar
+    val largePhoneRepoSubRoute = isLargePhone && currentRoute != null && (
+        currentRoute.startsWith("repo_detail/") ||
+        currentRoute.startsWith("files/") ||
+        currentRoute.startsWith("branches/") ||
+        currentRoute.startsWith("issues/") ||
+        currentRoute.startsWith("pull_requests/") ||
+        currentRoute.startsWith("workflows/")
+    )
+    val hideFloatingBarOnRepoDetail =
+        useFloatingBar && (largePhoneRepoSubRoute || (onRepoDetailRoute && !isLargePhone))
+
+    fun repoPathFromCurrentRoute(): String? {
+        val route = currentRoute ?: return null
+        val prefixes = listOf(
+            "repo_detail/", "files/", "branches/", "issues/",
+            "pull_requests/", "workflows/"
+        )
+        for (prefix in prefixes) {
+            if (route.startsWith(prefix)) {
+                val segment = route.removePrefix(prefix).substringBefore("/").substringBefore("?")
+                return Dest.decode(segment)
+            }
+        }
+        return null
+    }
+
+    fun selectedRepoTab(): RepoDetailBottomTab? = when {
+        currentRoute?.startsWith("files/") == true -> RepoDetailBottomTab.Files
+        currentRoute?.startsWith("branches/") == true -> RepoDetailBottomTab.Branches
+        currentRoute?.startsWith("pull_requests/") == true -> RepoDetailBottomTab.PullRequests
+        currentRoute?.startsWith("workflows/") == true -> RepoDetailBottomTab.Actions
+        else -> null // repo_detail / issues
+    }
 
     fun isSelected(prefix: String): Boolean {
         return currentRoute == prefix || currentRoute?.startsWith(prefix) == true
@@ -654,6 +689,7 @@ fun QuickGitNavGraph() {
                         .fillMaxSize()
                         .padding(
                             bottom = when {
+                                largePhoneRepoSubRoute -> 80.dp
                                 hideFloatingBarOnRepoDetail -> 0.dp
                                 floatingBarCompact -> 80.dp
                                 else -> 88.dp
@@ -675,6 +711,38 @@ fun QuickGitNavGraph() {
                         compact = floatingBarCompact,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
+                } else if (largePhoneRepoSubRoute) {
+                    val path = repoPathFromCurrentRoute()
+                    if (path != null) {
+                        RepoDetailBottomBar(
+                            selected = selectedRepoTab(),
+                            onFiles = {
+                                navController.navigate(Dest.files(path)) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.repoDetail(path)) { inclusive = false }
+                                }
+                            },
+                            onBranches = {
+                                navController.navigate(Dest.branches(path)) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.repoDetail(path)) { inclusive = false }
+                                }
+                            },
+                            onPullRequests = {
+                                navController.navigate(Dest.pullRequests(path)) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.repoDetail(path)) { inclusive = false }
+                                }
+                            },
+                            onActions = {
+                                navController.navigate(Dest.workflows(path)) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.repoDetail(path)) { inclusive = false }
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
+                    }
                 }
             }
         }

@@ -661,8 +661,9 @@ fun RepoDetailScreen(
                 }
             }
 
+            var commitExpanded by remember { mutableStateOf(false) }
             if (largePhone) {
-                // Flat workspace: changes → git ops → commit; page nav sits at bottom of screen
+                // Flat workspace: changes → git ops → collapsible commit
                 Column(
                     Modifier
                         .weight(1f)
@@ -687,26 +688,48 @@ fun RepoDetailScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                         )
                         if (status != null) {
-                            CommitBar(
-                                message = state.commitMessage,
-                                onMessageChange = vm::setCommitMessage,
-                                suggestedMessage = state.suggestedCommitMessage,
-                                onUseSuggested = vm::applySuggestedCommitMessage,
-                                signOff = state.signOff,
-                                onSignOffChange = vm::setSignOff,
-                                amend = state.amend,
-                                onAmendChange = vm::setAmend,
-                                authorName = state.authorName,
-                                authorEmail = state.authorEmail,
-                                coAuthors = state.coAuthors,
-                                onAddCoAuthor = vm::addCoAuthor,
-                                onRemoveCoAuthor = vm::removeCoAuthor,
-                                enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
-                                onCommit = vm::commit,
-                                compactOptions = true,
-                                bottomInset = 0.dp,
-                                embedded = true
-                            )
+                            if (!commitExpanded) {
+                                OutlinedButton(
+                                    onClick = { commitExpanded = true },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        when {
+                                            state.commitMessage.isNotBlank() ->
+                                                "Commit… (${state.commitMessage.take(28)}${if (state.commitMessage.length > 28) "…" else ""})"
+                                            state.amend -> "Expand commit (amend)"
+                                            else -> "Expand commit"
+                                        }
+                                    )
+                                }
+                            } else {
+                                TextButton(
+                                    onClick = { commitExpanded = false },
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                ) { Text("Hide commit") }
+                                CommitBar(
+                                    message = state.commitMessage,
+                                    onMessageChange = vm::setCommitMessage,
+                                    suggestedMessage = state.suggestedCommitMessage,
+                                    onUseSuggested = vm::applySuggestedCommitMessage,
+                                    signOff = state.signOff,
+                                    onSignOffChange = vm::setSignOff,
+                                    amend = state.amend,
+                                    onAmendChange = vm::setAmend,
+                                    authorName = state.authorName,
+                                    authorEmail = state.authorEmail,
+                                    coAuthors = state.coAuthors,
+                                    onAddCoAuthor = vm::addCoAuthor,
+                                    onRemoveCoAuthor = vm::removeCoAuthor,
+                                    enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
+                                    onCommit = vm::commit,
+                                    compactOptions = true,
+                                    bottomInset = 0.dp,
+                                    embedded = true
+                                )
+                            }
                         }
                     }
             } else {
@@ -751,10 +774,6 @@ fun RepoDetailScreen(
                 }
             }
 
-            // Large phone: 4 sub-pages as bottom floating bar (replaces app nav on this screen).
-            if (largePhone) {
-                RepoSubNavFloatingBar(items = pageNavItems, flat = false)
-            }
         }
         } // AdaptiveContent
 
