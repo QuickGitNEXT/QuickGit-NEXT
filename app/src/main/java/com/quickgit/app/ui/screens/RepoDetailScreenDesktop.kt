@@ -678,6 +678,9 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
     val state by vm.state.collectAsState()
     var coName by remember { mutableStateOf("") }
     var coEmail by remember { mutableStateOf("") }
+    // The co-author section stays collapsed until the user taps "Add co-author".
+    // Starts expanded if co-authors are already attached so they are never hidden.
+    var coAuthorOpen by remember { mutableStateOf(state.coAuthors.isNotEmpty()) }
     val status = state.status
     var selected by remember { mutableStateOf(setOf<String>()) }
 
@@ -744,52 +747,57 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
             minLines = 2,
             maxLines = 4
         )
-        Text("Co-authors", style = MaterialTheme.typography.labelLarge)
-        state.coAuthors.forEach { entry ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { vm.removeCoAuthor(entry) }) { Text("Remove") }
+        // Hidden behind a button so the commit area stays compact by default.
+        if (!coAuthorOpen && state.coAuthors.isEmpty()) {
+            TextButton(onClick = { coAuthorOpen = true }) { Text("Add co-author") }
+        } else {
+            Text("Co-authors", style = MaterialTheme.typography.labelLarge)
+            state.coAuthors.forEach { entry ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { vm.removeCoAuthor(entry) }) { Text("Remove") }
+                }
             }
-        }
-        OutlinedTextField(
-            value = coName,
-            onValueChange = { coName = it },
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        OutlinedTextField(
-            value = coEmail,
-            onValueChange = { coEmail = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        if (state.savedContributors.isNotEmpty()) {
-            var savedMenuOpen by remember { mutableStateOf(false) }
-            Box {
-                OutlinedButton(onClick = { savedMenuOpen = true }) { Text("Saved contributors") }
-                DropdownMenu(expanded = savedMenuOpen, onDismissRequest = { savedMenuOpen = false }) {
-                    state.savedContributors.forEach { entry: String ->
-                        DropdownMenuItem(
-                            text = { Text(entry) },
-                            onClick = {
-                                vm.addCoAuthorEntry(entry, save = false)
-                                savedMenuOpen = false
-                            }
-                        )
+            OutlinedTextField(
+                value = coName,
+                onValueChange = { coName = it },
+                label = { Text("Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = coEmail,
+                onValueChange = { coEmail = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            if (state.savedContributors.isNotEmpty()) {
+                var savedMenuOpen by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(onClick = { savedMenuOpen = true }) { Text("Saved contributors") }
+                    DropdownMenu(expanded = savedMenuOpen, onDismissRequest = { savedMenuOpen = false }) {
+                        state.savedContributors.forEach { entry: String ->
+                            DropdownMenuItem(
+                                text = { Text(entry) },
+                                onClick = {
+                                    vm.addCoAuthorEntry(entry, save = false)
+                                    savedMenuOpen = false
+                                }
+                            )
+                        }
                     }
                 }
             }
+            TextButton(
+                onClick = {
+                    vm.addCoAuthor(coName, coEmail, save = true)
+                    coName = ""
+                    coEmail = ""
+                },
+                enabled = coEmail.isNotBlank()
+            ) { Text("Add & save co-author") }
         }
-        TextButton(
-            onClick = {
-                vm.addCoAuthor(coName, coEmail, save = true)
-                coName = ""
-                coEmail = ""
-            },
-            enabled = coEmail.isNotBlank()
-        ) { Text("Add & save co-author") }
         Button(
             onClick = vm::commit,
             enabled = state.commitMessage.isNotBlank() && staged.isNotEmpty() && !state.busy,

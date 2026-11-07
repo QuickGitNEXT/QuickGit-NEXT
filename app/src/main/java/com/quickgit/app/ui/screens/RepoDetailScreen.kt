@@ -939,6 +939,9 @@ private fun CommitBar(
     var optionsOpen by remember { mutableStateOf(false) }
     var coName by remember { mutableStateOf("") }
     var coEmail by remember { mutableStateOf("") }
+    // The co-author section stays collapsed until the user taps "Add co-author".
+    // Starts expanded if co-authors are already attached so they are never hidden.
+    var coAuthorOpen by remember { mutableStateOf(coAuthors.isNotEmpty()) }
     val body: @Composable () -> Unit = {
         val scroll = rememberScrollState()
         Column(
@@ -975,77 +978,85 @@ private fun CommitBar(
                 }
             }
 
-            // Co-authors → Co-authored-by trailers; dropdown of saved contributors
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Co-authors",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (coAuthors.isNotEmpty()) {
-                coAuthors.forEach { entry ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = { onRemoveCoAuthor(entry) }) { Text("Remove") }
-                    }
-                }
-            }
-            if (savedContributors.isNotEmpty()) {
-                var savedMenuOpen by remember { mutableStateOf(false) }
-                Box(Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { savedMenuOpen = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Saved contributors")
-                    }
-                    DropdownMenu(
-                        expanded = savedMenuOpen,
-                        onDismissRequest = { savedMenuOpen = false }
-                    ) {
-                        savedContributors.forEach { entry ->
-                            DropdownMenuItem(
-                                text = { Text(entry) },
-                                onClick = {
-                                    onAddCoAuthorEntry(entry)
-                                    savedMenuOpen = false
-                                },
-                                trailingIcon = {
-                                    TextButton(onClick = {
-                                        onRemoveSavedContributor(entry)
-                                    }) { Text("Delete") }
-                                }
-                            )
+            // Co-authors → Co-authored-by trailers; dropdown of saved contributors.
+            // Hidden behind a button so the commit bar stays compact by default.
+            if (!coAuthorOpen && coAuthors.isEmpty()) {
+                TextButton(
+                    onClick = { coAuthorOpen = true },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) { Text("Add co-author") }
+            } else {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Co-authors",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (coAuthors.isNotEmpty()) {
+                    coAuthors.forEach { entry ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { onRemoveCoAuthor(entry) }) { Text("Remove") }
                         }
                     }
                 }
+                if (savedContributors.isNotEmpty()) {
+                    var savedMenuOpen by remember { mutableStateOf(false) }
+                    Box(Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { savedMenuOpen = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Saved contributors")
+                        }
+                        DropdownMenu(
+                            expanded = savedMenuOpen,
+                            onDismissRequest = { savedMenuOpen = false }
+                        ) {
+                            savedContributors.forEach { entry ->
+                                DropdownMenuItem(
+                                    text = { Text(entry) },
+                                    onClick = {
+                                        onAddCoAuthorEntry(entry)
+                                        savedMenuOpen = false
+                                    },
+                                    trailingIcon = {
+                                        TextButton(onClick = {
+                                            onRemoveSavedContributor(entry)
+                                        }) { Text("Delete") }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = coName,
+                    onValueChange = { coName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = coEmail,
+                    onValueChange = { coEmail = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                TextButton(
+                    onClick = {
+                        onAddCoAuthor(coName, coEmail)
+                        coName = ""
+                        coEmail = ""
+                    },
+                    enabled = coEmail.isNotBlank()
+                ) { Text("Add & save co-author") }
             }
-            OutlinedTextField(
-                value = coName,
-                onValueChange = { coName = it },
-                label = { Text("Name") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(6.dp))
-            OutlinedTextField(
-                value = coEmail,
-                onValueChange = { coEmail = it },
-                label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            TextButton(
-                onClick = {
-                    onAddCoAuthor(coName, coEmail)
-                    coName = ""
-                    coEmail = ""
-                },
-                enabled = coEmail.isNotBlank()
-            ) { Text("Add & save co-author") }
             if (!compactOptions) {
                 Spacer(Modifier.height(4.dp))
                 Row(
