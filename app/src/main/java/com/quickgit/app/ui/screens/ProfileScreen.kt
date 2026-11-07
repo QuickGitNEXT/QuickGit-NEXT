@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,7 +42,7 @@ fun ProfileScreen(
     onNeedsAuth: () -> Unit,
     /** Opens the credentials manager (merged into Profile on Chromebook / desktop chrome). */
     onOpenCredentials: (() -> Unit)? = null,
-    /** When set (large phones), shows Search people in the top bar. */
+    /** When set (large phones), shows Search people as a bottom FAB. */
     onSearchPeople: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
@@ -91,13 +92,22 @@ fun ProfileScreen(
                             onClick = onOpenCredentials
                         )
                     }
-                    if (onSearchPeople != null && state.isSelf) {
-                        IconButton(onClick = onSearchPeople) {
-                            Icon(Icons.Default.Search, contentDescription = "Search people")
-                        }
-                    }
+                    // Top-right refresh (large-phone profile and general reload)
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        onClick = { vm.load(login) }
+                    )
                 }
             )
+        },
+        floatingActionButton = {
+            // Large phones: Search people sits as a bottom FAB (same corner as Repos +).
+            if (onSearchPeople != null && state.isSelf) {
+                FloatingActionButton(onClick = onSearchPeople) {
+                    Icon(Icons.Default.Search, contentDescription = "Search people")
+                }
+            }
         }
     ) { padding ->
         when {
