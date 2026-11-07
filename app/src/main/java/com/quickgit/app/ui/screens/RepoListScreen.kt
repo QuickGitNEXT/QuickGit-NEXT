@@ -71,6 +71,10 @@ fun RepoListScreen(
     isChromebookLayout: Boolean = false
 ) {
     val hideChromeNav = isDesktopLayout || useFloatingNav || isChromebookLayout
+    // Large phones / tablets with the floating bottom navbar: "New repository" and
+    // "Import folder" live in floating circles at the top-left / top-right (same chrome
+    // as the other screens) instead of in the bottom-right "+" FAB menu.
+    val floatingTopActions = useFloatingNav && !isDesktopLayout && !isChromebookLayout
     val repos by vm.repos.collectAsState()
     val loading by vm.loading.collectAsState()
     val account by vm.account.collectAsState()
@@ -139,7 +143,31 @@ fun RepoListScreen(
             } else {
             CenterAlignedTopAppBar(
                 title = { AppScreenTitle("Repos", logoSize = 48.dp) },
+                navigationIcon = {
+                    if (floatingTopActions) {
+                        // Top-left: create a new repository (same flow the FAB used)
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Create,
+                            contentDescription = "New repository",
+                            onClick = {
+                                if (vm.canCreateRemoteRepo()) {
+                                    showCreateRepoDialog = true
+                                } else {
+                                    onNeedsAuth()
+                                }
+                            }
+                        )
+                    }
+                },
                 actions = {
+                    // Top-right: import an existing folder from device storage
+                    if (floatingTopActions) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = "Import folder",
+                            onClick = { importFolderLauncher.launch(null) }
+                        )
+                    }
                     // Profile + Search — hidden when rail or floating navbar owns those destinations.
                     if (!hideChromeNav) {
                         Box {
@@ -263,7 +291,8 @@ fun RepoListScreen(
         floatingActionButton = {
             // Desktop rail: no FAB. Floating navbar phones: keep local-only actions
             // (create / import) — Clone & Browse live on the bottom bar.
-            if (!isDesktopLayout) {
+            // Also hidden when floatingTopActions owns create / import (see top bar).
+            if (!isDesktopLayout && !floatingTopActions) {
                 Column(horizontalAlignment = Alignment.End) {
                     AnimatedVisibility(
                         visible = fabExpanded,
@@ -353,10 +382,14 @@ fun RepoListScreen(
                             Text("No repositories yet", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                if (isDesktopLayout)
-                                    "Create a new one, clone a URL, or browse your account from the side rail."
-                                else
-                                    "Tap + to clone a URL, browse GitHub/GitLab, or import an existing folder.",
+                                when {
+                                    isDesktopLayout ->
+                                        "Create a new one, clone a URL, or browse your account from the side rail."
+                                    floatingTopActions ->
+                                        "Use the buttons at the top to create a new repository or import an existing folder. Clone and Browse are on the bottom bar."
+                                    else ->
+                                        "Tap + to clone a URL, browse GitHub/GitLab, or import an existing folder."
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
