@@ -137,24 +137,14 @@ fun FilesScreen(
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            onClick = onBack
+                            // Inside a folder, Back goes up one directory (same as the system
+                            // back gesture / BackHandler above); at the repo root it leaves Files.
+                            onClick = {
+                                if (state.currentDir.isNotBlank()) vm.goUp() else onBack()
+                            }
                         )
                     },
                     actions = {
-                        IconButton(
-                            onClick = vm::goUp,
-                            enabled = state.currentDir.isNotBlank()
-                        ) {
-                            Text(
-                                "…",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (state.currentDir.isNotBlank())
-                                    MaterialTheme.colorScheme.onSurface
-                                else
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            )
-                        }
                         // Large phones: refresh via pull-to-refresh; hide the top action.
                         if (!largePhone) {
                             IconButton(onClick = { vm.openDir(state.currentDir) }) {
