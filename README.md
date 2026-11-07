@@ -26,7 +26,7 @@ Built with **Kotlin**, **Jetpack Compose** (Android), and **Compose Multiplatfor
 ### Repositories & local git
 - **Repo list** — local clones with branch and dirty-state indicators; import a folder; create a local repo; pull-to-refresh
 - **Clone** — HTTPS (PAT) or SSH (imported private key), live progress and notifications; clone from connected accounts or paste a URL; **Browse my repos** for GitHub/GitLab/Gerrit
-- **Changes / staging** — staged, unstaged, untracked; stage / unstage / discard (per file or bulk); commit message, amend, sign-off
+- **Changes / staging** — staged, unstaged, untracked; stage / unstage / discard (per file or bulk); commit message, amend, sign-off; **co-authors** (`Co-authored-by` trailers)
 - **Push / Pull / Fetch** — including rebase variants, LFS-aware options, force-with-lease / force; auth failures route to Credentials
 - **Diff viewer** — colorized unified diff for working tree, staged, or historical commits
 - **History** — commit log with author, SHA, date; browse tree at commit; cherry-pick / revert / reset flows where supported

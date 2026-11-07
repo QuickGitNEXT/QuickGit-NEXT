@@ -1567,7 +1567,8 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         authorName: String,
         authorEmail: String,
         signOff: Boolean = isSignOffEnabled(),
-        amend: Boolean = false
+        amend: Boolean = false,
+        coAuthors: List<String> = emptyList()
     ): GitOpResult =
         withRepoLock(path) {
             // Keep local user.name/email aligned so any nested JGit path cannot use "root".
@@ -1575,7 +1576,8 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
             val shouldSign = isGpgSigningEnabled() && credentialStore.hasGpgKey()
             val gpgKey = if (shouldSign) credentialStore.getGpgPrivateKey() else null
             val gpgPass = if (shouldSign) credentialStore.getGpgPassphrase() else null
-            val fullMessage = if (signOff) appendSignOff(message, authorName, authorEmail) else message
+            var fullMessage = if (signOff) appendSignOff(message, authorName, authorEmail) else message
+            fullMessage = appendCoAuthors(fullMessage, coAuthors)
             openGit(path).use { git ->
                 if (amend) {
                     val head = git.repository.resolve("HEAD")

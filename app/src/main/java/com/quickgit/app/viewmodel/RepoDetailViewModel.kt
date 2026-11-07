@@ -33,6 +33,11 @@ data class RepoDetailUiState(
     val authorEmail: String = "",
     /** Append Signed-off-by trailer on commit (git commit -s). */
     val signOff: Boolean = false,
+    /**
+     * Extra commit contributors as `Name <email>` (or bare email) strings.
+     * Appended as Co-authored-by trailers on commit.
+     */
+    val coAuthors: List<String> = emptyList(),
     /** Amend the previous commit (git commit --amend). */
     val amend: Boolean = false,
     val remoteUrl: String? = null,
@@ -285,6 +290,20 @@ class RepoDetailViewModel(
         _state.value = _state.value.copy(signOff = enabled)
     }
 
+    fun addCoAuthor(name: String, email: String) {
+        val n = name.trim()
+        val e = email.trim()
+        if (e.isEmpty()) return
+        val entry = if (n.isEmpty()) e else "$n <$e>"
+        val current = _state.value.coAuthors
+        if (current.any { it.equals(entry, ignoreCase = true) }) return
+        _state.value = _state.value.copy(coAuthors = current + entry)
+    }
+
+    fun removeCoAuthor(entry: String) {
+        _state.value = _state.value.copy(coAuthors = _state.value.coAuthors.filterNot { it == entry })
+    }
+
     fun commit() {
         val msg = _state.value.commitMessage
         if (msg.isBlank()) return
@@ -297,7 +316,8 @@ class RepoDetailViewModel(
                     _state.value.authorName,
                     _state.value.authorEmail,
                     signOff = _state.value.signOff,
-                    amend = _state.value.amend
+                    amend = _state.value.amend,
+                    coAuthors = _state.value.coAuthors
                 )
             }
             if (result is GitOpResult.Success) {
@@ -306,7 +326,8 @@ class RepoDetailViewModel(
                     busy = false, busyLabel = "",
                     lastResult = result,
                     commitMessage = "",
-                    amend = false
+                    amend = false,
+                    coAuthors = emptyList()
                 )
                 // Commit clears the index; refresh so staged list empties without waiting for a later stage/push.
                 loadStatus(showRefreshing = false)

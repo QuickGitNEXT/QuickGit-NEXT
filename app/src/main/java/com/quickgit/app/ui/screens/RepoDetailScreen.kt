@@ -695,6 +695,9 @@ fun RepoDetailScreen(
                                 onAmendChange = vm::setAmend,
                                 authorName = state.authorName,
                                 authorEmail = state.authorEmail,
+                                coAuthors = state.coAuthors,
+                                onAddCoAuthor = vm::addCoAuthor,
+                                onRemoveCoAuthor = vm::removeCoAuthor,
                                 enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
                                 onCommit = vm::commit,
                                 compactOptions = true,
@@ -732,6 +735,9 @@ fun RepoDetailScreen(
                                 onAmendChange = vm::setAmend,
                                 authorName = state.authorName,
                                 authorEmail = state.authorEmail,
+                                coAuthors = state.coAuthors,
+                                onAddCoAuthor = vm::addCoAuthor,
+                                onRemoveCoAuthor = vm::removeCoAuthor,
                                 enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
                                 onCommit = vm::commit,
                                 compactOptions = false,
@@ -878,6 +884,9 @@ private fun CommitBar(
     onAmendChange: (Boolean) -> Unit = {},
     authorName: String,
     authorEmail: String,
+    coAuthors: List<String> = emptyList(),
+    onAddCoAuthor: (name: String, email: String) -> Unit = { _, _ -> },
+    onRemoveCoAuthor: (String) -> Unit = {},
     enabled: Boolean,
     onCommit: () -> Unit,
     /** Large phones: fold amend / sign-off into the commit control. */
@@ -886,6 +895,8 @@ private fun CommitBar(
     embedded: Boolean = false
 ) {
     var optionsOpen by remember { mutableStateOf(false) }
+    var coName by remember { mutableStateOf("") }
+    var coEmail by remember { mutableStateOf("") }
     val body: @Composable () -> Unit = {
         Column(
             Modifier.padding(
@@ -918,6 +929,53 @@ private fun CommitBar(
                     Text("Replace with suggested message")
                 }
             }
+
+            // Co-authors → Co-authored-by trailers on the commit message
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Co-authors",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (coAuthors.isNotEmpty()) {
+                coAuthors.forEach { entry ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { onRemoveCoAuthor(entry) }) { Text("Remove") }
+                    }
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = coName,
+                    onValueChange = { coName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = coEmail,
+                    onValueChange = { coEmail = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+            }
+            TextButton(
+                onClick = {
+                    onAddCoAuthor(coName, coEmail)
+                    coName = ""
+                    coEmail = ""
+                },
+                enabled = coEmail.isNotBlank()
+            ) { Text("Add co-author") }
             if (!compactOptions) {
                 Spacer(Modifier.height(4.dp))
                 Row(

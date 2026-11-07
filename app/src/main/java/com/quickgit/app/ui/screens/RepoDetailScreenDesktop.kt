@@ -676,6 +676,8 @@ fun RepoDetailScreenDesktop(
 @Composable
 private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
     val state by vm.state.collectAsState()
+    var coName by remember { mutableStateOf("") }
+    var coEmail by remember { mutableStateOf("") }
     val status = state.status
     var selected by remember { mutableStateOf(setOf<String>()) }
 
@@ -742,6 +744,37 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
             minLines = 2,
             maxLines = 4
         )
+        Text("Co-authors", style = MaterialTheme.typography.labelLarge)
+        state.coAuthors.forEach { entry ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(entry, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { vm.removeCoAuthor(entry) }) { Text("Remove") }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = coName,
+                onValueChange = { coName = it },
+                label = { Text("Name") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = coEmail,
+                onValueChange = { coEmail = it },
+                label = { Text("Email") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+        }
+        TextButton(
+            onClick = {
+                vm.addCoAuthor(coName, coEmail)
+                coName = ""
+                coEmail = ""
+            },
+            enabled = coEmail.isNotBlank()
+        ) { Text("Add co-author") }
         Button(
             onClick = vm::commit,
             enabled = state.commitMessage.isNotBlank() && staged.isNotEmpty() && !state.busy,
