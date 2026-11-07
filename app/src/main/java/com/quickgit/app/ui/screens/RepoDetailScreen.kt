@@ -709,6 +709,11 @@ fun RepoDetailScreen(
                                     onClick = { commitExpanded = false },
                                     modifier = Modifier.padding(horizontal = 8.dp)
                                 ) { Text("Hide commit") }
+                                Column(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 360.dp)
+                                ) {
                                 CommitBar(
                                     message = state.commitMessage,
                                     onMessageChange = vm::setCommitMessage,
@@ -721,14 +726,18 @@ fun RepoDetailScreen(
                                     authorName = state.authorName,
                                     authorEmail = state.authorEmail,
                                     coAuthors = state.coAuthors,
+                                    savedContributors = state.savedContributors,
                                     onAddCoAuthor = vm::addCoAuthor,
+                                    onAddCoAuthorEntry = { vm.addCoAuthorEntry(it, save = false) },
                                     onRemoveCoAuthor = vm::removeCoAuthor,
+                                    onRemoveSavedContributor = vm::removeSavedContributor,
                                     enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
                                     onCommit = vm::commit,
                                     compactOptions = true,
                                     bottomInset = 0.dp,
                                     embedded = true
                                 )
+                                }
                             }
                         }
                     }
@@ -762,8 +771,11 @@ fun RepoDetailScreen(
                                 authorName = state.authorName,
                                 authorEmail = state.authorEmail,
                                 coAuthors = state.coAuthors,
+                                savedContributors = state.savedContributors,
                                 onAddCoAuthor = vm::addCoAuthor,
+                                onAddCoAuthorEntry = { vm.addCoAuthorEntry(it, save = false) },
                                 onRemoveCoAuthor = vm::removeCoAuthor,
+                                onRemoveSavedContributor = vm::removeSavedContributor,
                                 enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
                                 onCommit = vm::commit,
                                 compactOptions = false,
@@ -912,8 +924,11 @@ private fun CommitBar(
     authorName: String,
     authorEmail: String,
     coAuthors: List<String> = emptyList(),
+    savedContributors: List<String> = emptyList(),
     onAddCoAuthor: (name: String, email: String) -> Unit = { _, _ -> },
+    onAddCoAuthorEntry: (String) -> Unit = {},
     onRemoveCoAuthor: (String) -> Unit = {},
+    onRemoveSavedContributor: (String) -> Unit = {},
     enabled: Boolean,
     onCommit: () -> Unit,
     /** Large phones: fold amend / sign-off into the commit control. */
@@ -925,13 +940,16 @@ private fun CommitBar(
     var coName by remember { mutableStateOf("") }
     var coEmail by remember { mutableStateOf("") }
     val body: @Composable () -> Unit = {
+        val scroll = rememberScrollState()
         Column(
-            Modifier.padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = if (compactOptions) 8.dp else 16.dp,
-                bottom = if (compactOptions) 10.dp else 16.dp
-            )
+            Modifier
+                .verticalScroll(scroll)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = if (compactOptions) 8.dp else 16.dp,
+                    bottom = if (compactOptions) 10.dp else 16.dp
+                )
         ) {
             OutlinedTextField(
                 value = message,
@@ -957,7 +975,7 @@ private fun CommitBar(
                 }
             }
 
-            // Co-authors → Co-authored-by trailers on the commit message
+            // Co-authors → Co-authored-by trailers; dropdown of saved contributors
             Spacer(Modifier.height(8.dp))
             Text(
                 "Co-authors",
@@ -975,26 +993,60 @@ private fun CommitBar(
                     }
                 }
             }
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = coName,
-                    onValueChange = { coName = it },
-                    label = { Text("Name") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = coEmail,
-                    onValueChange = { coEmail = it },
-                    label = { Text("Email") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
+            if (savedContributors.isNotEmpty()) {
+                var savedMenuOpen by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = savedMenuOpen,
+                    onExpandedChange = { savedMenuOpen = it }
+                ) {
+                    OutlinedTextField(
+                        value = "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Saved contributors") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = savedMenuOpen) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Select…") }
+                    )
+                    ExposedDropdownMenu(
+                        expanded = savedMenuOpen,
+                        onDismissRequest = { savedMenuOpen = false }
+                    ) {
+                        savedContributors.forEach { entry ->
+                            DropdownMenuItem(
+                                text = { Text(entry) },
+                                onClick = {
+                                    onAddCoAuthorEntry(entry)
+                                    savedMenuOpen = false
+                                },
+                                trailingIcon = {
+                                    TextButton(onClick = {
+                                        onRemoveSavedContributor(entry)
+                                    }) { Text("Delete") }
+                                }
+                            )
+                        }
+                    }
+                }
             }
+            OutlinedTextField(
+                value = coName,
+                onValueChange = { coName = it },
+                label = { Text("Name") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = coEmail,
+                onValueChange = { coEmail = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
             TextButton(
                 onClick = {
                     onAddCoAuthor(coName, coEmail)
@@ -1002,7 +1054,7 @@ private fun CommitBar(
                     coEmail = ""
                 },
                 enabled = coEmail.isNotBlank()
-            ) { Text("Add co-author") }
+            ) { Text("Add & save co-author") }
             if (!compactOptions) {
                 Spacer(Modifier.height(4.dp))
                 Row(
