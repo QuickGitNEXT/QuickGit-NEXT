@@ -69,9 +69,8 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
                         )
                     },
                     actions = {
-                        IconButton(onClick = { showAddRemote = true }) {
-                            Icon(Icons.Default.CloudUpload, "Add remote")
-                        }
+                        // "Add remote" is no longer in the top bar; it lives in the
+                        // Remotes list below ("Add remote (e.g. a fork)").
                         IconButton(onClick = { showCreate = true }) {
                             Icon(Icons.Default.Add, "New branch")
                         }
