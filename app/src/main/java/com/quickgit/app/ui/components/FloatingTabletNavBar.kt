@@ -152,9 +152,13 @@ private fun FloatingNavBarItem(
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
-    // Match FloatingCircleIconButton fill so selected tabs share the lighter chip look.
+    // Match FloatingCircleIconButton: lighten surfaceContainerHigh toward white.
     val selectedBg = if (item.selected) {
-        MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.92f)
+        androidx.compose.ui.graphics.lerp(
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+            Color.White,
+            0.55f
+        ).copy(alpha = 0.95f)
     } else {
         Color.Transparent
     }
