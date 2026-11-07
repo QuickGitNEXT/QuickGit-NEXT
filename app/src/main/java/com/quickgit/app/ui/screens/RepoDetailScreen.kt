@@ -995,23 +995,14 @@ private fun CommitBar(
             }
             if (savedContributors.isNotEmpty()) {
                 var savedMenuOpen by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = savedMenuOpen,
-                    onExpandedChange = { savedMenuOpen = it }
-                ) {
-                    OutlinedTextField(
-                        value = "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Saved contributors") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = savedMenuOpen) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text("Select…") }
-                    )
-                    ExposedDropdownMenu(
+                Box(Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { savedMenuOpen = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Saved contributors")
+                    }
+                    DropdownMenu(
                         expanded = savedMenuOpen,
                         onDismissRequest = { savedMenuOpen = false }
                     ) {

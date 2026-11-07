@@ -770,7 +770,7 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
             Box {
                 OutlinedButton(onClick = { savedMenuOpen = true }) { Text("Saved contributors") }
                 DropdownMenu(expanded = savedMenuOpen, onDismissRequest = { savedMenuOpen = false }) {
-                    state.savedContributors.forEach { entry ->
+                    state.savedContributors.forEach { entry: String ->
                         DropdownMenuItem(
                             text = { Text(entry) },
                             onClick = {

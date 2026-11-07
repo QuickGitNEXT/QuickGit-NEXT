@@ -38,6 +38,8 @@ data class RepoDetailUiState(
      * Appended as Co-authored-by trailers on commit.
      */
     val coAuthors: List<String> = emptyList(),
+    /** Persisted co-authors available in the dropdown. */
+    val savedContributors: List<String> = emptyList(),
     /** Amend the previous commit (git commit --amend). */
     val amend: Boolean = false,
     val remoteUrl: String? = null,
@@ -68,7 +70,8 @@ class RepoDetailViewModel(
             authorName = repoManager.getCommitAuthorName(),
             authorEmail = repoManager.getCommitAuthorEmail(),
             signOff = repoManager.isSignOffEnabled(),
-            commitMessage = draft
+            commitMessage = draft,
+            savedContributors = repoManager.getSavedContributors()
         )
         loadStatus(showRefreshing = true)
     }
@@ -290,18 +293,34 @@ class RepoDetailViewModel(
         _state.value = _state.value.copy(signOff = enabled)
     }
 
-    fun addCoAuthor(name: String, email: String) {
+    fun addCoAuthor(name: String, email: String, save: Boolean = true) {
         val n = name.trim()
         val e = email.trim()
         if (e.isEmpty()) return
         val entry = if (n.isEmpty()) e else "$n <$e>"
+        addCoAuthorEntry(entry, save = save)
+    }
+
+    fun addCoAuthorEntry(entry: String, save: Boolean = false) {
+        val e = entry.trim()
+        if (e.isEmpty()) return
         val current = _state.value.coAuthors
-        if (current.any { it.equals(entry, ignoreCase = true) }) return
-        _state.value = _state.value.copy(coAuthors = current + entry)
+        if (!current.any { it.equals(e, ignoreCase = true) }) {
+            _state.value = _state.value.copy(coAuthors = current + e)
+        }
+        if (save) {
+            repoManager.saveContributor(e)
+            _state.value = _state.value.copy(savedContributors = repoManager.getSavedContributors())
+        }
     }
 
     fun removeCoAuthor(entry: String) {
         _state.value = _state.value.copy(coAuthors = _state.value.coAuthors.filterNot { it == entry })
+    }
+
+    fun removeSavedContributor(entry: String) {
+        repoManager.removeSavedContributor(entry)
+        _state.value = _state.value.copy(savedContributors = repoManager.getSavedContributors())
     }
 
     fun commit() {
