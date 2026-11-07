@@ -1748,6 +1748,39 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         return if (trimmed.isEmpty()) trailer else "$trimmed\n\n$trailer"
     }
 
+
+    /**
+     * Appends GitHub-style `Co-authored-by: Name <email>` trailers for each co-author.
+     * Entries may be "Name <email>" or plain "email@domain" (name defaults to local-part).
+     */
+    private fun appendCoAuthors(message: String, coAuthors: List<String>): String {
+        if (coAuthors.isEmpty()) return message
+        var result = message.trimEnd()
+        for (raw in coAuthors) {
+            val trailer = formatCoAuthorTrailer(raw) ?: continue
+            if (result.lines().any { it.trim().equals(trailer, ignoreCase = true) }) continue
+            result = if (result.isEmpty()) trailer else "$result\n\n$trailer"
+        }
+        return result
+    }
+
+    private fun formatCoAuthorTrailer(raw: String): String? {
+        val s = raw.trim()
+        if (s.isEmpty()) return null
+        val angle = Regex("""^(.+?)\s*<([^>]+)>\s*$""").matchEntire(s)
+        if (angle != null) {
+            val name = angle.groupValues[1].trim()
+            val email = angle.groupValues[2].trim()
+            if (name.isEmpty() || email.isEmpty()) return null
+            return "Co-authored-by: $name <$email>"
+        }
+        if ("@" in s && " " !in s) {
+            val name = s.substringBefore("@").ifBlank { s }
+            return "Co-authored-by: $name <$s>"
+        }
+        return null
+    }
+
     // ---------------- Push / Pull / Fetch ----------------
 
     /**
