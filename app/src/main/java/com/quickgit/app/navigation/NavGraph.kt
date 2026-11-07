@@ -303,9 +303,10 @@ fun QuickGitNavGraph() {
         }
 
         composable(Dest.SETTINGS) {
-            val vm: SettingsViewModel = viewModel(factory = factory)
+            // Reuse activity-scoped SettingsViewModel (same as Credentials) so opening
+            // Settings does not re-run encrypted-store init and freeze the UI ~2s.
             SettingsScreen(
-                vm = vm,
+                vm = settingsVm,
                 onBack = { navController.popBackStack() },
                 onOpenLogs = if (BuildConfig.SHOW_LOGS_UI) {
                     { navController.navigate(Dest.LOGS) { launchSingleTop = true } }

@@ -78,20 +78,22 @@ class SettingsViewModel(
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     init {
-        // Fast, local-only seed so Credentials / Settings paint immediately.
-        // Network verification (GitHub/GitLab API) runs in the background afterward.
-        refreshDesktopLayout()
-        refreshManagedAccountsFast()
-        loadForHost("github.com")
-        refreshSsh()
-        refreshGpg()
-        refreshReposRoot()
-        refreshAuthor()
-        refreshAppVersion()
-        refreshGerritLocal()
-        // Network — do not block first frame
-        verifyGitHubIfConnected()
-        verifyGitLabIfConnected()
+        // Paint from local store on a background thread so the first Settings /
+        // Credentials frame is not blocked by EncryptedSharedPreferences / migrate.
+        viewModelScope.launch(Dispatchers.IO) {
+            refreshDesktopLayout()
+            refreshManagedAccountsFast()
+            loadForHost("github.com")
+            refreshSsh()
+            refreshGpg()
+            refreshReposRoot()
+            refreshAuthor()
+            refreshAppVersion()
+            refreshGerritLocal()
+            // Network — still off the UI thread
+            verifyGitHubIfConnected()
+            verifyGitLabIfConnected()
+        }
     }
 
     /** Seed managed-account list from encrypted store without network. */
