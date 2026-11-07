@@ -112,18 +112,11 @@ fun QuickGitNavGraph() {
         useFloatingBar && (largePhoneRepoSubRoute || (onRepoDetailRoute && !isLargePhone))
 
     fun repoPathFromCurrentRoute(): String? {
-        val route = currentRoute ?: return null
-        val prefixes = listOf(
-            "repo_detail/", "files/", "branches/", "issues/",
-            "pull_requests/", "workflows/"
-        )
-        for (prefix in prefixes) {
-            if (route.startsWith(prefix)) {
-                val segment = route.removePrefix(prefix).substringBefore("/").substringBefore("?")
-                return Dest.decode(segment)
-            }
-        }
-        return null
+        // Use nav arguments — destination.route is the template (e.g. files/{repoPath}),
+        // not the concrete path, which caused RepositoryNotFoundException: /{repoPath}.
+        val encoded = navBackStackEntry?.arguments?.getString("repoPath") ?: return null
+        if (encoded.isBlank() || '{' in encoded || '}' in encoded) return null
+        return Dest.decode(encoded)
     }
 
     fun selectedRepoTab(): RepoDetailBottomTab? = when {

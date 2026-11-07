@@ -45,6 +45,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     private val PREF_AUTHOR_EMAIL = "commit_author_email"
     private val PREF_GPG_SIGN = "gpg_sign_commits"
     private val PREF_SIGN_OFF = "commit_sign_off"
+    private val PREF_SAVED_CONTRIBUTORS = "saved_contributors"
 
     private val repoOperationLocks = ConcurrentHashMap<String, Any>()
 
@@ -286,6 +287,29 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
 
     fun setSignOffEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(PREF_SIGN_OFF, enabled).commit()
+    }
+
+    /** Saved co-authors as `Name <email>` (or bare email) for the commit picker. */
+    fun getSavedContributors(): List<String> {
+        val set = prefs.getStringSet(PREF_SAVED_CONTRIBUTORS, emptySet()) ?: emptySet()
+        return set.map { it.trim() }.filter { it.isNotEmpty() }.sorted()
+    }
+
+    fun saveContributor(entry: String) {
+        val e = entry.trim()
+        if (e.isEmpty()) return
+        val current = (prefs.getStringSet(PREF_SAVED_CONTRIBUTORS, emptySet()) ?: emptySet()).toMutableSet()
+        if (current.any { it.equals(e, ignoreCase = true) }) return
+        current.add(e)
+        prefs.edit().putStringSet(PREF_SAVED_CONTRIBUTORS, current).commit()
+    }
+
+    fun removeSavedContributor(entry: String) {
+        val current = (prefs.getStringSet(PREF_SAVED_CONTRIBUTORS, emptySet()) ?: emptySet()).toMutableSet()
+        if (!current.remove(entry)) {
+            current.removeAll { it.equals(entry, ignoreCase = true) }
+        }
+        prefs.edit().putStringSet(PREF_SAVED_CONTRIBUTORS, current).commit()
     }
 
     /**
@@ -934,7 +958,13 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         }
     }
 
-    fun openGit(path: String): Git = Git.open(File(path))
+    fun openGit(path: String): Git {
+        val p = path.trim()
+        if (p.isEmpty() || '{' in p || '}' in p) {
+            throw IllegalArgumentException("Invalid repository path: $path")
+        }
+        return Git.open(File(p))
+    }
 
     /**
      * Android storage often does not preserve Unix executable bits the way desktop
@@ -2490,27 +2520,33 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     // ---------------- Branches ----------------
 
     fun listBranches(path: String): List<BranchInfo> {
-        openGit(path).use { git ->
-            val repo = git.repository
-            val current = try { repo.branch } catch (_: Exception) { null }
-            val cfg = repo.config
+        if (path.isBlank() || '{' in path || '}' in path) return emptyList()
+        return try {
+            openGit(path).use { git ->
+                val repo = git.repository
+                val current = try { repo.branch } catch (_: Exception) { null }
+                val cfg = repo.config
 
-            val local = git.branchList().call().map { ref ->
-                val short = ref.name.removePrefix("refs/heads/")
-                val remoteName = cfg.getString("branch", short, "remote")
-                val merge = cfg.getString("branch", short, "merge")
-                val upstream = when {
-                    !remoteName.isNullOrBlank() && !merge.isNullOrBlank() ->
-                        "$remoteName/${merge.removePrefix("refs/heads/")}"
-                    else -> null
+                val local = git.branchList().call().map { ref ->
+                    val short = ref.name.removePrefix("refs/heads/")
+                    val remoteName = cfg.getString("branch", short, "remote")
+                    val merge = cfg.getString("branch", short, "merge")
+                    val upstream = when {
+                        !remoteName.isNullOrBlank() && !merge.isNullOrBlank() ->
+                            "$remoteName/${merge.removePrefix("refs/heads/")}"
+                        else -> null
+                    }
+                    BranchInfo(short, short == current, false, upstream)
                 }
-                BranchInfo(short, short == current, false, upstream)
+                val remote = git.branchList()
+                    .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE)
+                    .call()
+                    .map { BranchInfo(it.name.removePrefix("refs/remotes/"), false, true, null) }
+                local + remote
             }
-            val remote = git.branchList()
-                .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE)
-                .call()
-                .map { BranchInfo(it.name.removePrefix("refs/remotes/"), false, true, null) }
-            return local + remote
+        } catch (e: Exception) {
+            AppLog.e(TAG, "listBranches failed for $path", e)
+            emptyList()
         }
     }
 
