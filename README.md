@@ -1,190 +1,149 @@
-# QuickGitNEXT — a GitHub Desktop-style git client for Android
+# QuickGitNEXT
 
-A native Android app (Kotlin + Jetpack Compose) for cloning, browsing, staging,
-committing, pushing/pulling, branching, and resolving merge conflicts on git
-repositories — the mobile equivalent of GitHub Desktop. Git operations run
-locally on-device via [JGit](https://www.eclipse.org/jgit/); nothing is sent
-to any third-party server other than the git remote you configure.
+A **GitHub Desktop–style git client** for Android (phones, tablets, Chromebooks / Googlebook OS) and **native Linux/Windows/macOS desktop**.
 
-Also ships as a **native desktop app** (Compose Multiplatform + JGit) for Linux
-(and package targets for Windows/macOS).
+Clone, browse, stage, commit, push/pull, branch, review PRs and issues, run Actions, and resolve conflicts — with multi-account GitHub, GitLab, and Gerrit support. Git runs **locally on-device** via [JGit](https://www.eclipse.org/jgit/); network traffic goes only to the remotes and hosts you configure.
 
-## What's implemented
-
-### Repositories & local git
-- **Repo list** — locally cloned repos, current branch, dirty-state indicator; import a folder; create a new local repository
-- **Clone** — HTTPS (PAT) or SSH (imported private key), live progress; clone from connected GitHub / GitLab / Gerrit accounts or paste a URL
-- **Changes / staging** — staged, unstaged, and untracked files; stage/unstage per file or all; discard unstaged changes; commit message + commit
-- **Push / Pull / Fetch** — with auth-required detection that routes you to Credentials
-- **Diff viewer** — colorized unified diff for working-tree, staged, or a historical commit
-- **History** — scrollable commit log (message, author, short SHA, date); open a commit’s file tree or a file at that revision
-- **Branches** — list local + remote branches; create, checkout, delete
-- **Merge conflicts** — conflicting files after a failed pull; per-file keep ours / keep theirs / hand-edit; commit the merge or abort
-- **Files browser** — walk the working tree; open files in the built-in editor
-- **Code editor** — monospace editing with line numbers and syntax highlighting; **Find** (keyword search, match count, previous/next); **Undo / Redo** (coalesced keystroke history)
-- **Git LFS** — detect LFS pointer files, batch-download missing objects, and smudge into the working tree (HTTPS remotes)
-
-### Accounts & credentials
-- **Multi-account** — multiple **GitHub**, **GitLab**, and **Gerrit** accounts at once; switch the active account per provider; remove accounts from the managed list
-- **Credentials** — encrypted-at-rest (Android Keystore via `EncryptedSharedPreferences`) storage for per-host HTTPS tokens, SSH private key + passphrase, and optional OpenPGP secret key for commit signing; import account / import CSV
-- **GPG signing** — sign commits with an imported armored secret key (Bouncy Castle / JGit); toggle in Settings
-- **Commit identity** — name and email written on every commit (auto-filled from GitHub when connected)
-
-### Forge features (when a remote is connected)
-- **GitHub** — browse/search your repos and orgs; clone with one tap; **Issues** (list, create, comment, close/reopen); **Pull requests**; **Releases**; **Actions / Workflows**; remote file browse and file view
-- **GitLab** — connect gitlab.com or self-hosted; MRs, issues, and remote browsing where supported
-- **Gerrit** — connect a Gerrit host with username + HTTP password for clone and related flows
-- **Profile** — own and other users’ profiles (GitHub / GitLab); switch provider when multiple are connected
-- **User search** — find people on the connected forge
-
-### App chrome & platform
-- **Settings** — repos storage location, commit identity, layout mode, GPG toggle, app update check
-- **Logs** (debug / logging flavor) — in-app log viewer and export
-- **Large screens / Chromebooks / Googlebook OS** — resizeable multi-window and freeform; Material 3 window size classes; adaptive content width and padding; optional permanent left **NavigationRail** matching the Linux desktop app (Repos, Clone, Browse, Profile, Users, Logs, Creds, Settings). Toggle under **Settings → Layout**: Auto (by window width), Always, or Never. Touchscreen is **not** required (keyboard + trackpad / mouse)
-- **Googlebook OS** — intended to run on Google’s Android-based laptop OS (Arm64 and **Intel x86_64** Googlebooks). The app is pure Kotlin/JVM + JGit with no ARM-only native libraries, so it is suitable for both Qualcomm and Intel Googlebook hardware. Use desktop layout (Auto or Always) for a laptop-style chrome
-
-## Architecture
-
-```
-app/src/main/java/com/quickgitnext/app/
-  data/
-    RepoManager.kt           JGit: clone/status/stage/commit/push/pull/branches/diff/merge/files
-    AccountManager.kt        Multi-account registry (GitHub / GitLab / Gerrit)
-    CredentialStore.kt       Encrypted storage for tokens, SSH, GPG
-    GitHubAccountManager.kt / GitLabAccountManager.kt / GerritAccountManager.kt
-    IssueManager.kt / PullRequestManager.kt / ReleaseManager.kt / WorkflowManager.kt
-    LfsSupport.kt            Git LFS pointer detect + batch fetch/smudge
-    SshSupport.kt / GpgSupport.kt
-    models/Models.kt
-  viewmodel/                 StateFlow ViewModels per screen (IO on Dispatchers.IO)
-  ui/screens/                Jetpack Compose (Material 3), including desktop-width variants
-  navigation/                Compose Navigation + typed destinations
-  MainActivity.kt / QuickGitNEXTApp.kt
-```
-
-Git operations are synchronous JGit calls wrapped in `withContext(Dispatchers.IO)`.
-Long-running clone/push/pull can report progress via notifications where enabled.
-
-## Building it
-
-You'll need **Android Studio (Koala or newer)** with the Android SDK (compileSdk 34) and a
-JDK 17.
-
-1. Open this folder (`QuickGitNEXT/`) directly in Android Studio — it will detect the Gradle
-   project and offer to generate the Gradle wrapper automatically. (The wrapper jar isn't
-   checked in here since it's a binary; Android Studio's "Sync now" prompt handles it, or
-   run `gradle wrapper` once if you have a system Gradle install.)
-2. Let Gradle sync — it will pull JGit, the Apache MINA SSH transport, and AndroidX/Compose
-   dependencies from Maven Central.
-3. Run on a device or emulator running **API 26+** (phones, tablets, Chromebooks, Googlebook OS).
-
-No Anthropic/Claude systems are involved at runtime — this is a plain offline Android app;
-it just talks to whatever git remote you point it at.
-
-## Known limitations / good next steps
-
-- **SSH host key verification is disabled** (`SshSupport.kt` accepts any host key). Fine for
-  personal use, not hardened — wire up a persisted known_hosts store before shipping this.
-- **Single SSH identity** — only one key pair is stored app-wide, not per-host.
-- **Diff viewer is read-only** — no inline “stage this hunk” (partial staging), only whole-file
-  staging.
-- **Conflict resolution UI** is a simple ours/theirs/manual-edit dialog, not a 3-way visual
-  merge view.
-- **Credentials lock** — phones/tablets: biometrics or device PIN when available; Chromebooks (and any device without system lock): in-app Credentials password (set on first open). Desktop: same in-app password gate. Only the Credentials screen is gated.
-- **LFS** covers pointer detection and download/smudge for common HTTPS remotes; not a full
-  `git-lfs` feature set (e.g. lock/unlock, custom transfer adapters).
-- Googlebook OS Intel models use a translation layer for many Android apps; QuickGitNEXT’s
-  JVM/JGit stack should run, but always verify on target hardware for large repos and LFS.
-
-## Permissions
-
-`INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (progress), and (on older API levels)
-external storage so clones can live under **Documents/QuickGitNEXT** on shared storage. On newer
-Android versions the app still tries `Documents/QuickGitNEXT` first and falls back to app-specific
-external storage if the public folder is not writable. Uninstalling the app does **not** delete
-`Documents/QuickGitNEXT` when the public location is used.
-
-## Tested on
- - Samsung Galaxy S25 Ultra (Snapdragon)
- - Samsung Galaxy M55 (Snapdragon)
- - Samsung Galaxy A52s (Snapdragon)
- - Samsung Galaxy A34 (Mediatek)
- - Samsung Galaxy A25 (Exynos)
- - Samsung Galaxy A20e (Exynos)
- - Samsung Galaxy A13 (Mediatek)
- - Samsung Galaxy A12 Nacho (Exynos)
- - Google Pixel 10 (Tensor G5)
- - Google Pixel 10a (Tensor G4)
- - Google Pixel 9a (Tensor G4)
- - Amazon Fire 10 13th gen (Mediatek)
- - Samsung Chromebook 4 (Intel)
- - Acer Aspire 3 Running Waydroid on Ubuntu (Intel)
- - Acer Aspire Desktop deb app (Intel)
- - Honor Pad 10 (Snapdragon)
- - Xiaomi Mi A2 Lite (Snapdragon)
-
-**Target platforms (supported by design, not all listed above as lab-tested):**
-phones, tablets, Chromebooks, **Googlebook OS** (Arm64 and Intel x86_64 Googlebooks), and the native Linux desktop build.
+Built with **Kotlin**, **Jetpack Compose** (Android), and **Compose Multiplatform** (desktop).
 
 ---
 
-## Linux / Desktop (native)
+## Platforms
 
-QuickGitNEXT also ships as a **native desktop application** for Linux (and Windows/macOS packaging)
-built with Compose Multiplatform + JGit.
+| Platform | Notes |
+|----------|--------|
+| **Android phones** | Full client; adaptive UI (compact layout under ~6.3″, floating nav and denser chrome on larger phones) |
+| **Android tablets** | Wide repo-detail chrome, bottom tab bar, Git Actions dialog, pull-to-refresh |
+| **Chromebook / Googlebook OS** | Android app; Chromebook-oriented top chrome; works on Intel and other devices (verify large repos / LFS on target hardware) |
+| **Wear OS** | Companion Wear module in the same project |
+| **Linux desktop** | Native Compose Multiplatform app (`.deb` / `.rpm` / AppImage) |
+| **Windows / macOS** | Desktop packaging targets via Compose Multiplatform |
 
-This is a full standalone app (not an Android module or Waydroid container).
+---
 
-### Features on desktop
+## Features
 
-- Repo list (local clones under `~/QuickGitNEXT` by default)
-- Clone (HTTPS with PAT)
-- Changes / staging / unstage / discard
-- Commit with configurable author
-- Push / Pull / Fetch
-- History
-- Branches (list, create, checkout)
-- Encrypted credential store (`~/.config/quickgitnext/`)
-- Settings (author, repos root, GPG sign toggle)
-- Left NavigationRail (Repos, Clone, Browse, Profile, Users, Logs, Creds, Settings)
+### Repositories & local git
+- **Repo list** — local clones with branch and dirty-state indicators; import a folder; create a local repo; pull-to-refresh
+- **Clone** — HTTPS (PAT) or SSH (imported private key), live progress and notifications; clone from connected accounts or paste a URL; **Browse my repos** for GitHub/GitLab/Gerrit
+- **Changes / staging** — staged, unstaged, untracked; stage / unstage / discard (per file or bulk); commit message, amend, sign-off
+- **Push / Pull / Fetch** — including rebase variants, LFS-aware options, force-with-lease / force; auth failures route to Credentials
+- **Diff viewer** — colorized unified diff for working tree, staged, or historical commits
+- **History** — commit log with author, SHA, date; browse tree at commit; cherry-pick / revert / reset flows where supported
+- **Branches & remotes** — local and remote branches; create, checkout, delete; manage remotes
+- **Merge conflicts** — after a failed pull; keep ours / theirs / hand-edit; commit or abort merge
+- **Files browser** — walk the working tree; up-directory and system **back gesture** to go up; open files in the editor
+- **Code editor** — monospace editing, line numbers, syntax highlighting; **Find**; **Undo / Redo**
+- **Git LFS** — pointer detection, fetch/pull/push helpers, track/untrack patterns (HTTPS-oriented)
 
-### Build & run the Linux app
+### Hosted git & collaboration
+- **Browse remote repos** — GitHub / GitLab (and Gerrit where connected)
+- **Issues** — list, open, create (GitHub / GitLab)
+- **Pull / merge requests** — list, detail, create (GitHub / GitLab)
+- **Actions / CI** — GitHub Actions and GitLab pipelines; run detail, job logs, live watching; **Releases** merged into Actions on tablet/wide layouts
+- **Notifications** — workflow finish and clone progress; clone notification clears when done
+- **In-app update checks** — from the **QuickGitNEXT** GitHub Releases feed
 
-Requirements: JDK 17+, the project Gradle wrapper (or system Gradle 8+).
+### Accounts, profile & credentials
+- **Multi-account** — multiple **GitHub**, **GitLab**, and **Gerrit** accounts side by side; switch active account per provider
+- **Profile** — avatar and bio; public repos with clone/fork; provider switcher; **followers / following** (GitHub) with open-user → their repos; pull-to-refresh; credentials entry point on large phones
+- **User search** — find people (large phones: from Profile FAB; tablets may expose Users in nav)
+- **Credentials manager** — encrypted-at-rest tokens, SSH key + passphrase, optional OpenPGP key for commit signing; import account / CSV
+- **Credentials lock** — biometrics / device credential on phones & tablets when available; in-app password on Chromebook-style devices without biometrics; desktop password gate for Credentials only
+- **GPG signing** — sign commits with an imported armored secret key; toggle in Settings
+- **Commit identity** — author name and email in Settings
+
+### Adaptive UI & polish
+- **Material 3** expressive surfaces, floating bars, and circular icon chips
+- **Floating bottom navigation** on tablets and phones ≥ ~6.3″ (Repos, Clone, Profile, Settings, etc.; Browse/Users/Logs/Creds compacted or moved on large phones)
+- **Tablet repo detail** — bottom tab strip (Changes, Files, Branches, Issues, PRs, Actions, History); Stage all / Unstage all / Discard / **Git Actions** dialog; no app bottom nav on that screen
+- **Large-phone repo detail** — floating page nav, git ops, and commit section; custom **QuickGitNEXT** loading animation
+- **Chromebook chrome** — top floating menu and profile affordances; credentials reachable from Profile
+- **Snappy tab transitions** on the floating nav
+- **Debug logs** UI (build-flagged), also reachable from Settings on large phones
+
+### Desktop (native)
+- Full standalone client (not Android-in-a-window): repo list, clone, staging, commit, push/pull/fetch, history, branches, encrypted credentials, settings
+- Left **NavigationRail** for primary destinations
+- Auto-update check against GitHub Releases (prefers `.deb` or AppImage as appropriate)
+- Data under `~/QuickGitNEXT` and `~/.config/quickgitnext/` (independent from the Android app)
+
+---
+
+## Credits
+
+QuickGitNEXT was **vibecoded** with:
+
+- **[Claude AI](https://www.anthropic.com/claude)** (Anthropic)
+- **[Grok AI](https://grok.x.ai/)** (xAI)
+
+Human direction, product decisions, testing, and shipping remain with the project maintainers. No AI vendor is required at runtime — the app is a normal offline-capable git client.
+
+---
+
+## Build (Android)
+
+Requirements: **JDK 17+**, Android SDK, project Gradle wrapper.
 
 ```bash
 # From the project root
-./gradlew :desktop:run
+./gradlew :app:assembleStoreRelease
+# Debug / logging variant also available, e.g.:
+./gradlew :app:assembleLoggingRelease
 ```
 
-### Package a distributable Linux app
+Sync in Android Studio or use the wrapper on the CLI. Target **API 26+** (phones, tablets, Chromebooks, Googlebook OS).
+
+GitHub Actions can sign and publish release APKs; see `.github/workflows/release.yml`.
+
+---
+
+## Linux / Desktop
 
 ```bash
-./gradlew :desktop:packageDeb          # .deb
-./gradlew :desktop:packageRpm          # .rpm
-./gradlew :desktop:packageAppImage     # AppImage
-./gradlew :desktop:packageDistributionForCurrentOS
+./gradlew :desktop:run
+
+./gradlew :desktop:packageDeb
+./gradlew :desktop:packageRpm
+./gradlew :desktop:packageAppImage
 ```
 
-Packages appear under `desktop/build/compose/binaries/main/`.
+Artifacts under `desktop/build/compose/binaries/main/`.
 
-### Desktop data locations
+| Item | Path |
+|------|------|
+| Repos root | `~/QuickGitNEXT` (configurable) |
+| Credentials | `~/.config/quickgitnext/credentials.enc` |
+| Preferences | `~/.config/quickgitnext/prefs.properties` |
 
-| Item              | Path                          |
-|-------------------|-------------------------------|
-| Repos root        | `~/QuickGitNEXT` (configurable)   |
-| Credentials       | `~/.config/quickgitnext/credentials.enc` |
-| Preferences       | `~/.config/quickgitnext/prefs.properties` |
+---
 
-The Android app and the desktop app are independent; they do not share storage.
+## Permissions (Android)
 
-### Desktop auto-update
+`INTERNET`, `ACCESS_NETWORK_STATE`, `POST_NOTIFICATIONS` (progress), and (on older APIs) external storage so clones can live under **Documents/QuickGitNEXT**. Newer Android prefers that public folder when writable and falls back to app-specific storage. Uninstall does **not** delete `Documents/QuickGitNEXT` when the public location is used.
 
-The native Linux builds check GitHub Releases on startup (and via **Settings → Check for updates**).
-They prefer a `.deb` on Debian/Ubuntu and an `.AppImage` otherwise, download to
-`~/Downloads/QuickGitNEXT-updates/`, and open the file for install.
+---
 
-### Desktop credentials
+## Known limitations
 
-**Credentials** includes a **Username** field for GitHub and per-host HTTPS logins
-(required for correct `UsernamePasswordCredentialsProvider` auth with JGit).
+- **SSH host key verification is relaxed** in the current SSH support — fine for personal use; harden with a known_hosts store before treating this as production-grade.
+- **Single SSH identity** app-wide (not per-host).
+- **Diff is read-only** — whole-file stage/unstage, not per-hunk.
+- **Conflict UI** is ours / theirs / manual edit, not a full 3-way merge editor.
+- **LFS** focuses on common HTTPS pointer download/smudge and helper ops — not the full `git-lfs` CLI surface.
+- Googlebook / ARC translation layers may need validation for very large repos and heavy LFS workloads.
+
+---
+
+## Tested on
+
+- Samsung Galaxy S25 Ultra, M55, A52s, A34, A25, A20e, A13, A12 Nacho  
+- Google Pixel 10, 10a, 9a  
+- Amazon Fire 10 (13th gen)  
+- Samsung Chromebook 4 (Intel)  
+
+---
+
+## License & contributing
+
+See repository license and contribution guidelines if present. Feature requests and bug reports are welcome via GitHub Issues on the QuickGitNEXT project.
