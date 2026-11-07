@@ -611,7 +611,7 @@ fun QuickGitNavGraph() {
         }
         items += FloatingNavItem(
             icon = Icons.Default.Person,
-            label = "Profile",
+            label = "Profiles",
             selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/") ||
                 (!includeUsers && isSelected(Dest.USER_SEARCH))
         ) {

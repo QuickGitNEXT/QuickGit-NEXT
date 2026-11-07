@@ -13,6 +13,8 @@ import com.quickgit.app.data.models.GitLabProject
 import com.quickgit.app.data.models.GitOpResult
 import com.quickgit.app.data.models.PrOpResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,10 +105,9 @@ class ProfileViewModel(
         viewingOtherUser = !login.isNullOrBlank()
         viewModelScope.launch {
             _state.value = ProfileUiState(loading = true)
-            val providers = loadConnectedProviders()
-            val available = buildList {
-                if (providers.any { it.provider == "GitHub" }) add(ProfileProvider.GITHUB)
-                if (providers.any { it.provider == "GitLab" }) add(ProfileProvider.GITLAB)
+            // Local credential lookups only — no network round-trips before the first paint.
+            val (providers, available) = withContext(Dispatchers.IO) {
+                loadConnectedProviders() to availableProviders()
             }
 
             // Other-user profiles are still GitHub-only (search/navigation is GitHub-centric).
@@ -135,12 +136,11 @@ class ProfileViewModel(
 
     fun selectProvider(provider: ProfileProvider) {
         viewModelScope.launch {
-            val providers = _state.value.connectedProviders.ifEmpty { loadConnectedProviders() }
+            val providers = _state.value.connectedProviders.ifEmpty {
+                withContext(Dispatchers.IO) { loadConnectedProviders() }
+            }
             val available = _state.value.availableProviders.ifEmpty {
-                buildList {
-                    if (providers.any { it.provider == "GitHub" }) add(ProfileProvider.GITHUB)
-                    if (providers.any { it.provider == "GitLab" }) add(ProfileProvider.GITLAB)
-                }
+                withContext(Dispatchers.IO) { availableProviders() }
             }
             selectProvider(provider, providers, available)
         }
@@ -189,23 +189,26 @@ class ProfileViewModel(
             )
             return
         }
-        val (user, userResult) = withContext(Dispatchers.IO) {
-            accountManager.getUserProfile(login)
-        }
-        when {
-            user != null -> {
-                reposPage = 1
-                profileLoginForRepos = if (isSelf && login == null) null else user.login
-                val (repos, hasMore, _) = withContext(Dispatchers.IO) {
-                    if (isSelf && login == null) {
-                        accountManager.listReposPage(page = 1, perPage = pageSize)
-                    } else {
-                        accountManager.listPublicReposPage(user.login, page = 1, perPage = pageSize)
-                    }
+        val selfRepos = isSelf && login == null
+        coroutineScope {
+            // The repo list does not depend on the profile response (we already know the
+            // login for other users, and self uses /user/repos), so start it right away and
+            // let it run in parallel with the profile request instead of after it.
+            val reposDeferred = async(Dispatchers.IO) {
+                if (selfRepos) {
+                    accountManager.listReposPage(page = 1, perPage = pageSize)
+                } else {
+                    accountManager.listPublicReposPage(login!!, page = 1, perPage = pageSize)
                 }
-                _state.value = ProfileUiState(
-                    loading = false,
-                    user = ProfileUser(
+            }
+            val (user, userResult) = withContext(Dispatchers.IO) {
+                accountManager.getUserProfile(login)
+            }
+            when {
+                user != null -> {
+                    reposPage = 1
+                    profileLoginForRepos = if (selfRepos) null else user.login
+                    val profileUser = ProfileUser(
                         login = user.login,
                         name = user.name,
                         email = user.email,
@@ -218,40 +221,53 @@ class ProfileViewModel(
                         publicRepos = user.publicRepos,
                         followers = user.followers,
                         following = user.following
-                    ),
-                    repos = repos,
-                    isSelf = isSelf,
-                    connectedProviders = providers,
-                    availableProviders = available,
-                    selectedProvider = ProfileProvider.GITHUB,
-                    hasMoreRepos = hasMore
-                )
-                // Self profile: paint personal repos first; merge org repos in background.
-                if (isSelf && login == null) {
-                    mergeOrgReposInBackground()
+                    )
+                    // Paint the header immediately; `loading` stays true so the repo section
+                    // shows its spinner until the (already in-flight) repo page arrives.
+                    _state.value = ProfileUiState(
+                        loading = true,
+                        user = profileUser,
+                        isSelf = isSelf,
+                        connectedProviders = providers,
+                        availableProviders = available,
+                        selectedProvider = ProfileProvider.GITHUB
+                    )
+                    val (repos, hasMore, _) = reposDeferred.await()
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        repos = repos,
+                        hasMoreRepos = hasMore
+                    )
+                    // Self profile: paint personal repos first; merge org repos in background.
+                    if (selfRepos) {
+                        mergeOrgReposInBackground()
+                        refreshAccountMetadataInBackground()
+                    }
                 }
-            }
-            userResult is PrOpResult.AuthRequired -> {
-                _state.value = ProfileUiState(
-                    loading = false,
-                    authRequired = true,
-                    isSelf = isSelf,
-                    connectedProviders = providers,
-                    availableProviders = available,
-                    selectedProvider = ProfileProvider.GITHUB,
-                    errorMessage = "GitHub auth required"
-                )
-            }
-            else -> {
-                _state.value = ProfileUiState(
-                    loading = false,
-                    isSelf = isSelf,
-                    connectedProviders = providers,
-                    availableProviders = available,
-                    selectedProvider = ProfileProvider.GITHUB,
-                    errorMessage = (userResult as? PrOpResult.Error)?.message
-                        ?: "User not found"
-                )
+                userResult is PrOpResult.AuthRequired -> {
+                    reposDeferred.cancel()
+                    _state.value = ProfileUiState(
+                        loading = false,
+                        authRequired = true,
+                        isSelf = isSelf,
+                        connectedProviders = providers,
+                        availableProviders = available,
+                        selectedProvider = ProfileProvider.GITHUB,
+                        errorMessage = "GitHub auth required"
+                    )
+                }
+                else -> {
+                    reposDeferred.cancel()
+                    _state.value = ProfileUiState(
+                        loading = false,
+                        isSelf = isSelf,
+                        connectedProviders = providers,
+                        availableProviders = available,
+                        selectedProvider = ProfileProvider.GITHUB,
+                        errorMessage = (userResult as? PrOpResult.Error)?.message
+                            ?: "User not found"
+                    )
+                }
             }
         }
     }
@@ -260,11 +276,7 @@ class ProfileViewModel(
         providers: List<ConnectedProviderSummary>,
         available: List<ProfileProvider>
     ) {
-        val glHost = when {
-            gitLabAccountManager.isConnected(gitLabAccountManager.host) -> gitLabAccountManager.host
-            gitLabAccountManager.isConnected("gitlab.com") -> "gitlab.com"
-            else -> null
-        }
+        val glHost = gitLabHostOrNull()
         if (glHost == null) {
             _state.value = ProfileUiState(
                 loading = false,
@@ -276,9 +288,18 @@ class ProfileViewModel(
             )
             return
         }
-        val (account, accountResult) = withContext(Dispatchers.IO) {
-            gitLabAccountManager.refreshAccount(glHost)
+        // Account and project list are independent requests — run them concurrently.
+        val (accountPair, projectsTriple) = coroutineScope {
+            val projectsDeferred = async(Dispatchers.IO) {
+                gitLabAccountManager.listProjectsPage(page = 1, perPage = pageSize, h = glHost)
+            }
+            val accountResultPair = withContext(Dispatchers.IO) {
+                gitLabAccountManager.refreshAccount(glHost)
+            }
+            if (accountResultPair.first == null) projectsDeferred.cancel()
+            accountResultPair to (if (accountResultPair.first == null) null else projectsDeferred.await())
         }
+        val (account, accountResult) = accountPair
         if (account == null) {
             _state.value = ProfileUiState(
                 loading = false,
@@ -294,9 +315,7 @@ class ProfileViewModel(
         }
         reposPage = 1
         profileLoginForRepos = null
-        val (projects, hasMore, _) = withContext(Dispatchers.IO) {
-            gitLabAccountManager.listProjectsPage(page = 1, perPage = pageSize, h = glHost)
-        }
+        val (projects, hasMore, _) = projectsTriple!!
         val repos = projects.map { it.toRemoteRepo() }
         _state.value = ProfileUiState(
             loading = false,
@@ -400,30 +419,51 @@ class ProfileViewModel(
         language = null
     )
 
-    private suspend fun loadConnectedProviders(): List<ConnectedProviderSummary> {
+    /** GitLab host to show: the active one if connected, else gitlab.com, else none. */
+    private fun gitLabHostOrNull(): String? = when {
+        gitLabAccountManager.isConnected(gitLabAccountManager.host) -> gitLabAccountManager.host
+        gitLabAccountManager.isConnected("gitlab.com") -> "gitlab.com"
+        else -> null
+    }
+
+    /** Which providers have stored credentials — local check, no network. */
+    private fun availableProviders(): List<ProfileProvider> = buildList {
+        if (accountManager.isConnected()) add(ProfileProvider.GITHUB)
+        if (gitLabHostOrNull() != null) add(ProfileProvider.GITLAB)
+    }
+
+    /**
+     * Connected-account summaries built from stored credentials only. This used to call
+     * `/user` on GitHub and GitLab one after the other before anything could render, which
+     * was the main reason the Profile screen felt slow. A bad token is now reported by the
+     * profile request itself.
+     */
+    private fun loadConnectedProviders(): List<ConnectedProviderSummary> {
         val list = mutableListOf<ConnectedProviderSummary>()
         if (accountManager.isConnected()) {
-            val (account, _) = withContext(Dispatchers.IO) { accountManager.refreshAccount() }
-            if (account != null) {
-                list += ConnectedProviderSummary("GitHub", account.login, account.name)
-            }
+            list += ConnectedProviderSummary(
+                "GitHub",
+                accountManager.storedUsername()?.takeIf { it.isNotBlank() } ?: "connected",
+                null
+            )
         }
-        val glHost = when {
-            gitLabAccountManager.isConnected(gitLabAccountManager.host) -> gitLabAccountManager.host
-            gitLabAccountManager.isConnected("gitlab.com") -> "gitlab.com"
-            else -> null
-        }
+        val glHost = gitLabHostOrNull()
         if (glHost != null) {
-            val (account, _) = withContext(Dispatchers.IO) { gitLabAccountManager.refreshAccount(glHost) }
-            if (account != null) {
-                list += ConnectedProviderSummary(
-                    "GitLab",
-                    account.username,
-                    "$glHost · ${account.name ?: ""}".trimEnd(' ', '·')
-                )
-            }
+            list += ConnectedProviderSummary(
+                "GitLab",
+                gitLabAccountManager.storedUsername(glHost)?.takeIf { it.isNotBlank() } ?: "connected",
+                glHost
+            )
         }
         return list
+    }
+
+    /**
+     * Keeps the managed account's cached name/avatar fresh (the old blocking refresh did this
+     * as a side effect of opening Profile) without delaying the first paint.
+     */
+    private fun refreshAccountMetadataInBackground() {
+        viewModelScope.launch(Dispatchers.IO) { accountManager.refreshAccount() }
     }
 
     fun fork(repo: GitHubRemoteRepo) {

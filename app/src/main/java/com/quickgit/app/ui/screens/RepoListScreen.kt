@@ -241,7 +241,7 @@ fun RepoListScreen(
                                 } else {
                                     // No connected profile accounts — single Profile entry
                                     DropdownMenuItem(
-                                        text = { Text("Profile") },
+                                        text = { Text("Profiles") },
                                         onClick = {
                                             accountMenuExpanded = false
                                             onOpenProfile()
@@ -737,7 +737,7 @@ private fun ChromebookReposTopChrome(
         // Right: Profile in floating circle (credentials live under Profile)
         FloatingCircleIconButton(
             imageVector = Icons.Default.Person,
-            contentDescription = "Profile",
+            contentDescription = "Profiles",
             onClick = onProfile,
             modifier = Modifier.align(Alignment.CenterEnd)
         )

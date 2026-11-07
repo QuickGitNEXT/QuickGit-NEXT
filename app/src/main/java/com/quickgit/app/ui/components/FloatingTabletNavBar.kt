@@ -160,7 +160,7 @@ private fun FloatingNavBarItem(
         "Repos" -> "Repos"
         "Clone" -> "Clone"
         "Browse" -> "Browse"
-        "Profile" -> "Profile"
+        "Profiles" -> "Profiles"
         "Users" -> "Users"
         "Logs" -> "Logs"
         "Creds" -> "Creds"

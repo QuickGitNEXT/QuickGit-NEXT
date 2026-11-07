@@ -130,7 +130,7 @@ fun ProfileScreen(
                                 ProfileProvider.GITHUB -> "GitHub profile"
                             }
                             state.user != null -> state.user!!.login
-                            else -> "Profile"
+                            else -> "Profiles"
                         }
                     )
                 },
