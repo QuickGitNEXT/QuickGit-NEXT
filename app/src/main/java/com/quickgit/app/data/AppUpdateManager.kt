@@ -164,13 +164,13 @@ class AppUpdateManager(
 
             val published = releases.filter { !it.draft && !it.prerelease }
                 .ifEmpty { releases.filter { !it.draft } }
-            // Prefer split Android releases (tag A* / name "QuickGitNEXT Android …");
-            // ignore Desktop-only (D*) so /releases order cannot pick a desktop build.
+            // Only Android channel releases (A* tags / Android title / phone APK).
+            // Never fall back to Desktop-only (D*) — that broke upgrades from 2.4.8
+            // once /releases/latest became a Desktop build.
             val candidates = published.filter { isAndroidAppRelease(it) }
-                .ifEmpty { published }
 
             if (candidates.isEmpty()) {
-                AppLog.i(TAG, "No non-draft releases found")
+                AppLog.i(TAG, "No Android releases found among ${published.size} published")
                 return UpdateCheckResult.UpToDate(current)
             }
 
@@ -295,17 +295,21 @@ class AppUpdateManager(
 
     /**
      * True if [latest] is a newer app version than [current].
-     * Compares semver names first, then versionCode.
+     * Prefer versionCode when both are known (covers 2.4.8 → A2.4.9 cleanly);
+     * otherwise fall back to semver name compare.
      */
     private fun isNewer(latest: AppVersionInfo, current: AppVersionInfo): Boolean {
+        if (latest.versionCode > 0 && current.versionCode > 0) {
+            if (latest.versionCode != current.versionCode) {
+                AppLog.i(TAG, "isNewer by code: ${latest.versionCode} vs ${current.versionCode}")
+                return latest.versionCode > current.versionCode
+            }
+            // Same code — still allow a higher semver name (unlikely but safe)
+        }
         val byName = compareVersionNames(latest.versionName, current.versionName)
         if (byName != 0) {
             AppLog.i(TAG, "isNewer by name: ${latest.versionName} vs ${current.versionName} -> $byName")
             return byName > 0
-        }
-        if (latest.versionCode > 0 && current.versionCode > 0 && latest.versionCode != current.versionCode) {
-            AppLog.i(TAG, "isNewer by code: ${latest.versionCode} vs ${current.versionCode}")
-            return latest.versionCode > current.versionCode
         }
         return false
     }

@@ -1,18 +1,19 @@
 name: Build and Release Android
 
-# Manual only. Android phone/tablet/Chromebook + Wear OS.
-# Enter version as x.y.z (e.g. 2.4.9). Tag becomes A{version}, release title
-# "QuickGitNEXT Android {version}". Changelog only includes app/ + wear/ commits.
+# Single Android release workflow (phone / tablet / Chromebook + Wear).
+# Upgrades the legacy 2.4.8 (v2.4.8) channel onto A-prefixed releases:
+#   input 2.4.9 → tag A2.4.9 → title "QuickGitNEXT Android 2.4.9"
+# In-app updater only considers A* / Android / phone-APK releases (not Desktop D*).
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 2.4.9) — becomes QuickGitNEXT Android x.y.z, tag Ax.y.z'
+        description: 'Android version (e.g. 2.4.9). Tag A2.4.9; installs over 2.4.8+'
         required: true
         type: string
       version_code:
-        description: 'Android versionCode (integer). Leave blank to derive from version.'
+        description: 'Android versionCode (integer). Leave blank to derive from version (must be > 2.4.8 code).'
         required: false
         type: string
         default: ''
@@ -74,8 +75,11 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
-          # Prefer previous A* tag; fall back to legacy v* for first split release
+          # Prefer previous A* tag; then legacy v2.4.8 (pre-split Android); then any v*
           PREV="$(git tag -l 'A*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          if [ -z "$PREV" ] && git rev-parse -q --verify "refs/tags/v2.4.8" >/dev/null 2>&1; then
+            PREV="v2.4.8"
+          fi
           if [ -z "$PREV" ]; then
             PREV="$(git tag -l 'v*' --sort=-v:refname | head -n1 || true)"
           fi
@@ -289,6 +293,9 @@ jobs:
           name: ${{ needs.version.outputs.title }}
           body: |
             **${{ needs.version.outputs.title }}**
+
+            Android-only release (tag `${{ needs.version.outputs.tag }}`).
+            Installs over legacy **2.4.8** (`v2.4.8`) and earlier phone builds via in-app update or sideload.
 
             Built from commit `${{ github.sha }}`.
 
