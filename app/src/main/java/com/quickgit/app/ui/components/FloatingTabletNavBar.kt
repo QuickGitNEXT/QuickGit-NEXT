@@ -178,6 +178,7 @@ private fun FloatingNavBarItem(
                 indication = null,
                 onClick = item.onClick
             )
+            // Match RepoDetailBottomBar item padding when compact
             .padding(vertical = if (compact) 3.dp else 5.dp, horizontal = 1.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -185,19 +186,25 @@ private fun FloatingNavBarItem(
             item.icon,
             contentDescription = item.label,
             tint = contentColor,
+            // Compact = same 20.dp icons as RepoDetailBottomBar
             modifier = Modifier.size(if (compact) 20.dp else 22.dp)
         )
         Text(
             shortLabel,
             color = contentColor,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Medium,
-                fontSize = if (compact) 9.sp else 10.sp,
-                lineHeight = 11.sp
-            ),
+            // Compact uses stock labelSmall (same as RepoDetailBottomBar) — no 9.sp shrink
+            style = if (compact) {
+                MaterialTheme.typography.labelSmall
+            } else {
+                MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    lineHeight = 11.sp
+                )
+            },
             maxLines = 1,
             overflow = TextOverflow.Clip,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Medium
         )
     }
 }
