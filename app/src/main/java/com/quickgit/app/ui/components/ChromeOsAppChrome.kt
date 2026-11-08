@@ -138,7 +138,8 @@ fun ChromeOsAppChrome(
                     sectionItems.forEachIndexed { i, item ->
                         val selected = sectionIndex == i
                         val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        Row(
+                        // Icon-only section chips on Chromebook (labels removed; a11y via contentDescription).
+                        Box(
                             Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
@@ -146,22 +147,14 @@ fun ChromeOsAppChrome(
                                     else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
                                 )
                                 .clickable { section.selectedIndex.intValue = i }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 item.icon,
                                 contentDescription = item.label,
                                 tint = fg,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                item.label,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = fg,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                maxLines = 1
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
