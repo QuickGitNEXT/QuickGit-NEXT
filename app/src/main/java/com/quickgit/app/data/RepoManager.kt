@@ -3817,6 +3817,13 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         if (dest.isDirectory) throw IllegalArgumentException("A folder named '$cleanedName' already exists")
         if (dest.exists() && !overwrite) throw IllegalArgumentException("Already exists: $cleanedName")
 
+        // Overwrite must replace content on the first attempt (some devices leave stale
+        // bytes if the existing file is not removed before writing).
+        if (dest.exists()) {
+            if (!dest.delete() && dest.exists()) {
+                throw IllegalStateException("Could not replace existing file '$cleanedName'")
+            }
+        }
         dest.parentFile?.mkdirs()
         val input = context.contentResolver.openInputStream(uri)
             ?: throw IllegalStateException("Could not read '$cleanedName'")
@@ -3844,6 +3851,18 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         treeUri: android.net.Uri,
         overwriteExistingFiles: Boolean = true
     ): ImportFolderResult {
+        // First Allow on the system picker grants access; persist it so list/read works
+        // immediately (without this, the first import often sees an empty tree or fails
+        // to replace files until the user picks the folder a second time).
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                treeUri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (e: Exception) {
+            AppLog.w(TAG, "importDirectory: could not persist read permission for $treeUri: ${e.message}")
+        }
+
         val tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
             ?: throw IllegalStateException("Could not open selected folder")
         if (!tree.isDirectory) throw IllegalArgumentException("Not a folder")
@@ -3895,6 +3914,12 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
                     }
                     val existed = out.isFile
                     if (existed && !overwriteExistingFiles) continue
+                    // Delete first so the first overwrite always replaces content fully.
+                    if (existed) {
+                        if (!out.delete() && out.exists()) {
+                            throw IllegalStateException("Could not replace existing file '$childRel'")
+                        }
+                    }
                     out.parentFile?.mkdirs()
                     val input = context.contentResolver.openInputStream(child.uri)
                         ?: throw IllegalStateException("Could not read '$name'")

@@ -92,13 +92,24 @@ fun FilesScreen(
     var createFolderMode by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
+    val context = LocalContext.current
     val importFilesLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris -> if (!uris.isNullOrEmpty()) vm.importFiles(uris) }
 
     val importFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri -> uri?.let { vm.importFolder(it) } }
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        // Ensure the first Allow grants readable access before we walk the tree.
+        try {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        } catch (_: Exception) { /* temporary grant from the picker is still usable */ }
+        vm.importFolder(uri)
+    }
 
     LaunchedEffect(state.error, state.statusMessage, state.openAfterCreate) {
         state.error?.let {
