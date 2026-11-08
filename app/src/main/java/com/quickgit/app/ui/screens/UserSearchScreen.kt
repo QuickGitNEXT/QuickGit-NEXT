@@ -20,6 +20,7 @@ import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.UserSearchKind
 import com.quickgit.app.viewmodel.UserSearchProvider
@@ -255,7 +256,7 @@ fun UserSearchScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (state.loadingMore) {
-                                CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
+                                BrandLoadingSpinner(size = 28.dp)
                             } else {
                                 OutlinedButton(onClick = { vm.loadMore() }) {
                                     Text("Load more")
@@ -319,7 +320,7 @@ private fun SearchRepoRow(
             }
         }
         if (forking) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            BrandLoadingSpinner(size = 22.dp)
         } else {
             IconButton(onClick = onFork) {
                 Icon(Icons.Default.CallSplit, contentDescription = "Fork this repository")

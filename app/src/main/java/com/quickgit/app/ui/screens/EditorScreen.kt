@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.components.SyntaxHighlight
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.ui.theme.GitGreen
@@ -156,11 +157,7 @@ fun EditorScreen(
                             enabled = state.isDirty && !state.saving
                         ) {
                             if (state.saving) {
-                                CircularProgressIndicator(
-                                    Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
+                                BrandLoadingSpinner(size = 18.dp)
                             } else {
                                 Icon(Icons.Default.Save, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))

@@ -12,6 +12,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.security.isChromebookDevice
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.ChromeOsSectionItem
 import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import androidx.compose.material.icons.Icons
@@ -312,10 +314,7 @@ fun RepoDetailScreenDesktop(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.busy) {
-                        CircularProgressIndicator(
-                            Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
+                        BrandLoadingSpinner(size = 20.dp)
                     }
                     // Chromebook + open release: flat Edit at the right end of the top bar line.
                     if (isChromebook && tabIndex == 6 && releasesState.selected != null) {
@@ -958,7 +957,7 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         if (state.busy && status == null) {
-            CircularProgressIndicator()
+            BrandLoadingPlaceholder()
         } else if (staged.isEmpty() && unstagedAll.isEmpty()) {
             Text("Working tree clean", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {

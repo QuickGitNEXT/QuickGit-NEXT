@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.HistoryViewModel
 import java.text.DateFormat
@@ -331,10 +331,8 @@ fun HistoryScreen(
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                             if (state.changesLoading) {
-                                                CircularProgressIndicator(
-                                                    Modifier.padding(8.dp).width(24.dp),
-                                                    strokeWidth = 2.dp
-                                                )
+                                                BrandLoadingSpinner(size = 28.dp)
+
                                             } else if (state.selectedChanges.isEmpty()) {
                                                 Text(
                                                     "No file changes",
@@ -384,7 +382,7 @@ fun HistoryScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (state.loadingMore) {
-                                            CircularProgressIndicator()
+                                            BrandLoadingPlaceholder()
                                         } else {
                                             OutlinedButton(onClick = { vm.loadMore() }) {
                                                 Text("Load more")

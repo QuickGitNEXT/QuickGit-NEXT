@@ -1,5 +1,7 @@
 package com.quickgit.app.ui.components
 
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -101,7 +103,11 @@ fun ExpressiveTaskOverlay(
 }
 
 @Composable
-fun QuickGitNextLoader(success: Boolean = false) {
+fun QuickGitNextLoader(
+    success: Boolean = false,
+    size: androidx.compose.ui.unit.Dp = 112.dp,
+    modifier: Modifier = Modifier
+) {
     val transition = rememberInfiniteTransition(label = "qgnext-loader")
     val pulse by transition.animateFloat(
         initialValue = 0.94f,
@@ -140,10 +146,10 @@ fun QuickGitNextLoader(success: Boolean = false) {
         label = "dash"
     )
 
-    Canvas(Modifier.size(112.dp)) {
-        val s = size.minDimension
-        val cx = size.width / 2f
-        val cy = size.height / 2f
+    Canvas(modifier.size(size)) {
+        val s = this.size.minDimension
+        val cx = this.size.width / 2f
+        val cy = this.size.height / 2f
         val scale = if (success) 1.02f else pulse
 
         // Soft brand disk
@@ -287,6 +293,7 @@ fun QuickGitNextLoader(success: Boolean = false) {
 /**
  * Centered brand loader for full-screen or large in-content loading states
  * (profile, clone destination lists, repo list, etc.).
+ * Prefer this over [androidx.compose.material3.CircularProgressIndicator] everywhere.
  */
 @Composable
 fun BrandLoadingPlaceholder(
@@ -306,4 +313,16 @@ fun BrandLoadingPlaceholder(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+/**
+ * Compact brand spinner for buttons, list rows, and inline busy states.
+ * Drop-in replacement for small [androidx.compose.material3.CircularProgressIndicator]s.
+ */
+@Composable
+fun BrandLoadingSpinner(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 28.dp
+) {
+    QuickGitNextLoader(success = false, size = size, modifier = modifier)
 }

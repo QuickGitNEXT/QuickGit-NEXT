@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -318,7 +317,7 @@ private fun BranchPickerDialog(
                 when {
                     loading && branches.isEmpty() -> {
                         Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+                            BrandLoadingPlaceholder()
                         }
                     }
                     shown.isEmpty() -> {
@@ -398,7 +397,7 @@ private fun CommitsSheet(
             if (loading && commits.isEmpty()) {
                 item(key = "loading") {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        BrandLoadingPlaceholder()
                     }
                 }
             } else if (commits.isEmpty()) {
@@ -437,7 +436,7 @@ private fun CommitsSheet(
                     item(key = "more") {
                         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                             if (loadingMore) {
-                                CircularProgressIndicator()
+                                BrandLoadingPlaceholder()
                             } else {
                                 OutlinedButton(onClick = onLoadMore) { Text("Load more") }
                             }

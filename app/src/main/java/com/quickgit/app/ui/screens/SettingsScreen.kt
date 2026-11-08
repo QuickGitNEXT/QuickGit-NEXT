@@ -25,6 +25,7 @@ import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 
@@ -186,7 +187,7 @@ fun SettingsScreen(
                     enabled = !state.updateChecking
                 ) {
                     if (state.updateChecking) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        BrandLoadingSpinner(size = 18.dp)
                         Spacer(Modifier.width(8.dp))
                     } else {
                         Icon(Icons.Default.SystemUpdate, null, Modifier.size(18.dp))

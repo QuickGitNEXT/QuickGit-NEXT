@@ -28,6 +28,7 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.security.CredentialsAuthGate
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 
@@ -349,11 +350,7 @@ private fun CredentialsScreenContent(
                 enabled = state.host.isNotBlank() && state.token.isNotBlank() && !state.connecting
             ) {
                 if (state.connecting) {
-                    CircularProgressIndicator(
-                        Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    BrandLoadingSpinner(size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Connecting…")
                 } else {
@@ -444,7 +441,7 @@ private fun CredentialsScreenContent(
                 enabled = gitlabToken.isNotBlank() && !state.connecting
             ) {
                 if (state.connecting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    BrandLoadingSpinner(size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Connecting…")
                 } else {
@@ -529,7 +526,7 @@ private fun CredentialsScreenContent(
                     gerritPassword.isNotBlank() && !state.connecting
             ) {
                 if (state.connecting) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    BrandLoadingSpinner(size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                 }
                 Text("Add Gerrit account")

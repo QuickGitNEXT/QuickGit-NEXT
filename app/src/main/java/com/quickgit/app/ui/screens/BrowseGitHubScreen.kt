@@ -25,6 +25,7 @@ import com.quickgit.app.data.models.GerritProject
 import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.data.models.GitLabProject
 import com.quickgit.app.data.models.GitOpResult
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppScreenTitle
@@ -399,7 +400,7 @@ private fun ProviderList(
                     contentAlignment = Alignment.Center
                 ) {
                     if (loadingMore) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
+                        BrandLoadingSpinner(size = 28.dp)
                     } else {
                         OutlinedButton(onClick = onLoadMore) { Text("Load more") }
                     }
@@ -492,7 +493,7 @@ private fun RemoteRepoRow(
             }
         }
         if (cloning) {
-            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+            BrandLoadingSpinner(size = 24.dp)
         } else {
             Box {
                 IconButton(onClick = { menuExpanded = true }, enabled = enabled) {
@@ -608,7 +609,7 @@ private fun CreateRepoDialog(
                 enabled = !creating && name.isNotBlank() && (githubConnected || gitlabConnected)
             ) {
                 if (creating) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    BrandLoadingSpinner(size = 16.dp)
                 } else {
                     Text("Create")
                 }

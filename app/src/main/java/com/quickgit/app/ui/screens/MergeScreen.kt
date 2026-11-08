@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
+import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppScreenTitle
@@ -137,7 +138,7 @@ private fun ConflictEditorDialog(fc: FileChange, vm: MergeViewModel, onDismiss: 
         title = { Text(fc.path.substringAfterLast('/')) },
         text = {
             if (!loaded) {
-                Box(Modifier.height(120.dp).fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                Box(Modifier.height(120.dp).fillMaxWidth(), contentAlignment = Alignment.Center) { BrandLoadingPlaceholder() }
             } else {
                 Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                     Row {

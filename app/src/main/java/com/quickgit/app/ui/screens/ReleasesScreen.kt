@@ -33,6 +33,7 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -638,7 +639,7 @@ private fun CreateOrEditReleaseDialog(
                 enabled = !busy && tag.isNotBlank()
             ) {
                 if (busy) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    BrandLoadingSpinner(size = 18.dp)
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(if (allowAssets) "Create" else "Save")

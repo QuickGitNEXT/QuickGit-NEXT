@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -661,7 +662,7 @@ private fun JobLogContent(
             state.logLoading && state.logText == null -> {
                 Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+                        BrandLoadingPlaceholder()
                         Spacer(Modifier.height(12.dp))
                         Text(
                             "Downloading log…",
@@ -1028,7 +1029,7 @@ private fun DispatchDialog(
                 enabled = !busy && resolvedRef.isNotBlank() && !requiredMissing
             ) {
                 if (busy) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    BrandLoadingSpinner(size = 18.dp)
                 } else {
                     Text("Run workflow")
                 }

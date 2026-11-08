@@ -25,6 +25,7 @@ import com.quickgit.app.data.models.GitHubRemoteRepo
 import com.quickgit.app.ui.components.UserAvatar
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.viewmodel.ProfileProvider
@@ -372,7 +373,7 @@ fun ProfileScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (state.loadingMoreRepos) {
-                                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
+                                        BrandLoadingSpinner(size = 28.dp)
                                     } else {
                                         OutlinedButton(onClick = { vm.loadMoreRepos() }) {
                                             Text("Load more")
@@ -481,7 +482,7 @@ private fun ProfileRepoRow(
             }
         }
         if (cloning) {
-            CircularProgressIndicator(Modifier.padding(end = 12.dp).size(20.dp), strokeWidth = 2.dp)
+            BrandLoadingSpinner(size = 28.dp)
         } else {
             IconButton(onClick = onClone, modifier = Modifier.padding(end = 4.dp)) {
                 Icon(Icons.Default.Download, "Clone this repo")
@@ -489,7 +490,7 @@ private fun ProfileRepoRow(
         }
         if (showFork) {
             if (forking) {
-                CircularProgressIndicator(Modifier.padding(end = 16.dp).size(20.dp), strokeWidth = 2.dp)
+                BrandLoadingSpinner(size = 28.dp)
             } else {
                 IconButton(onClick = onFork, modifier = Modifier.padding(end = 4.dp)) {
                     Icon(Icons.Default.CallSplit, "Fork this repo")
