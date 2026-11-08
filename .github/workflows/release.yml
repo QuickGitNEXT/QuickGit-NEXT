@@ -364,22 +364,42 @@ jobs:
 
       - name: Install AppImage packaging dependencies
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y libfuse2t64 libfuse2 file || sudo apt-get install -y libfuse2 file
           echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
-          APPIMAGE_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
-          if curl -fsSL --retry 3 --retry-delay 2 \
-               -o /tmp/appimagetool "$APPIMAGE_URL"; then
+          # continuous release often 504s; try stable tags and mirrors
+          URLS=(
+            "https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage"
+            "https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage"
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          )
+          DOWNLOADED=0
+          for APPIMAGE_URL in "${URLS[@]}"; do
+            echo "Trying appimagetool: $APPIMAGE_URL"
+            if curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+                 -o /tmp/appimagetool "$APPIMAGE_URL"; then
+              DOWNLOADED=1
+              break
+            fi
+            echo "Download failed for $APPIMAGE_URL"
+          done
+          if [ "$DOWNLOADED" = "1" ]; then
             chmod +x /tmp/appimagetool
-            (cd /tmp && ./appimagetool --appimage-extract >/dev/null 2>&1) || true
+            (cd /tmp && APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool --appimage-extract >/dev/null 2>&1) || true
             if [ -x /tmp/squashfs-root/AppRun ]; then
               sudo ln -sfn /tmp/squashfs-root/AppRun /usr/local/bin/appimagetool
             else
-              sudo ln -sfn /tmp/appimagetool /usr/local/bin/appimagetool
+              # Run the AppImage itself under EXTRACT_AND_RUN (no FUSE needed)
+              printf '%s\n' '#!/bin/sh' 'export APPIMAGE_EXTRACT_AND_RUN=1' 'exec /tmp/appimagetool "$@"' \
+                | sudo tee /usr/local/bin/appimagetool >/dev/null
+              sudo chmod +x /usr/local/bin/appimagetool
             fi
             appimagetool --version || true
+            echo "appimagetool installed"
           else
-            echo "::warning::appimagetool download failed; AppImage packaging may use Compose only"
+            echo "::error::appimagetool download failed from all mirrors"
+            exit 1
           fi
 
       - name: Set up Gradle
@@ -461,6 +481,10 @@ jobs:
             fi
             mkdir -p "desktop/build/compose/binaries/main/appimage"
             OUT_AI="desktop/build/compose/binaries/main/appimage/QuickGitNEXT-${{ needs.version.outputs.name }}-x86_64.AppImage"
+            if ! command -v appimagetool >/dev/null 2>&1; then
+              echo "ERROR: appimagetool is not installed (download step failed earlier)" >&2
+              exit 1
+            fi
             APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$STAGE/QuickGitNEXT.AppDir" "$OUT_AI"
             chmod +x "$OUT_AI"
             echo "Built fallback AppImage: $OUT_AI"
