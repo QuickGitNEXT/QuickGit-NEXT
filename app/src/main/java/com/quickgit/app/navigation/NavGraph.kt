@@ -20,9 +20,12 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,15 +48,19 @@ import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
+import com.quickgit.app.ui.components.ChromeOsAppChrome
+import com.quickgit.app.ui.components.ChromeOsRepoTab
 import com.quickgit.app.ui.components.FloatingNavItem
 import com.quickgit.app.ui.components.FloatingTabletNavBar
 import com.quickgit.app.ui.components.RepoDetailBottomBar
 import com.quickgit.app.ui.components.RepoDetailBottomTab
+import com.quickgit.app.ui.components.chromeOsDefaultDestinations
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.screens.*
 import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.viewmodel.*
 import androidx.compose.runtime.collectAsState
+import java.io.File
 
 /**
  * Root navigation graph.
@@ -67,7 +74,6 @@ import androidx.compose.runtime.collectAsState
  */
 @Composable
 fun QuickGitNavGraph() {
-    val navController = rememberNavController()
     val context = LocalContext.current
     val factory = ViewModelFactory(context.applicationContext as android.app.Application)
     // Shared across Settings + Credentials so the first open pays init cost once and
@@ -87,14 +93,17 @@ fun QuickGitNavGraph() {
         DesktopLayoutMode.NEVER -> false
         DesktopLayoutMode.AUTO -> wsc.isTabletOrWider
     }
-    // Chromebook: permanent left rail when wide chrome is on.
-    val useRail = false // Chromebook/Googlebook: top floating chrome instead of left rail
+    // Chromebook: ChromeOS top chrome + repo tabs (no floating bottom bars, no rail).
+    val useRail = false
+    val useChromeOsShell = isChromebook && preferWideChrome
     // Floating navbar: large phones always; tablets when not Chromebook.
-    // Not gated by NEVER for large phones so the navbar actually ships on 6.4″+ handsets.
-    val useFloatingBar = !useRail && (isLargePhone || (preferWideChrome && !isChromebook))
+    val useFloatingBar =
+        !useRail && !useChromeOsShell && (isLargePhone || (preferWideChrome && !isChromebook))
     val floatingBarCompact = isLargePhone
     val isDesktopLayout = preferWideChrome
+    val chromeRepoTabs = remember { mutableStateListOf<ChromeOsRepoTab>() }
 
+    val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     // Tablets: hide app nav on repo detail. Large phones: hide on detail + Files/Branches/PRs/Actions
@@ -118,6 +127,34 @@ fun QuickGitNavGraph() {
         val encoded = navBackStackEntry?.arguments?.getString("repoPath") ?: return null
         if (encoded.isBlank() || '{' in encoded || '}' in encoded) return null
         return Dest.decode(encoded)
+    }
+
+    fun openRepoInChromeTab(path: String, title: String? = null) {
+        val name = title ?: File(path).name.ifBlank { path.substringAfterLast('/') }
+        if (chromeRepoTabs.none { it.path == path }) {
+            chromeRepoTabs.add(ChromeOsRepoTab(path = path, title = name))
+        }
+        navController.navigate(Dest.repoDetail(path)) {
+            launchSingleTop = true
+        }
+    }
+
+    fun closeChromeRepoTab(path: String) {
+        val idx = chromeRepoTabs.indexOfFirst { it.path == path }
+        if (idx < 0) return
+        chromeRepoTabs.removeAt(idx)
+        val active = repoPathFromCurrentRoute()
+        if (active == path) {
+            val next = chromeRepoTabs.getOrNull(idx) ?: chromeRepoTabs.getOrNull(idx - 1)
+            if (next != null) {
+                navController.navigate(Dest.repoDetail(next.path)) {
+                    launchSingleTop = true
+                    popUpTo(Dest.REPO_LIST) { inclusive = false }
+                }
+            } else {
+                navController.popBackStack(Dest.REPO_LIST, inclusive = false)
+            }
+        }
     }
 
     fun selectedRepoTab(): RepoDetailBottomTab? = when {
@@ -150,7 +187,10 @@ fun QuickGitNavGraph() {
             val vm: RepoListViewModel = viewModel(factory = factory)
             RepoListScreen(
                 vm = vm,
-                onOpenRepo = { repo: RepoInfo -> navController.navigate(Dest.repoDetail(repo.localPath)) },
+                onOpenRepo = { repo: RepoInfo ->
+                    if (useChromeOsShell) openRepoInChromeTab(repo.localPath, repo.name)
+                    else navController.navigate(Dest.repoDetail(repo.localPath))
+                },
                 onClone = { navController.navigate(Dest.CLONE) },
                 onBrowseGitHub = { navController.navigate(Dest.BROWSE_GITHUB) },
                 onOpenProfile = { navController.navigate(Dest.profile()) },
@@ -668,12 +708,54 @@ fun QuickGitNavGraph() {
     }
 
     when {
-        // Chromebook (and ARC desktop shells): permanent left NavigationRail.
+        // Chromebook: ChromeOS top toolbar + repo tabs (no floating bars).
+        useChromeOsShell -> {
+            Column(Modifier.fillMaxSize()) {
+                ChromeOsAppChrome(
+                    destinations = chromeOsDefaultDestinations(
+                        selectedRoute = currentRoute,
+                        onRepos = {
+                            navController.navigate(Dest.REPO_LIST) {
+                                launchSingleTop = true
+                                popUpTo(Dest.REPO_LIST) { inclusive = false }
+                            }
+                        },
+                        onClone = {
+                            navController.navigate(Dest.CLONE) { launchSingleTop = true }
+                        },
+                        onBrowse = {
+                            navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
+                        },
+                        onSearch = {
+                            navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+                        },
+                        onProfiles = {
+                            navController.navigate(Dest.profile()) { launchSingleTop = true }
+                        },
+                        onSettings = {
+                            navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
+                        }
+                    ),
+                    repoTabs = chromeRepoTabs.toList(),
+                    activeRepoPath = repoPathFromCurrentRoute(),
+                    onSelectRepoTab = { path ->
+                        navController.navigate(Dest.repoDetail(path)) {
+                            launchSingleTop = true
+                            popUpTo(Dest.REPO_LIST) { inclusive = false }
+                        }
+                    },
+                    onCloseRepoTab = { path -> closeChromeRepoTab(path) }
+                )
+                Box(Modifier.weight(1f).fillMaxSize()) {
+                    NavContent()
+                }
+            }
+        }
+        // Optional left NavigationRail (disabled by default).
         useRail -> {
             Row(Modifier.fillMaxSize()) {
                 NavigationRail(modifier = Modifier.fillMaxHeight()) {
                     val items = navItems(includeBrowse = true, includeUsers = true)
-                    // Primary destinations stay on top; Logs / Creds / Settings sit at the bottom.
                     val bottomLabels = setOf("Logs", "Creds", "Settings")
                     items.filter { it.label !in bottomLabels }.forEach { item ->
                         RailItem(item.icon, item.label, item.selected, item.onClick)
@@ -689,7 +771,7 @@ fun QuickGitNavGraph() {
                 }
             }
         }
-        // Android tablets: M3 floating bottom bar with frosted/blur surface.
+        // Android tablets / large phones: M3 floating bottom bar.
         useFloatingBar -> {
             Box(Modifier.fillMaxSize()) {
                 Box(

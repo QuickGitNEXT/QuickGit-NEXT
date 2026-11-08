@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.LocalContext
+import com.quickgit.app.ui.security.isChromebookDevice
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ArrowBack
@@ -148,6 +150,7 @@ fun RepoDetailScreenDesktop(
     var tabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    val isChromebook = LocalContext.current.isChromebookDevice()
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
 
@@ -263,6 +266,57 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
+            // Chromebook: section tabs under the title (Chrome-style strip, not a floating bar)
+            if (isChromebook) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        tabs.forEachIndexed { i, (title, icon) ->
+                            val selected = tabIndex == i
+                            val contentColor =
+                                if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (selected) GitGreen.copy(alpha = 0.14f)
+                                        else Color.Transparent
+                                    )
+                                    .clickable { tabIndex = i }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = title,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    title,
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = contentColor,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                )
+            }
+
             PullToRefreshBox(
                 isRefreshing = if (tabIndex == 1) filesState.loading else state.busy,
                 onRefresh = {
@@ -293,61 +347,63 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Tabs floating bar — same compact chrome as RepoDetailBottomBar / FloatingTabletNavBar
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 28.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(22.dp),
-                    tonalElevation = 4.dp,
-                    shadowElevation = 12.dp,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                    ),
-                    modifier = Modifier
-                        .widthIn(max = 560.dp)
-                        .fillMaxWidth(0.94f)
+            // Tablet: floating bottom section bar. Chromebook uses the top strip instead.
+            if (!isChromebook) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        tonalElevation = 4.dp,
+                        shadowElevation = 12.dp,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+                        border = BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        ),
+                        modifier = Modifier
+                            .widthIn(max = 560.dp)
+                            .fillMaxWidth(0.94f)
                     ) {
-                        tabs.forEachIndexed { i, (title, icon) ->
-                            val selected = tabIndex == i
-                            val selectedBg =
-                                if (selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
-                            val contentColor =
-                                if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(selectedBg)
-                                    .clickable { tabIndex = i }
-                                    .padding(vertical = 3.dp, horizontal = 1.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = title,
-                                    tint = contentColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Text(
-                                    title,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = contentColor,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-                                )
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp, vertical = 5.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            tabs.forEachIndexed { i, (title, icon) ->
+                                val selected = tabIndex == i
+                                val selectedBg =
+                                    if (selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
+                                val contentColor =
+                                    if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(selectedBg)
+                                        .clickable { tabIndex = i }
+                                        .padding(vertical = 3.dp, horizontal = 1.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = title,
+                                        tint = contentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        title,
+                                        maxLines = 1,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = contentColor,
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }

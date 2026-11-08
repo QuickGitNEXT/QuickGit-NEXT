@@ -130,15 +130,10 @@ fun RepoListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
+            // Chromebook shell provides global chrome; keep a simple title only.
             if (isChromebookLayout) {
-                ChromebookReposTopChrome(
-                    onClone = onClone,
-                    onBrowse = onBrowseGitHub,
-                    onUsers = onSearchPeople,
-                    onSettings = onSettings,
-                    onProfile = onOpenProfile,
-                    accountAvatarUrl = account?.avatarUrl,
-                    accountLogin = account?.login
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Repositories", logoSize = 36.dp) }
                 )
             } else {
             CenterAlignedTopAppBar(
