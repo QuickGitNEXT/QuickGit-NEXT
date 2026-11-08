@@ -265,6 +265,10 @@ fun RepoDetailScreenDesktop(
                     fun isWorkflowLive(status: String) =
                         status == "queued" || status == "in_progress" || status == "requested" ||
                             status == "waiting" || status == "pending"
+                    // Back hierarchy:
+                    // 1) close open release / workflow run detail
+                    // 2) from Files/Branches/Issues/PRs/Actions/Releases → Changes
+                    // 3) from Changes → leave the repo
                     val onHeaderBack: () -> Unit = {
                         when {
                             releaseOpen -> {
@@ -281,10 +285,11 @@ fun RepoDetailScreenDesktop(
                                     }
                                 }
                             }
+                            tabIndex != 0 -> setTabIndex(0)
                             else -> onBack()
                         }
                     }
-                    BackHandler(enabled = releaseOpen || workflowOpen) {
+                    BackHandler(enabled = releaseOpen || workflowOpen || tabIndex != 0) {
                         onHeaderBack()
                     }
                     if (isChromebook) {
@@ -294,6 +299,7 @@ fun RepoDetailScreenDesktop(
                                 contentDescription = when {
                                     releaseOpen -> "Back to releases"
                                     workflowOpen -> "Back to actions"
+                                    tabIndex != 0 -> "Back to changes"
                                     else -> "Back"
                                 },
                                 tint = MaterialTheme.colorScheme.onSurface
@@ -349,6 +355,7 @@ fun RepoDetailScreenDesktop(
                             contentDescription = when {
                                 releaseOpen -> "Back to releases"
                                 workflowOpen -> "Back to actions"
+                                tabIndex != 0 -> "Back to changes"
                                 else -> "Back"
                             },
                             onClick = onHeaderBack
