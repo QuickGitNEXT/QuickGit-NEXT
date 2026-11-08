@@ -49,7 +49,9 @@ fun ReleasesScreen(
      * Parent increments [externalEditRequest] to open the edit dialog.
      */
     chromeHostsDetailHeader: Boolean = false,
-    externalEditRequest: Int = 0
+    externalEditRequest: Int = 0,
+    /** Notifies the host (repo detail chrome) when a release detail is open or closed. */
+    onDetailOpenChange: ((Boolean) -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -60,6 +62,14 @@ fun ReleasesScreen(
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.statusMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.authRequiredHost?.let { onNeedsAuth("https://$it/"); vm.consumeMessages() }
+    }
+
+    // Keep parent chrome in sync with whether a release detail is showing.
+    LaunchedEffect(state.selected) {
+        onDetailOpenChange?.invoke(state.selected != null)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onDetailOpenChange?.invoke(false) }
     }
 
     // Parent Chromebook chrome can request edit while a release detail is open.

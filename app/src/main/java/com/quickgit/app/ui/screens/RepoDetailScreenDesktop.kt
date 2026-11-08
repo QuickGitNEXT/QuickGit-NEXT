@@ -102,6 +102,8 @@ fun RepoDetailScreenDesktop(
     var selectedEditorPath by remember { mutableStateOf<String?>(null) }
     // Incremented from Chromebook top chrome to open the Releases edit dialog.
     var releaseEditRequest by remember { mutableIntStateOf(0) }
+    // Driven by ReleasesScreen so header Back closes detail even if VM selected lags.
+    var releaseDetailOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -188,6 +190,11 @@ fun RepoDetailScreenDesktop(
     // so saves / external overwrites show up in staging without leaving the repo.
     LaunchedEffect(tabIndex) {
         if (tabIndex != 1) selectedEditorPath = null
+        if (tabIndex != 6) {
+            releaseDetailOpen = false
+            // Leaving Releases while a detail was open — clear so list is clean next time.
+            if (releasesState.selected != null) releasesVm.closeDetail()
+        }
         if (tabIndex == 0) vm.refresh()
     }
     // Re-scan working tree whenever the activity returns to the foreground (e.g. after
@@ -238,9 +245,19 @@ fun RepoDetailScreenDesktop(
                     // instead of closing the whole repo tab.
                     val openRelease =
                         if (tabIndex == 6) releasesState.selected else null
+                    val releaseOpen = openRelease != null || (tabIndex == 6 && releaseDetailOpen)
                     val onHeaderBack: () -> Unit = {
-                        if (openRelease != null) releasesVm.closeDetail()
-                        else onBack()
+                        if (releaseOpen) {
+                            releasesVm.closeDetail()
+                            releaseDetailOpen = false
+                        } else {
+                            onBack()
+                        }
+                    }
+                    // System / gesture back also closes release detail before leaving the repo.
+                    BackHandler(enabled = releaseOpen) {
+                        releasesVm.closeDetail()
+                        releaseDetailOpen = false
                     }
                     if (isChromebook) {
                         IconButton(onClick = onHeaderBack) {
@@ -494,7 +511,8 @@ fun RepoDetailScreenDesktop(
                             onNeedsAuth = onNeedsAuth,
                             embedded = true,
                             chromeHostsDetailHeader = isChromebook,
-                            externalEditRequest = releaseEditRequest
+                            externalEditRequest = releaseEditRequest,
+                            onDetailOpenChange = { open -> releaseDetailOpen = open }
                         )
                     }
                 }
