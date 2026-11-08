@@ -12,6 +12,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.security.isChromebookDevice
+import com.quickgit.app.ui.components.ChromeOsSectionItem
+import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ArrowBack
@@ -147,10 +149,26 @@ fun RepoDetailScreenDesktop(
         "Actions" to Icons.Default.PlayCircle,
         "Releases" to Icons.Default.NewReleases,
     )
-    var tabIndex by remember { mutableStateOf(0) }
+    var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val isChromebook = LocalContext.current.isChromebookDevice()
+    val chromeSection = LocalChromeOsRepoSection.current
+    // Chromebook: section selection lives in the top chrome under main destinations.
+    if (isChromebook) {
+        DisposableEffect(Unit) {
+            chromeSection.activate(
+                tabs.map { (label, icon) -> ChromeOsSectionItem(icon, label) },
+                localTabIndex
+            )
+            onDispose { chromeSection.deactivate() }
+        }
+    }
+    val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
+    fun setTabIndex(i: Int) {
+        if (isChromebook) chromeSection.selectedIndex.intValue = i
+        else localTabIndex = i
+    }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
 
@@ -188,8 +206,7 @@ fun RepoDetailScreenDesktop(
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        AppBrandLogo(size = 28.dp)
-                        Column(Modifier.padding(start = 6.dp)) {
+                        Column(Modifier.padding(start = 2.dp)) {
                             Text(
                                 repoName,
                                 style = MaterialTheme.typography.titleMedium,
@@ -302,56 +319,7 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Chromebook: section tabs under the title (Chrome-style strip, not a floating bar)
-            if (isChromebook) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        tabs.forEachIndexed { i, (title, icon) ->
-                            val selected = tabIndex == i
-                            val contentColor =
-                                if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (selected) GitGreen.copy(alpha = 0.14f)
-                                        else Color.Transparent
-                                    )
-                                    .clickable { tabIndex = i }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = title,
-                                    tint = contentColor,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    title,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = contentColor,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                )
-            }
+            // Chromebook section menu lives in ChromeOsAppChrome under the main destinations.
 
             PullToRefreshBox(
                 isRefreshing = if (tabIndex == 1) filesState.loading else state.busy,
@@ -422,7 +390,7 @@ fun RepoDetailScreenDesktop(
                                         .weight(1f)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(selectedBg)
-                                        .clickable { tabIndex = i }
+                                        .clickable { setTabIndex(i) }
                                         .padding(vertical = 3.dp, horizontal = 1.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
