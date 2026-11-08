@@ -56,54 +56,26 @@ fun ReleasesScreen(
         state.authRequiredHost?.let { onNeedsAuth("https://$it/"); vm.consumeMessages() }
     }
 
-    if (state.selected != null) {
-        BackHandler { vm.closeDetail() }
-        ReleaseDetailContent(
-            release = state.selected!!,
-            loading = state.detailLoading,
-            onBack = { vm.closeDetail() },
-            onEdit = { editingRelease = state.selected },
-            // Embedded under repo detail (tablet/Chromebook): no second back, no floating chrome.
-            embedded = embedded
-        )
-        return
-    }
-
-    if (!state.supported) {
-        Scaffold(
-            topBar = {
-                if (onBack != null) CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases", showLogo = true) },
-                    navigationIcon = {
-                    onBack?.let { back ->
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = back
-                        )
-                    }
-                }
-                )
-            }
-        ) { padding ->
-            Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    "Releases are only available for repositories whose origin points at github.com.",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+    // Detail / list / unsupported body. Dialogs are composed AFTER this so Edit still works
+    // when a release is open (previous early-return skipped the edit dialog entirely).
+    when {
+        state.selected != null -> {
+            BackHandler { vm.closeDetail() }
+            ReleaseDetailContent(
+                release = state.selected!!,
+                loading = state.detailLoading,
+                onBack = { vm.closeDetail() },
+                onEdit = { editingRelease = state.selected },
+                // Embedded under repo detail (tablet/Chromebook): no second back, no floating chrome.
+                embedded = embedded
+            )
         }
-        return
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHost) },
-        topBar = {
-            if (!embedded) {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle("Releases", showLogo = true) },
-                    navigationIcon = {
+        !state.supported -> {
+            Scaffold(
+                topBar = {
+                    if (onBack != null) CenterAlignedTopAppBar(
+                        title = { AppScreenTitle("Releases", showLogo = true) },
+                        navigationIcon = {
                         onBack?.let { back ->
                             FloatingCircleIconButton(
                                 imageVector = Icons.Default.ArrowBack,
@@ -111,54 +83,84 @@ fun ReleasesScreen(
                                 onClick = back
                             )
                         }
-                    },
-                    actions = {
-                        if (onOpenIssues != null) {
-                            FloatingCircleIconButton(
-                                imageVector = Icons.Default.BugReport,
-                                contentDescription = "Issues",
-                                onClick = onOpenIssues
-                            )
-                        }
                     }
-                )
-            }
-        },
-        floatingActionButton = {
-            if (state.supported) {
-                FloatingActionButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "New release")
+                    )
+                }
+            ) { padding ->
+                Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Releases are only available for repositories whose origin points at github.com.",
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = state.loading,
-            onRefresh = { vm.refresh() },
-            modifier = Modifier.padding(padding).fillMaxSize()
-        ) {
-            when {
-                state.loading && state.releases.isEmpty() -> {
-                    BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
-                }
-                state.releases.isEmpty() -> {
-                    Text(
-                        "No releases published yet.",
-                        Modifier.align(Alignment.Center).padding(32.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(state.releases, key = { it.id }) { release ->
-                            ReleaseCard(release = release, onClick = { vm.openDetail(release.id) })
+        else -> {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHost) },
+                topBar = {
+                    if (!embedded) {
+                        CenterAlignedTopAppBar(
+                            title = { AppScreenTitle("Releases", showLogo = true) },
+                            navigationIcon = {
+                                onBack?.let { back ->
+                                    FloatingCircleIconButton(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "Back",
+                                        onClick = back
+                                    )
+                                }
+                            },
+                            actions = {
+                                if (onOpenIssues != null) {
+                                    FloatingCircleIconButton(
+                                        imageVector = Icons.Default.BugReport,
+                                        contentDescription = "Issues",
+                                        onClick = onOpenIssues
+                                    )
+                                }
+                            }
+                        )
+                    }
+                },
+                floatingActionButton = {
+                    if (state.supported) {
+                        FloatingActionButton(onClick = { showCreateDialog = true }) {
+                            Icon(Icons.Default.Add, contentDescription = "New release")
                         }
-                        item { Spacer(Modifier.height(80.dp)) }
+                    }
+                }
+            ) { padding ->
+                PullToRefreshBox(
+                    isRefreshing = state.loading,
+                    onRefresh = { vm.refresh() },
+                    modifier = Modifier.padding(padding).fillMaxSize()
+                ) {
+                    when {
+                        state.loading && state.releases.isEmpty() -> {
+                            BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
+                        }
+                        state.releases.isEmpty() -> {
+                            Text(
+                                "No releases published yet.",
+                                Modifier.align(Alignment.Center).padding(32.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        else -> {
+                            LazyColumn(
+                                contentPadding = PaddingValues(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(state.releases, key = { it.id }) { release ->
+                                    ReleaseCard(release = release, onClick = { vm.openDetail(release.id) })
+                                }
+                                item { Spacer(Modifier.height(80.dp)) }
+                            }
+                        }
                     }
                 }
             }
