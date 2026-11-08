@@ -48,10 +48,14 @@ import com.quickgit.app.data.DesktopLayoutMode
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
+import androidx.compose.runtime.CompositionLocalProvider
 import com.quickgit.app.ui.components.ChromeOsAppChrome
+import com.quickgit.app.ui.components.ChromeOsContentWithWatermark
+import com.quickgit.app.ui.components.ChromeOsRepoSectionController
 import com.quickgit.app.ui.components.ChromeOsRepoTab
 import com.quickgit.app.ui.components.FloatingNavItem
 import com.quickgit.app.ui.components.FloatingTabletNavBar
+import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import com.quickgit.app.ui.components.RepoDetailBottomBar
 import com.quickgit.app.ui.components.RepoDetailBottomTab
 import com.quickgit.app.ui.components.chromeOsDefaultDestinations
@@ -102,6 +106,7 @@ fun QuickGitNavGraph() {
     val floatingBarCompact = isLargePhone
     val isDesktopLayout = preferWideChrome
     val chromeRepoTabs = remember { mutableStateListOf<ChromeOsRepoTab>() }
+    val chromeRepoSection = remember { ChromeOsRepoSectionController() }
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -708,46 +713,57 @@ fun QuickGitNavGraph() {
     }
 
     when {
-        // Chromebook: ChromeOS top toolbar + repo tabs (no floating bars).
+        // Chromebook: ChromeOS top toolbar + section strip + repo tabs (no floating bars).
         useChromeOsShell -> {
-            Column(Modifier.fillMaxSize()) {
-                ChromeOsAppChrome(
-                    destinations = chromeOsDefaultDestinations(
-                        selectedRoute = currentRoute,
-                        onRepos = {
-                            navController.navigate(Dest.REPO_LIST) {
+            CompositionLocalProvider(LocalChromeOsRepoSection provides chromeRepoSection) {
+                Column(Modifier.fillMaxSize()) {
+                    ChromeOsAppChrome(
+                        destinations = chromeOsDefaultDestinations(
+                            selectedRoute = currentRoute,
+                            onRepos = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.REPO_LIST) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.REPO_LIST) { inclusive = false }
+                                }
+                            },
+                            onClone = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.CLONE) { launchSingleTop = true }
+                            },
+                            onBrowse = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
+                            },
+                            onSearch = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
+                            },
+                            onProfiles = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.profile()) { launchSingleTop = true }
+                            },
+                            onSettings = {
+                                chromeRepoSection.deactivate()
+                                navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
+                            }
+                        ),
+                        repoTabs = chromeRepoTabs.toList(),
+                        activeRepoPath = repoPathFromCurrentRoute(),
+                        onSelectRepoTab = { path ->
+                            navController.navigate(Dest.repoDetail(path)) {
                                 launchSingleTop = true
                                 popUpTo(Dest.REPO_LIST) { inclusive = false }
                             }
                         },
-                        onClone = {
-                            navController.navigate(Dest.CLONE) { launchSingleTop = true }
-                        },
-                        onBrowse = {
-                            navController.navigate(Dest.BROWSE_GITHUB) { launchSingleTop = true }
-                        },
-                        onSearch = {
-                            navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true }
-                        },
-                        onProfiles = {
-                            navController.navigate(Dest.profile()) { launchSingleTop = true }
-                        },
-                        onSettings = {
-                            navController.navigate(Dest.SETTINGS) { launchSingleTop = true }
-                        }
-                    ),
-                    repoTabs = chromeRepoTabs.toList(),
-                    activeRepoPath = repoPathFromCurrentRoute(),
-                    onSelectRepoTab = { path ->
-                        navController.navigate(Dest.repoDetail(path)) {
-                            launchSingleTop = true
-                            popUpTo(Dest.REPO_LIST) { inclusive = false }
-                        }
-                    },
-                    onCloseRepoTab = { path -> closeChromeRepoTab(path) }
-                )
-                Box(Modifier.weight(1f).fillMaxSize()) {
-                    NavContent()
+                        onCloseRepoTab = { path -> closeChromeRepoTab(path) }
+                    )
+                    ChromeOsContentWithWatermark(
+                        showWatermark = true,
+                        modifier = Modifier.weight(1f).fillMaxSize()
+                    ) {
+                        NavContent()
+                    }
                 }
             }
         }

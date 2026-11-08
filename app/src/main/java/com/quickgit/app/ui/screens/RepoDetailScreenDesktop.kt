@@ -12,6 +12,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.security.isChromebookDevice
+import com.quickgit.app.ui.components.ChromeOsSectionItem
+import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ArrowBack
@@ -50,6 +52,7 @@ import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.viewmodel.BranchesViewModel
+import com.quickgit.app.viewmodel.EditorViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
 import com.quickgit.app.viewmodel.IssuesViewModel
@@ -84,11 +87,15 @@ fun RepoDetailScreenDesktop(
     val branchesVm: BranchesViewModel = viewModel(factory = factory)
     val filesVm: FilesViewModel = viewModel(factory = factory)
     val filesState by filesVm.state.collectAsState()
+    val editorVm: EditorViewModel = viewModel(factory = factory)
     val issuesVm: IssuesViewModel = viewModel(factory = factory)
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
     val releasesVm: ReleasesViewModel = viewModel(factory = factory)
     val historyVm: HistoryViewModel = viewModel(factory = factory)
+
+    // Chromebook / wide: Files list stays on the left as a vertical nav; editor opens on the right.
+    var selectedEditorPath by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -147,10 +154,30 @@ fun RepoDetailScreenDesktop(
         "Actions" to Icons.Default.PlayCircle,
         "Releases" to Icons.Default.NewReleases,
     )
-    var tabIndex by remember { mutableStateOf(0) }
+    var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val isChromebook = LocalContext.current.isChromebookDevice()
+    val chromeSection = LocalChromeOsRepoSection.current
+    // Chromebook: section selection lives in the top chrome under main destinations.
+    if (isChromebook) {
+        DisposableEffect(Unit) {
+            chromeSection.activate(
+                tabs.map { (label, icon) -> ChromeOsSectionItem(icon, label) },
+                localTabIndex
+            )
+            onDispose { chromeSection.deactivate() }
+        }
+    }
+    val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
+    // Leave the split editor when switching away from the Files tab.
+    LaunchedEffect(tabIndex) {
+        if (tabIndex != 1) selectedEditorPath = null
+    }
+    fun setTabIndex(i: Int) {
+        if (isChromebook) chromeSection.selectedIndex.intValue = i
+        else localTabIndex = i
+    }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
 
@@ -169,30 +196,53 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left; History top-right on Changes only
+            // Top bar: Chromebook = flat ChromeOS IconButtons; tablet = floating circles
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = if (isChromebook) 4.dp else 8.dp, vertical = 6.dp)
             ) {
                 Row(
                     Modifier.align(Alignment.CenterStart),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
                 ) {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        onClick = onBack
-                    )
-                    if (!isPortrait) {
-                        AppBrandLogo(size = 36.dp)
+                    if (isChromebook) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Column(Modifier.padding(start = 2.dp)) {
+                            Text(
+                                repoName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1
+                            )
+                            Text(
+                                state.branch,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    } else {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                        if (!isPortrait) {
+                            AppBrandLogo(size = 36.dp)
+                        }
                     }
                 }
                 Row(
                     Modifier.align(Alignment.CenterEnd),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.busy) {
                         CircularProgressIndicator(
@@ -201,34 +251,46 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                     if (tabIndex == 0) {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "History",
-                            onClick = { showHistory = true }
-                        )
+                        if (isChromebook) {
+                            IconButton(onClick = { showHistory = true }) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = "History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "History",
+                                onClick = { showHistory = true }
+                            )
+                        }
                     }
                 }
             }
 
-            // Repo name + branch; on Changes: stage/discard/Git Actions on the right
+            // Repo name + branch (tablet); Chromebook already shows them next to Back
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        repoName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
-                    )
-                    Text(
-                        state.branch,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                if (!isChromebook) {
+                    Column {
+                        Text(
+                            repoName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
+                        )
+                        Text(
+                            state.branch,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
                 if (tabIndex == 1) {
                     Text(
@@ -266,56 +328,7 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Chromebook: section tabs under the title (Chrome-style strip, not a floating bar)
-            if (isChromebook) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        tabs.forEachIndexed { i, (title, icon) ->
-                            val selected = tabIndex == i
-                            val contentColor =
-                                if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (selected) GitGreen.copy(alpha = 0.14f)
-                                        else Color.Transparent
-                                    )
-                                    .clickable { tabIndex = i }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = title,
-                                    tint = contentColor,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    title,
-                                    maxLines = 1,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = contentColor,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-                }
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                )
-            }
+            // Chromebook section menu lives in ChromeOsAppChrome under the main destinations.
 
             PullToRefreshBox(
                 isRefreshing = if (tabIndex == 1) filesState.loading else state.busy,
@@ -327,7 +340,42 @@ fun RepoDetailScreenDesktop(
             ) {
                 when (tabIndex) {
                     0 -> ChangesTabDesktop(vm)
-                    1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
+                    1 -> {
+                        // Left vertical file browser + right-side code editor (Chromebook / tablet / desktop).
+                        // On phone the same FilesScreen still navigates to a full-screen EditorScreen.
+                        // System back first closes the editor pane, then walks directories in the file list.
+                        BackHandler(enabled = selectedEditorPath != null) {
+                            selectedEditorPath = null
+                        }
+                        Row(Modifier.fillMaxSize()) {
+                            Box(
+                                Modifier
+                                    .weight(if (selectedEditorPath != null) 0.38f else 1f)
+                                    .fillMaxHeight()
+                            ) {
+                                FilesScreen(
+                                    repoPath = repoPath,
+                                    vm = filesVm,
+                                    onBack = null,
+                                    onOpenFile = { path -> selectedEditorPath = path }
+                                )
+                            }
+                            if (selectedEditorPath != null) {
+                                VerticalDivider(
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                Box(Modifier.weight(0.62f).fillMaxHeight()) {
+                                    EditorScreen(
+                                        repoPath = repoPath,
+                                        relativePath = selectedEditorPath!!,
+                                        vm = editorVm,
+                                        onBack = { selectedEditorPath = null }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
                     3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
                     4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
@@ -386,7 +434,7 @@ fun RepoDetailScreenDesktop(
                                         .weight(1f)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(selectedBg)
-                                        .clickable { tabIndex = i }
+                                        .clickable { setTabIndex(i) }
                                         .padding(vertical = 3.dp, horizontal = 1.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {

@@ -5,14 +5,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,8 +31,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -52,9 +57,36 @@ data class ChromeOsDestItem(
     val onClick: () -> Unit
 )
 
+data class ChromeOsSectionItem(
+    val icon: ImageVector,
+    val label: String
+)
+
 /**
- * ChromeOS-style top chrome: app destinations toolbar + optional Chrome-like repo tabs.
- * No floating bottom bars — meant for Chromebook / ARC desktop shells only.
+ * Shared Chromebook repo-section selection (Changes / Files / …).
+ * Provided by [RepoDetailScreenDesktop]; read by [ChromeOsAppChrome].
+ */
+class ChromeOsRepoSectionController {
+    val selectedIndex = mutableIntStateOf(0)
+    val active = mutableStateOf(false)
+    val items = mutableStateOf<List<ChromeOsSectionItem>>(emptyList())
+
+    fun activate(sections: List<ChromeOsSectionItem>, index: Int = selectedIndex.intValue) {
+        items.value = sections
+        selectedIndex.intValue = index.coerceIn(0, (sections.size - 1).coerceAtLeast(0))
+        active.value = true
+    }
+
+    fun deactivate() {
+        active.value = false
+    }
+}
+
+val LocalChromeOsRepoSection = staticCompositionLocalOf { ChromeOsRepoSectionController() }
+
+/**
+ * ChromeOS-style top chrome: app destinations + optional repo section strip + repo tabs.
+ * No floating bottom bars — Chromebook / ARC desktop shells only.
  */
 @Composable
 fun ChromeOsAppChrome(
@@ -65,36 +97,78 @@ fun ChromeOsAppChrome(
     onCloseRepoTab: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val section = LocalChromeOsRepoSection.current
+    val sectionActive = section.active.value
+    val sectionItems = section.items.value
+    val sectionIndex = section.selectedIndex.intValue
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp
     ) {
         Column(Modifier.fillMaxWidth()) {
-            // Toolbar — Chrome-like denser strip
+            // Primary destinations only — no brand logo / app name in the top bar
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                AppBrandLogo(size = 28.dp)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "QuickGitNEXT",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-                Spacer(Modifier.width(16.dp))
                 destinations.forEach { dest ->
                     ChromeOsToolbarItem(dest)
                 }
-                Spacer(Modifier.weight(1f))
             }
 
-            // Repo tab strip (only when at least one repo is open)
+            // Repo workspace sections under the main menu (when a repo is open)
+            if (sectionActive && sectionItems.isNotEmpty()) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    sectionItems.forEachIndexed { i, item ->
+                        val selected = sectionIndex == i
+                        val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                        Row(
+                            Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (selected) GitGreen.copy(alpha = 0.14f)
+                                    else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                                )
+                                .clickable { section.selectedIndex.intValue = i }
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                item.icon,
+                                contentDescription = item.label,
+                                tint = fg,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                item.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = fg,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Open-repo tab strip
             if (repoTabs.isNotEmpty()) {
                 HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
@@ -123,6 +197,33 @@ fun ChromeOsAppChrome(
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
             )
         }
+    }
+}
+
+/** Soft brand watermark for Chromebook pages (bottom-centered). */
+@Composable
+fun BoxScope.ChromeOsWatermark() {
+    AppBrandLogo(
+        size = 96.dp,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 28.dp)
+            .alpha(0.07f)
+    )
+}
+
+/** Content host with optional Chromebook watermark behind [content]. */
+@Composable
+fun ChromeOsContentWithWatermark(
+    showWatermark: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(modifier.fillMaxSize()) {
+        if (showWatermark) {
+            ChromeOsWatermark()
+        }
+        content()
     }
 }
 
