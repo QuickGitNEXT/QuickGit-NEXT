@@ -99,8 +99,8 @@ fun FloatingTabletNavBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = if (compact) 400.dp else 720.dp)
-                .then(if (compact) Modifier.fillMaxWidth(0.88f) else Modifier.fillMaxWidth())
+                .widthIn(max = if (compact) 460.dp else 720.dp)
+                .then(if (compact) Modifier.fillMaxWidth(0.94f) else Modifier.fillMaxWidth())
                 .clip(shape)
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

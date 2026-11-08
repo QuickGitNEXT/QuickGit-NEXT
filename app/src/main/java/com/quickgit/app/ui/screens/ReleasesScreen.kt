@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +33,7 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
+import com.quickgit.app.ui.components.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,14 +102,14 @@ fun ReleasesScreen(
                 CenterAlignedTopAppBar(
                     title = { AppScreenTitle("Releases", showLogo = true) },
                     navigationIcon = {
-                    onBack?.let { back ->
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = back
-                        )
-                    }
-                },
+                        onBack?.let { back ->
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                onClick = back
+                            )
+                        }
+                    },
                     actions = {
                         if (onOpenIssues != null) {
                             FloatingCircleIconButton(
@@ -117,9 +117,6 @@ fun ReleasesScreen(
                                 contentDescription = "Issues",
                                 onClick = onOpenIssues
                             )
-                        }
-                        IconButton(onClick = { vm.refresh() }, enabled = !state.loading) {
-                            Icon(Icons.Default.Refresh, "Refresh")
                         }
                     }
                 )
@@ -133,7 +130,11 @@ fun ReleasesScreen(
             }
         }
     ) { padding ->
-        Box(Modifier.padding(padding).fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = state.loading,
+            onRefresh = { vm.refresh() },
+            modifier = Modifier.padding(padding).fillMaxSize()
+        ) {
             when {
                 state.loading && state.releases.isEmpty() -> {
                     BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
@@ -149,16 +150,15 @@ fun ReleasesScreen(
                 else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         items(state.releases, key = { it.id }) { release ->
                             ReleaseCard(release = release, onClick = { vm.openDetail(release.id) })
                         }
+                        item { Spacer(Modifier.height(80.dp)) }
                     }
                 }
-            }
-            if (state.loading && state.releases.isNotEmpty()) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
             }
         }
     }

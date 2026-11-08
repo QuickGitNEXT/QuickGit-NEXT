@@ -699,8 +699,7 @@ fun QuickGitNavGraph() {
                             bottom = when {
                                 largePhoneRepoSubRoute -> 80.dp
                                 hideFloatingBarOnRepoDetail -> 0.dp
-                                floatingBarCompact -> 80.dp
-                                else -> 88.dp
+                                else -> 80.dp // compact FloatingTabletNavBar matches RepoDetailBottomBar
                             }
                         )
                 ) {
@@ -710,6 +709,7 @@ fun QuickGitNavGraph() {
                     FloatingTabletNavBar(
                         // Large phones: drop Browse/Logs from the bar (Logs lives in Settings).
                         // Search is always on the main floating bar (Repos, Clone, Profiles, Settings, Search).
+                        // Always compact so size matches RepoDetailBottomBar.
                         items = navItems(
                             includeBrowse = !isLargePhone,
                             includeUsers = true,
@@ -717,7 +717,7 @@ fun QuickGitNavGraph() {
                             // Large phones: credentials live under Profile only.
                             includeCreds = !isLargePhone
                         ),
-                        compact = floatingBarCompact,
+                        compact = true,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
                 } else if (largePhoneRepoSubRoute) {
