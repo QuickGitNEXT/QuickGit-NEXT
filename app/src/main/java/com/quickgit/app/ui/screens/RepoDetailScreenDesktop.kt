@@ -52,6 +52,7 @@ import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.viewmodel.BranchesViewModel
+import com.quickgit.app.viewmodel.EditorViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
 import com.quickgit.app.viewmodel.IssuesViewModel
@@ -86,11 +87,15 @@ fun RepoDetailScreenDesktop(
     val branchesVm: BranchesViewModel = viewModel(factory = factory)
     val filesVm: FilesViewModel = viewModel(factory = factory)
     val filesState by filesVm.state.collectAsState()
+    val editorVm: EditorViewModel = viewModel(factory = factory)
     val issuesVm: IssuesViewModel = viewModel(factory = factory)
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
     val releasesVm: ReleasesViewModel = viewModel(factory = factory)
     val historyVm: HistoryViewModel = viewModel(factory = factory)
+
+    // Chromebook / wide: Files list stays on the left as a vertical nav; editor opens on the right.
+    var selectedEditorPath by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -165,6 +170,10 @@ fun RepoDetailScreenDesktop(
         }
     }
     val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
+    // Leave the split editor when switching away from the Files tab.
+    LaunchedEffect(tabIndex) {
+        if (tabIndex != 1) selectedEditorPath = null
+    }
     fun setTabIndex(i: Int) {
         if (isChromebook) chromeSection.selectedIndex.intValue = i
         else localTabIndex = i
@@ -331,7 +340,42 @@ fun RepoDetailScreenDesktop(
             ) {
                 when (tabIndex) {
                     0 -> ChangesTabDesktop(vm)
-                    1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
+                    1 -> {
+                        // Left vertical file browser + right-side code editor (Chromebook / tablet / desktop).
+                        // On phone the same FilesScreen still navigates to a full-screen EditorScreen.
+                        // System back first closes the editor pane, then walks directories in the file list.
+                        BackHandler(enabled = selectedEditorPath != null) {
+                            selectedEditorPath = null
+                        }
+                        Row(Modifier.fillMaxSize()) {
+                            Box(
+                                Modifier
+                                    .weight(if (selectedEditorPath != null) 0.38f else 1f)
+                                    .fillMaxHeight()
+                            ) {
+                                FilesScreen(
+                                    repoPath = repoPath,
+                                    vm = filesVm,
+                                    onBack = null,
+                                    onOpenFile = { path -> selectedEditorPath = path }
+                                )
+                            }
+                            if (selectedEditorPath != null) {
+                                VerticalDivider(
+                                    thickness = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                                Box(Modifier.weight(0.62f).fillMaxHeight()) {
+                                    EditorScreen(
+                                        repoPath = repoPath,
+                                        relativePath = selectedEditorPath!!,
+                                        vm = editorVm,
+                                        onBack = { selectedEditorPath = null }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
                     3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
                     4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
