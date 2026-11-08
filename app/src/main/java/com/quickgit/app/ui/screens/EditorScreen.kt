@@ -55,7 +55,9 @@ fun EditorScreen(
     repoPath: String,
     relativePath: String,
     vm: EditorViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Called after a successful save so the host (e.g. Changes tab) can refresh status. */
+    onSaved: (() -> Unit)? = null
 ) {
     LaunchedEffect(repoPath, relativePath) { vm.load(repoPath, relativePath) }
     val state by vm.state.collectAsState()
@@ -68,6 +70,7 @@ fun EditorScreen(
     LaunchedEffect(state.savedMessage, state.error) {
         state.savedMessage?.let {
             snackbarHost.showSnackbar(it)
+            onSaved?.invoke()
             vm.consumeMessage()
         }
         state.error?.let {

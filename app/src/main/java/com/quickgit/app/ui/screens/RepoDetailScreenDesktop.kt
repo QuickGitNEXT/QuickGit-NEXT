@@ -39,6 +39,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import android.content.res.Configuration
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -160,6 +163,7 @@ fun RepoDetailScreenDesktop(
     val isChromebook = LocalContext.current.isChromebookDevice()
     val chromeSection = LocalChromeOsRepoSection.current
     // Chromebook: section selection lives in the top chrome under main destinations.
+    // Keep activate/deactivate stable so rapid section taps don't tear down chrome state.
     if (isChromebook) {
         DisposableEffect(Unit) {
             chromeSection.activate(
@@ -169,14 +173,34 @@ fun RepoDetailScreenDesktop(
             onDispose { chromeSection.deactivate() }
         }
     }
-    val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
-    // Leave the split editor when switching away from the Files tab.
-    LaunchedEffect(tabIndex) {
-        if (tabIndex != 1) selectedEditorPath = null
-    }
+    // Read MutableIntState during composition so clicks in ChromeOsAppChrome recompose this tree.
+    val chromeTabIndex = chromeSection.selectedIndex.intValue
+    val tabIndex = if (isChromebook) chromeTabIndex else localTabIndex
     fun setTabIndex(i: Int) {
+        if (i == tabIndex) return
         if (isChromebook) chromeSection.selectedIndex.intValue = i
         else localTabIndex = i
+    }
+    // Leave the split editor when switching away from Files; refresh Changes when landing on it
+    // so saves / external overwrites show up in staging without leaving the repo.
+    LaunchedEffect(tabIndex) {
+        if (tabIndex != 1) selectedEditorPath = null
+        if (tabIndex == 0) vm.refresh()
+    }
+    // Re-scan working tree whenever the activity returns to the foreground (e.g. after
+    // another app overwrote files). Fixes stale Changes until leaving/re-entering the repo.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentTab by rememberUpdatedState(tabIndex)
+    val currentFilesDir by rememberUpdatedState(filesState.currentDir)
+    DisposableEffect(lifecycleOwner, repoPath) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                vm.refresh()
+                if (currentTab == 1) filesVm.openDir(currentFilesDir)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
@@ -358,60 +382,83 @@ fun RepoDetailScreenDesktop(
                 },
                 modifier = Modifier.weight(1f).fillMaxSize()
             ) {
-                when (tabIndex) {
-                    0 -> ChangesTabDesktop(vm)
-                    1 -> {
-                        // Left vertical file browser + right-side code editor (Chromebook / tablet / desktop).
-                        // On phone the same FilesScreen still navigates to a full-screen EditorScreen.
-                        // System back first closes the editor pane, then walks directories in the file list.
-                        BackHandler(enabled = selectedEditorPath != null) {
-                            selectedEditorPath = null
-                        }
-                        Row(Modifier.fillMaxSize()) {
-                            Box(
-                                Modifier
-                                    .weight(if (selectedEditorPath != null) 0.38f else 1f)
-                                    .fillMaxHeight()
-                            ) {
-                                FilesScreen(
-                                    repoPath = repoPath,
-                                    vm = filesVm,
-                                    onBack = null,
-                                    onOpenFile = { path -> selectedEditorPath = path }
-                                )
+                // key() forces a clean composition when switching sections — avoids
+                // leftover state / layout from the previous tab that caused glitchy transitions.
+                key(tabIndex) {
+                    when (tabIndex) {
+                        0 -> ChangesTabDesktop(vm)
+                        1 -> {
+                            // Always dual-pane on desktop/Chromebook Files:
+                            // left = file explorer, right = editor (or placeholder).
+                            BackHandler(enabled = selectedEditorPath != null) {
+                                selectedEditorPath = null
+                                // Returning from editor: pick up any saves into Changes.
+                                vm.refresh()
                             }
-                            if (selectedEditorPath != null) {
+                            Row(Modifier.fillMaxSize()) {
+                                Box(
+                                    Modifier
+                                        .weight(0.38f)
+                                        .fillMaxHeight()
+                                ) {
+                                    FilesScreen(
+                                        repoPath = repoPath,
+                                        vm = filesVm,
+                                        onBack = null,
+                                        onOpenFile = { path -> selectedEditorPath = path }
+                                    )
+                                }
                                 VerticalDivider(
                                     thickness = 1.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                                 )
                                 Box(Modifier.weight(0.62f).fillMaxHeight()) {
-                                    EditorScreen(
-                                        repoPath = repoPath,
-                                        relativePath = selectedEditorPath!!,
-                                        vm = editorVm,
-                                        onBack = { selectedEditorPath = null }
-                                    )
+                                    val path = selectedEditorPath
+                                    if (path != null) {
+                                        key(path) {
+                                            EditorScreen(
+                                                repoPath = repoPath,
+                                                relativePath = path,
+                                                vm = editorVm,
+                                                onBack = {
+                                                    selectedEditorPath = null
+                                                    vm.refresh()
+                                                },
+                                                onSaved = { vm.refresh() }
+                                            )
+                                        }
+                                    } else {
+                                        Box(
+                                            Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "Select a file to edit",
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
+                        2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
+                        3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
+                        4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
+                        5 -> WorkflowsScreen(
+                            vm = workflowsVm,
+                            onBack = null,
+                            onNeedsAuth = onNeedsAuth,
+                            repoPath = repoPath,
+                            showReleasesTab = false
+                        )
+                        6 -> ReleasesScreen(
+                            vm = releasesVm,
+                            onBack = null,
+                            onNeedsAuth = onNeedsAuth,
+                            embedded = true
+                        )
                     }
-                    2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
-                    3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                    4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                    5 -> WorkflowsScreen(
-                        vm = workflowsVm,
-                        onBack = null,
-                        onNeedsAuth = onNeedsAuth,
-                        repoPath = repoPath,
-                        showReleasesTab = false
-                    )
-                    6 -> ReleasesScreen(
-                        vm = releasesVm,
-                        onBack = null,
-                        onNeedsAuth = onNeedsAuth,
-                        embedded = true
-                    )
                 }
             }
 
