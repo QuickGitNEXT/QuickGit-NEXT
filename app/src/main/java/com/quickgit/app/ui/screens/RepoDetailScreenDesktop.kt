@@ -250,22 +250,41 @@ fun RepoDetailScreenDesktop(
                             strokeWidth = 2.dp
                         )
                     }
-                    if (tabIndex == 0) {
-                        if (isChromebook) {
-                            IconButton(onClick = { showHistory = true }) {
-                                Icon(
-                                    Icons.Default.History,
-                                    contentDescription = "History",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            FloatingCircleIconButton(
-                                imageVector = Icons.Default.History,
+                    // Chromebook: Stage / Unstage / Discard / Git Actions live left of History
+                    if (isChromebook && tabIndex == 0) {
+                        OutlinedButton(
+                            onClick = { vm.stageAll() },
+                            enabled = !state.busy,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) { Text("Stage all", style = MaterialTheme.typography.labelMedium) }
+                        OutlinedButton(
+                            onClick = { vm.unstageAll() },
+                            enabled = !state.busy,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) { Text("Unstage all", style = MaterialTheme.typography.labelMedium) }
+                        OutlinedButton(
+                            onClick = { vm.discardAll() },
+                            enabled = !state.busy,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) { Text("Discard", style = MaterialTheme.typography.labelMedium) }
+                        OutlinedButton(
+                            onClick = { gitActionsStep = "root" },
+                            enabled = !state.busy,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) { Text("Git Actions", style = MaterialTheme.typography.labelMedium) }
+                        IconButton(onClick = { showHistory = true }) {
+                            Icon(
+                                Icons.Default.History,
                                 contentDescription = "History",
-                                onClick = { showHistory = true }
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    } else if (tabIndex == 0) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            onClick = { showHistory = true }
+                        )
                     }
                 }
             }
@@ -303,7 +322,8 @@ fun RepoDetailScreenDesktop(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                if (tabIndex == 0) {
+                // Tablet only: action row under the title. Chromebook moves these next to History.
+                if (tabIndex == 0 && !isChromebook) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
