@@ -43,7 +43,13 @@ fun ReleasesScreen(
     onNeedsAuth: (String) -> Unit,
     /** When true (hosted under Actions tabs), omit the outer top app bar. */
     embedded: Boolean = false,
-    onOpenIssues: (() -> Unit)? = null
+    onOpenIssues: (() -> Unit)? = null,
+    /**
+     * When true (Chromebook repo chrome hosts title + edit), omit the in-detail header row.
+     * Parent increments [externalEditRequest] to open the edit dialog.
+     */
+    chromeHostsDetailHeader: Boolean = false,
+    externalEditRequest: Int = 0
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -54,6 +60,13 @@ fun ReleasesScreen(
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.statusMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.authRequiredHost?.let { onNeedsAuth("https://$it/"); vm.consumeMessages() }
+    }
+
+    // Parent Chromebook chrome can request edit while a release detail is open.
+    LaunchedEffect(externalEditRequest) {
+        if (externalEditRequest > 0 && state.selected != null) {
+            editingRelease = state.selected
+        }
     }
 
     // Detail / list / unsupported body. Dialogs are composed AFTER this so Edit still works
@@ -67,7 +80,9 @@ fun ReleasesScreen(
                 onBack = { vm.closeDetail() },
                 onEdit = { editingRelease = state.selected },
                 // Embedded under repo detail (tablet/Chromebook): no second back, no floating chrome.
-                embedded = embedded
+                embedded = embedded,
+                // Chromebook top bar already shows name/version + edit.
+                hideHeader = chromeHostsDetailHeader
             )
         }
         !state.supported -> {
@@ -256,7 +271,9 @@ private fun ReleaseDetailContent(
     onBack: () -> Unit,
     onEdit: () -> Unit = {},
     /** When true (repo-detail tablet/Chromebook): no second back, flat header row instead of floating top bar. */
-    embedded: Boolean = false
+    embedded: Boolean = false,
+    /** When true, parent chrome already shows title + edit — skip the in-content header. */
+    hideHeader: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -319,7 +336,7 @@ private fun ReleaseDetailContent(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = if (embedded) 4.dp else 16.dp)
         ) {
-            if (embedded) {
+            if (embedded && !hideHeader) {
                 // Same band as repo name / branch: title + version + flat edit (no floating circle).
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 8.dp),

@@ -95,10 +95,13 @@ fun RepoDetailScreenDesktop(
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
     val releasesVm: ReleasesViewModel = viewModel(factory = factory)
+    val releasesState by releasesVm.state.collectAsState()
     val historyVm: HistoryViewModel = viewModel(factory = factory)
 
     // Chromebook / wide: Files list stays on the left as a vertical nav; editor opens on the right.
     var selectedEditorPath by remember { mutableStateOf<String?>(null) }
+    // Incremented from Chromebook top chrome to open the Releases edit dialog.
+    var releaseEditRequest by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -239,18 +242,35 @@ fun RepoDetailScreenDesktop(
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
+                        // Releases detail open: show release name/version instead of repo/branch.
+                        val openRelease =
+                            if (tabIndex == 6) releasesState.selected else null
                         Column(Modifier.padding(start = 2.dp)) {
-                            Text(
-                                repoName,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1
-                            )
-                            Text(
-                                state.branch,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
+                            if (openRelease != null) {
+                                Text(
+                                    openRelease.name.ifBlank { openRelease.tagName },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    openRelease.tagName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            } else {
+                                Text(
+                                    repoName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    state.branch,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     } else {
                         FloatingCircleIconButton(
@@ -273,6 +293,16 @@ fun RepoDetailScreenDesktop(
                             Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
+                    }
+                    // Chromebook + open release: flat Edit at the right end of the top bar line.
+                    if (isChromebook && tabIndex == 6 && releasesState.selected != null) {
+                        IconButton(onClick = { releaseEditRequest++ }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit release",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     // Chromebook: Stage / Unstage / Discard / Git Actions live left of History
                     if (isChromebook && tabIndex == 0) {
@@ -456,7 +486,9 @@ fun RepoDetailScreenDesktop(
                             vm = releasesVm,
                             onBack = null,
                             onNeedsAuth = onNeedsAuth,
-                            embedded = true
+                            embedded = true,
+                            chromeHostsDetailHeader = isChromebook,
+                            externalEditRequest = releaseEditRequest
                         )
                     }
                 }
