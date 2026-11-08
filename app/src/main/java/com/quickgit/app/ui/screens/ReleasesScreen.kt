@@ -62,7 +62,9 @@ fun ReleasesScreen(
             release = state.selected!!,
             loading = state.detailLoading,
             onBack = { vm.closeDetail() },
-            onEdit = { editingRelease = state.selected }
+            onEdit = { editingRelease = state.selected },
+            // Embedded under repo detail (tablet/Chromebook): no second back, no floating chrome.
+            embedded = embedded
         )
         return
     }
@@ -250,7 +252,9 @@ private fun ReleaseDetailContent(
     release: Release,
     loading: Boolean,
     onBack: () -> Unit,
-    onEdit: () -> Unit = {}
+    onEdit: () -> Unit = {},
+    /** When true (repo-detail tablet/Chromebook): no second back, flat header row instead of floating top bar. */
+    embedded: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -266,30 +270,37 @@ private fun ReleaseDetailContent(
         }
     }
 
+    val releaseTitle = release.name.ifBlank { release.tagName }
+    val releaseVersion = release.tagName
+
+    // Phone: full top app bar with back + floating edit.
+    // Embedded (Chromebook/tablet under repo detail): no second back; title + flat edit only.
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    AppScreenTitle(
-                        pageTitle = release.name.ifBlank { release.tagName },
-                        subtitle = release.tagName
-                    )
-                },
-                navigationIcon = {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        onClick = onBack
-                    )
-                },
-                actions = {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit release",
-                        onClick = onEdit
-                    )
-                }
-            )
+            if (!embedded) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = releaseTitle,
+                            subtitle = releaseVersion
+                        )
+                    },
+                    navigationIcon = {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    },
+                    actions = {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit release",
+                            onClick = onEdit
+                        )
+                    }
+                )
+            }
         }
     ) { padding ->
         if (loading) {
@@ -304,8 +315,41 @@ private fun ReleaseDetailContent(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = if (embedded) 4.dp else 16.dp)
         ) {
+            if (embedded) {
+                // Same band as repo name / branch: title + version + flat edit (no floating circle).
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            releaseTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            releaseVersion,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit release",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (release.draft) {
                     AssistChip(onClick = {}, label = { Text("Draft") }, enabled = false)
