@@ -234,17 +234,23 @@ fun RepoDetailScreenDesktop(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
                 ) {
+                    // When a release detail is open, Back returns to the Releases list
+                    // instead of closing the whole repo tab.
+                    val openRelease =
+                        if (tabIndex == 6) releasesState.selected else null
+                    val onHeaderBack: () -> Unit = {
+                        if (openRelease != null) releasesVm.closeDetail()
+                        else onBack()
+                    }
                     if (isChromebook) {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = onHeaderBack) {
                             Icon(
                                 Icons.Default.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = if (openRelease != null) "Back to releases" else "Back",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         // Releases detail open: show release name/version instead of repo/branch.
-                        val openRelease =
-                            if (tabIndex == 6) releasesState.selected else null
                         Column(Modifier.padding(start = 2.dp)) {
                             if (openRelease != null) {
                                 Text(
@@ -275,8 +281,8 @@ fun RepoDetailScreenDesktop(
                     } else {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = onBack
+                            contentDescription = if (openRelease != null) "Back to releases" else "Back",
+                            onClick = onHeaderBack
                         )
                         if (!isPortrait) {
                             AppBrandLogo(size = 36.dp)
