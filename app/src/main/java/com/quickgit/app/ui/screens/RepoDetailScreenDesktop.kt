@@ -185,7 +185,22 @@ fun RepoDetailScreenDesktop(
                         contentDescription = "Back",
                         onClick = onBack
                     )
-                    if (!isPortrait) {
+                    if (isChromebook) {
+                        // Chromebook: repo + branch beside Back (no brand logo)
+                        Column(Modifier.padding(start = 2.dp)) {
+                            Text(
+                                repoName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1
+                            )
+                            Text(
+                                state.branch,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    } else if (!isPortrait) {
                         AppBrandLogo(size = 36.dp)
                     }
                 }
@@ -210,25 +225,27 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Repo name + branch; on Changes: stage/discard/Git Actions on the right
+            // Repo name + branch (tablet); Chromebook already shows them next to Back
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        repoName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
-                    )
-                    Text(
-                        state.branch,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                if (!isChromebook) {
+                    Column {
+                        Text(
+                            repoName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1
+                        )
+                        Text(
+                            state.branch,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                 }
                 if (tabIndex == 1) {
                     Text(
