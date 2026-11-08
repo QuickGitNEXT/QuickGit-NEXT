@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -218,6 +219,9 @@ fun BoxScope.ChromeOsWatermark() {
  * Content host with Chromebook watermark overlaid at the bottom center of every screen.
  * Watermark is drawn *after* [content] so opaque scaffolds cannot cover it; the logo
  * has no pointer input so taps pass through to the UI below.
+ *
+ * Consumes navigation-bar window insets so Material [Scaffold]s do not reserve a blank
+ * strip above the ChromeOS shelf — content fills down to the bottom of the app window.
  */
 @Composable
 fun ChromeOsContentWithWatermark(
@@ -225,7 +229,11 @@ fun ChromeOsContentWithWatermark(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(modifier.fillMaxSize()) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .consumeWindowInsets(WindowInsets.navigationBars)
+    ) {
         content()
         if (showWatermark) {
             ChromeOsWatermark()
