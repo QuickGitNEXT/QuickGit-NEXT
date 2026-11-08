@@ -3805,6 +3805,10 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
      * Copies the content behind [uri] (picked from local/device storage) into the repo under
      * [relativeDir] as [fileName]. Fails if the destination already exists unless [overwrite] is
      * true, and refuses to clobber a same-named directory outright either way.
+     *
+     * Overwrite is **atomic**: content is written to a temp file first, then swapped into place.
+     * The original file is only removed after a successful write so a failed read never leaves
+     * a deletion in the working tree / commit status.
      */
     fun importFile(repoPath: String, relativeDir: String, uri: android.net.Uri, fileName: String, overwrite: Boolean): String {
         val cleanedDir = relativeDir.trim().trimStart('/').replace("\\", "/")
@@ -3817,20 +3821,47 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         if (dest.isDirectory) throw IllegalArgumentException("A folder named '$cleanedName' already exists")
         if (dest.exists() && !overwrite) throw IllegalArgumentException("Already exists: $cleanedName")
 
-        // Overwrite must replace content on the first attempt (some devices leave stale
-        // bytes if the existing file is not removed before writing).
-        if (dest.exists()) {
-            if (!dest.delete() && dest.exists()) {
-                throw IllegalStateException("Could not replace existing file '$cleanedName'")
-            }
-        }
-        dest.parentFile?.mkdirs()
-        val input = context.contentResolver.openInputStream(uri)
-            ?: throw IllegalStateException("Could not read '$cleanedName'")
-        input.use { inStream ->
-            dest.outputStream().use { outStream -> inStream.copyTo(outStream) }
-        }
+        writeUriToFileAtomic(uri, dest, displayName = cleanedName)
         return relative
+    }
+
+    /**
+     * Write [uri] into [dest] via a sibling temp file, then replace [dest].
+     * On failure the original [dest] (if any) is left untouched.
+     */
+    private fun writeUriToFileAtomic(uri: android.net.Uri, dest: File, displayName: String = dest.name) {
+        dest.parentFile?.mkdirs()
+        val tmp = File(
+            dest.parentFile,
+            ".${dest.name}.importing-${System.nanoTime()}"
+        )
+        try {
+            val input = context.contentResolver.openInputStream(uri)
+                ?: throw IllegalStateException("Could not read '$displayName'")
+            input.use { inStream ->
+                tmp.outputStream().use { outStream -> inStream.copyTo(outStream) }
+            }
+            if (!tmp.isFile || tmp.length() < 0) {
+                throw IllegalStateException("Failed to stage import for '$displayName'")
+            }
+            // Replace existing file only after the full payload is on disk.
+            if (dest.exists()) {
+                if (!dest.delete() && dest.exists()) {
+                    tmp.delete()
+                    throw IllegalStateException("Could not replace existing file '$displayName'")
+                }
+            }
+            if (!tmp.renameTo(dest)) {
+                // Cross-filesystem / some OEM FS: copy then remove temp.
+                tmp.inputStream().use { tin ->
+                    dest.outputStream().use { tout -> tin.copyTo(tout) }
+                }
+                tmp.delete()
+            }
+        } catch (e: Exception) {
+            tmp.delete()
+            throw e
+        }
     }
 
     data class ImportFolderResult(
@@ -3914,18 +3945,8 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
                     }
                     val existed = out.isFile
                     if (existed && !overwriteExistingFiles) continue
-                    // Delete first so the first overwrite always replaces content fully.
-                    if (existed) {
-                        if (!out.delete() && out.exists()) {
-                            throw IllegalStateException("Could not replace existing file '$childRel'")
-                        }
-                    }
-                    out.parentFile?.mkdirs()
-                    val input = context.contentResolver.openInputStream(child.uri)
-                        ?: throw IllegalStateException("Could not read '$name'")
-                    input.use { inStream ->
-                        out.outputStream().use { outStream -> inStream.copyTo(outStream) }
-                    }
+                    // Atomic write: never delete the original until the new content is staged.
+                    writeUriToFileAtomic(child.uri, out, displayName = name)
                     if (existed) overwritten++ else copied++
                 }
             }

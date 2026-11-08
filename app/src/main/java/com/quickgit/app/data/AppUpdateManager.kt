@@ -162,8 +162,12 @@ class AppUpdateManager(
                         }
                 }
 
-            val candidates = releases.filter { !it.draft && !it.prerelease }
+            val published = releases.filter { !it.draft && !it.prerelease }
                 .ifEmpty { releases.filter { !it.draft } }
+            // Prefer split Android releases (tag A* / name "QuickGitNEXT Android …");
+            // ignore Desktop-only (D*) so /releases order cannot pick a desktop build.
+            val candidates = published.filter { isAndroidAppRelease(it) }
+                .ifEmpty { published }
 
             if (candidates.isEmpty()) {
                 AppLog.i(TAG, "No non-draft releases found")
@@ -229,13 +233,41 @@ class AppUpdateManager(
         return apks.firstOrNull()
     }
 
+    /**
+     * True for Android phone/Chromebook (+Wear) releases under the split workflow
+     * (tag `A2.4.9`, title `QuickGitNEXT Android 2.4.9`) or legacy combined releases
+     * that ship a phone APK. Desktop-only (`D*`) releases are excluded.
+     */
+    private fun isAndroidAppRelease(release: Release): Boolean {
+        val tag = release.tagName.trim()
+        val title = release.name.trim()
+        if (tag.matches(Regex("""^D\d"""))) return false
+        if (title.contains("Desktop", ignoreCase = true) &&
+            !title.contains("Android", ignoreCase = true)
+        ) {
+            return false
+        }
+        if (tag.matches(Regex("""^A\d"""))) return true
+        if (title.contains("Android", ignoreCase = true)) return true
+        // Legacy v* / plain tags: must include a non-wear APK
+        return release.assets.any { asset ->
+            val n = asset.name.lowercase()
+            n.endsWith(".apk") && !n.contains("wear")
+        }
+    }
+
     private fun normalizeVersionName(raw: String): String {
-        return raw.trim()
-            .removePrefix("QuickGitNEXT")
-            .trim()
-            .removePrefix("v")
-            .trim()
-            .ifBlank { "0.0.0" }
+        var s = raw.trim()
+        // "QuickGitNEXT Android 2.4.9" / "QuickGitNEXT Desktop 2.4.9" / "QuickGitNEXT 2.4.9"
+        s = s.removePrefix("QuickGitNEXT").trim()
+        s = s.removePrefix("Android").trim()
+        s = s.removePrefix("Desktop").trim()
+        // Split workflow tags: A2.4.9 / D2.4.9, plus legacy v2.4.9
+        if (s.length >= 2 && (s[0] == 'A' || s[0] == 'D' || s[0] == 'a' || s[0] == 'd') && s[1].isDigit()) {
+            s = s.substring(1)
+        }
+        s = s.removePrefix("v").trim()
+        return s.ifBlank { "0.0.0" }
     }
 
     private fun parseReleaseVersion(release: Release): AppVersionInfo {
@@ -244,7 +276,7 @@ class AppUpdateManager(
         val versionName = when {
             tag.matches(Regex("""\d+(\.\d+)*([.-][\w.]+)?""")) -> tag.substringBefore("-").substringBefore("+")
                 .let { if (it.matches(Regex("""\d+(\.\d+)*"""))) it else tag }
-            name.matches(Regex("""\d+(\.\d+)*""")) -> name
+            name.matches(Regex("""\d+(\.\d+)*([.-][\w.]+)?""")) -> name.substringBefore("-").substringBefore("+")
             else -> tag.ifBlank { name }.ifBlank { "0.0.0" }
         }
         // Prefer a full monotonic code from x.y.z when possible
@@ -255,7 +287,8 @@ class AppUpdateManager(
             2 -> parts[0] * 1_000_000 + parts[1] * 1_000
             else -> parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
         }
-        val codeFromTagSuffix = release.tagName.removePrefix("v").substringAfterLast('.').toLongOrNull() ?: 0L
+        val strippedTag = normalizeVersionName(release.tagName)
+        val codeFromTagSuffix = strippedTag.substringAfterLast('.').toLongOrNull() ?: 0L
         val code = maxOf(codeFromName, codeFromTagSuffix)
         return AppVersionInfo(versionName = versionName, versionCode = code)
     }
