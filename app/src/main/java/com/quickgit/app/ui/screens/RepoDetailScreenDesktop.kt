@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 // wrapContentWidth via foundation.layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
@@ -133,7 +135,7 @@ fun RepoDetailScreenDesktop(
         }
     }
 
-    // Changes first, then Files, Branches, Issues, PRs, Actions, History last.
+    // Changes first, then Files, Branches, Issues, PRs, Actions, Releases (History is top-right).
     val tabs = listOf(
         "Changes" to Icons.Default.Edit,
         "Files" to Icons.Default.FolderOpen,
@@ -141,14 +143,25 @@ fun RepoDetailScreenDesktop(
         "Issues" to Icons.Default.BugReport,
         "PRs" to Icons.Default.CallMerge,
         "Actions" to Icons.Default.PlayCircle,
-        "History" to Icons.Default.History,
+        "Releases" to Icons.Default.NewReleases,
     )
     var tabIndex by remember { mutableStateOf(0) }
+    var showHistory by remember { mutableStateOf(false) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
 
     Box(Modifier.fillMaxSize()) {
+        if (showHistory) {
+            BackHandler { showHistory = false }
+            HistoryScreen(
+                repoPath = repoPath,
+                vm = historyVm,
+                onBack = { showHistory = false }
+            )
+            return@Box
+        }
+
         Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
@@ -206,28 +219,13 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Repo name + branch; Files path/controls on the Files tab
+            // Repo name + branch; path on Files tab; History top-right
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (tabIndex == 1) {
-                    TextButton(
-                        onClick = { filesVm.goUp() },
-                        enabled = filesState.currentDir.isNotBlank()
-                    ) {
-                        Text(
-                            "…",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
-                    }
-                    IconButton(onClick = { filesVm.openDir(filesState.currentDir) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
                 Column {
                     Text(
                         repoName,
@@ -252,11 +250,19 @@ fun RepoDetailScreenDesktop(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "History",
+                    onClick = { showHistory = true }
+                )
             }
 
             PullToRefreshBox(
-                isRefreshing = state.busy,
-                onRefresh = { vm.refresh() },
+                isRefreshing = if (tabIndex == 1) filesState.loading else state.busy,
+                onRefresh = {
+                    if (tabIndex == 1) filesVm.openDir(filesState.currentDir)
+                    else vm.refresh()
+                },
                 modifier = Modifier.weight(1f).fillMaxSize()
             ) {
                 when (tabIndex) {
@@ -270,9 +276,14 @@ fun RepoDetailScreenDesktop(
                         onBack = null,
                         onNeedsAuth = onNeedsAuth,
                         repoPath = repoPath,
-                        showReleasesTab = true
+                        showReleasesTab = false
                     )
-                    6 -> HistoryScreen(repoPath = repoPath, vm = historyVm, onBack = null)
+                    6 -> ReleasesScreen(
+                        vm = releasesVm,
+                        onBack = null,
+                        onNeedsAuth = onNeedsAuth,
+                        embedded = true
+                    )
                 }
             }
 
