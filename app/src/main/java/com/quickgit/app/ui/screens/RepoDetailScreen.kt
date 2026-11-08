@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
@@ -679,65 +680,79 @@ fun RepoDetailScreen(
                         ) {
                             ChangesLazy(bottomPad = 8.dp)
                         }
-                        HorizontalDivider(
-                            Modifier.padding(horizontal = 12.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                        )
-                        RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
-                        HorizontalDivider(
-                            Modifier.padding(horizontal = 12.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                        )
-                        if (status != null) {
-                            if (!commitExpanded) {
-                                OutlinedButton(
-                                    onClick = { commitExpanded = true },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        when {
-                                            state.commitMessage.isNotBlank() ->
-                                                "Commit… (${state.commitMessage.take(28)}${if (state.commitMessage.length > 28) "…" else ""})"
-                                            state.amend -> "Expand commit (amend)"
-                                            else -> "Expand commit"
-                                        }
-                                    )
-                                }
-                            } else {
-                                TextButton(
-                                    onClick = { commitExpanded = false },
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                ) { Text("Hide commit") }
-                                Column(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 360.dp)
-                                ) {
-                                CommitBar(
-                                    message = state.commitMessage,
-                                    onMessageChange = vm::setCommitMessage,
-                                    suggestedMessage = state.suggestedCommitMessage,
-                                    onUseSuggested = vm::applySuggestedCommitMessage,
-                                    signOff = state.signOff,
-                                    onSignOffChange = vm::setSignOff,
-                                    amend = state.amend,
-                                    onAmendChange = vm::setAmend,
-                                    authorName = state.authorName,
-                                    authorEmail = state.authorEmail,
-                                    coAuthors = state.coAuthors,
-                                    savedContributors = state.savedContributors,
-                                    onAddCoAuthor = vm::addCoAuthor,
-                                    onAddCoAuthorEntry = { vm.addCoAuthorEntry(it, save = false) },
-                                    onRemoveCoAuthor = vm::removeCoAuthor,
-                                    onRemoveSavedContributor = vm::removeSavedContributor,
-                                    enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
-                                    onCommit = vm::commit,
-                                    compactOptions = true,
-                                    bottomInset = 0.dp,
-                                    embedded = true
+                        // Match RepoDetailBottomBar width so ops + commit don't stretch wider than the nav pill
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                Modifier
+                                    .widthIn(max = 560.dp)
+                                    .fillMaxWidth(0.94f)
+                                    .padding(bottom = 8.dp)
+                            ) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                                 )
+                                RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                )
+                                if (status != null) {
+                                    if (!commitExpanded) {
+                                        OutlinedButton(
+                                            onClick = { commitExpanded = true },
+                                            shape = RoundedCornerShape(22.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 4.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                when {
+                                                    state.commitMessage.isNotBlank() ->
+                                                        "Commit… (${state.commitMessage.take(28)}${if (state.commitMessage.length > 28) "…" else ""})"
+                                                    state.amend -> "Expand commit (amend)"
+                                                    else -> "Expand commit"
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        TextButton(
+                                            onClick = { commitExpanded = false },
+                                            modifier = Modifier.padding(horizontal = 4.dp)
+                                        ) { Text("Hide commit") }
+                                        Column(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 360.dp)
+                                        ) {
+                                            CommitBar(
+                                                message = state.commitMessage,
+                                                onMessageChange = vm::setCommitMessage,
+                                                suggestedMessage = state.suggestedCommitMessage,
+                                                onUseSuggested = vm::applySuggestedCommitMessage,
+                                                signOff = state.signOff,
+                                                onSignOffChange = vm::setSignOff,
+                                                amend = state.amend,
+                                                onAmendChange = vm::setAmend,
+                                                authorName = state.authorName,
+                                                authorEmail = state.authorEmail,
+                                                coAuthors = state.coAuthors,
+                                                savedContributors = state.savedContributors,
+                                                onAddCoAuthor = vm::addCoAuthor,
+                                                onAddCoAuthorEntry = { vm.addCoAuthorEntry(it, save = false) },
+                                                onRemoveCoAuthor = vm::removeCoAuthor,
+                                                onRemoveSavedContributor = vm::removeSavedContributor,
+                                                enabled = (status.staged.isNotEmpty() || state.amend) && !state.busy,
+                                                onCommit = vm::commit,
+                                                compactOptions = true,
+                                                bottomInset = 0.dp,
+                                                embedded = true
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1208,7 +1223,7 @@ private fun RepoSubNavFloatingBar(items: List<SubNavItem>, flat: Boolean = false
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = if (flat) 8.dp else 6.dp),
+                .padding(horizontal = if (flat) 2.dp else 4.dp, vertical = if (flat) 6.dp else 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1217,13 +1232,14 @@ private fun RepoSubNavFloatingBar(items: List<SubNavItem>, flat: Boolean = false
                     modifier = Modifier
                         .weight(1f)
                         .clickable(onClick = item.onClick)
-                        .padding(vertical = 4.dp, horizontal = 2.dp),
+                        .padding(vertical = 3.dp, horizontal = 1.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
                         item.icon,
                         contentDescription = item.label,
-                        modifier = Modifier.size(22.dp),
+                        // Match bottom nav icon size when flat (above RepoDetailBottomBar)
+                        modifier = Modifier.size(if (flat) 20.dp else 22.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
@@ -1237,18 +1253,25 @@ private fun RepoSubNavFloatingBar(items: List<SubNavItem>, flat: Boolean = false
         }
     }
     if (flat) {
+        // Parent already constrains width to match the bottom nav pill
         row()
     } else {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 3.dp,
-            shadowElevation = 8.dp,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+        Box(
+            Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            row()
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                tonalElevation = 3.dp,
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
+                modifier = Modifier
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth(0.94f)
+                    .padding(vertical = 6.dp)
+            ) {
+                row()
+            }
         }
     }
 }
