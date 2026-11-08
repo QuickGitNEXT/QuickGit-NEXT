@@ -798,6 +798,101 @@ class GitHubApi(private val token: String?) {
         (request("GET", "/repos/$owner/$repo/releases/latest") as JSONObject).toRelease()
     }
 
+    /**
+     * Create a release. [tagName] is required; [targetCommitish] is the branch/SHA the tag points to
+     * when the tag does not already exist.
+     */
+    fun createRelease(
+        owner: String,
+        repo: String,
+        tagName: String,
+        name: String?,
+        body: String?,
+        draft: Boolean = false,
+        prerelease: Boolean = false,
+        targetCommitish: String? = null
+    ): Result<Release> = runCatching {
+        val payload = JSONObject()
+            .put("tag_name", tagName)
+            .put("draft", draft)
+            .put("prerelease", prerelease)
+        if (!name.isNullOrBlank()) payload.put("name", name)
+        if (body != null) payload.put("body", body)
+        if (!targetCommitish.isNullOrBlank()) payload.put("target_commitish", targetCommitish)
+        (request("POST", "/repos/$owner/$repo/releases", payload) as JSONObject).toRelease()
+    }
+
+    /** Update an existing release (name, body, draft, prerelease, tag_name). */
+    fun updateRelease(
+        owner: String,
+        repo: String,
+        releaseId: Long,
+        tagName: String? = null,
+        name: String? = null,
+        body: String? = null,
+        draft: Boolean? = null,
+        prerelease: Boolean? = null
+    ): Result<Release> = runCatching {
+        val payload = JSONObject()
+        if (tagName != null) payload.put("tag_name", tagName)
+        if (name != null) payload.put("name", name)
+        if (body != null) payload.put("body", body)
+        if (draft != null) payload.put("draft", draft)
+        if (prerelease != null) payload.put("prerelease", prerelease)
+        (request("PATCH", "/repos/$owner/$repo/releases/$releaseId", payload) as JSONObject).toRelease()
+    }
+
+    /**
+     * Upload a binary asset to a release. Uses the uploads.github.com host.
+     * [fileName] is the asset name; [contentType] defaults to application/octet-stream.
+     */
+    fun uploadReleaseAsset(
+        owner: String,
+        repo: String,
+        releaseId: Long,
+        fileName: String,
+        bytes: ByteArray,
+        contentType: String = "application/octet-stream"
+    ): Result<ReleaseAsset> = runCatching {
+        val path = "/repos/$owner/$repo/releases/$releaseId/assets?name=${java.net.URLEncoder.encode(fileName, "UTF-8")}"
+        AppLog.i(TAG, "POST upload $path (${bytes.size} bytes)")
+        val url = URL("https://uploads.github.com$path")
+        val conn = url.openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 30_000
+            conn.readTimeout = 120_000
+            conn.doOutput = true
+            conn.setRequestProperty("Accept", "application/vnd.github+json")
+            conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+            conn.setRequestProperty("Content-Type", contentType)
+            conn.setRequestProperty("Content-Length", bytes.size.toString())
+            if (!token.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $token")
+            conn.outputStream.use { it.write(bytes) }
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val text = stream?.let { s -> BufferedReader(InputStreamReader(s, StandardCharsets.UTF_8)).use { it.readText() } } ?: ""
+            if (status !in 200..299) {
+                val msg = runCatching { JSONObject(text).optString("message") }.getOrNull()
+                    ?.takeIf { it.isNotBlank() } ?: "GitHub returned HTTP $status"
+                throw HttpStatusException(status, msg)
+            }
+            val a = JSONObject(text)
+            ReleaseAsset(
+                id = a.getLong("id"),
+                name = a.optString("name", fileName),
+                size = a.optLong("size", bytes.size.toLong()),
+                downloadCount = a.optInt("download_count", 0),
+                contentType = a.optString("content_type").takeIf { it.isNotBlank() },
+                browserDownloadUrl = a.optString("browser_download_url", ""),
+                createdAt = a.optString("created_at", ""),
+                updatedAt = a.optString("updated_at", "")
+            )
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     private fun JSONObject.toRelease(): Release {
         val assetsArr = optJSONArray("assets")
         val assets = if (assetsArr == null) emptyList() else (0 until assetsArr.length()).map { i ->

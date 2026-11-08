@@ -51,7 +51,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import com.quickgit.app.ui.adaptive.AdaptiveContent
-import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.viewmodel.WorkflowsViewModel
 import kotlinx.coroutines.launch
 import com.quickgit.app.ui.components.AppScreenTitle
@@ -74,20 +73,9 @@ fun WorkflowsScreen(
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     var showDispatch by remember { mutableStateOf<Workflow?>(null) }
-    var section by remember { mutableStateOf(0) } // 0 = Actions/Build, 1 = Releases
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val releasesFactory = remember(context) {
-        com.quickgit.app.viewmodel.ViewModelFactory(
-            context.applicationContext as android.app.Application
-        )
-    }
-    // Always obtain the VM (Compose rules); only init when the tab is enabled.
-    val releasesVm: ReleasesViewModel = viewModel(factory = releasesFactory)
-    LaunchedEffect(repoPath, showReleasesTab) {
-        if (showReleasesTab && repoPath != null) {
-            releasesVm.init(repoPath)
-        }
-    }
+    var showWorkflowPicker by remember { mutableStateOf(false) }
+    // Ensure we always show all workflows (no per-workflow filter)
+    LaunchedEffect(Unit) { vm.selectWorkflow(null) }
 
     LaunchedEffect(state.errorMessage, state.statusMessage, state.authRequiredHost) {
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
@@ -127,35 +115,6 @@ fun WorkflowsScreen(
         return
     }
 
-    if (showReleasesTab && section == 1 && 
-        state.selectedRun == null && state.logJobId == null && state.livePageUrl == null
-    ) {
-        Column(Modifier.fillMaxSize()) {
-            if (onBack != null || showReleasesTab) {
-                CenterAlignedTopAppBar(
-                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
-                    navigationIcon = {
-                    onBack?.let { back ->
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = back
-                        )
-                    }
-                }
-                )
-                TabRow(selectedTabIndex = section) {
-                    Tab(selected = section == 0, onClick = { section = 0 }, text = { Text(if (state.isGitLab) "Pipelines" else "Workflows") })
-                    Tab(selected = section == 1, onClick = { section = 1 }, text = { Text("Releases") })
-                }
-            }
-            Box(Modifier.weight(1f)) {
-                ReleasesScreen(vm = releasesVm, onBack = null, onNeedsAuth = onNeedsAuth, embedded = true)
-            }
-        }
-        return
-    }
-
     if (!state.supported) {
         Scaffold(
             topBar = {
@@ -188,41 +147,32 @@ fun WorkflowsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            Column {
-                if (onBack != null) {
-                    CenterAlignedTopAppBar(
-                        title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
-                        navigationIcon = {
+            if (onBack != null) {
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle(if (state.isGitLab) "Build" else "Actions", showLogo = true) },
+                    navigationIcon = {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    },
+                    actions = {
+                        if (onOpenIssues != null) {
                             FloatingCircleIconButton(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                onClick = onBack
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "Issues",
+                                onClick = onOpenIssues
                             )
-                        },
-                        actions = {
-                            if (onOpenIssues != null) {
-                                FloatingCircleIconButton(
-                                    imageVector = Icons.Default.BugReport,
-                                    contentDescription = "Issues",
-                                    onClick = onOpenIssues
-                                )
-                            }
                         }
-                    )
-                }
-                if (showReleasesTab) {
-                    TabRow(selectedTabIndex = section) {
-                        Tab(
-                            selected = section == 0,
-                            onClick = { section = 0 },
-                            text = { Text(if (state.isGitLab) "Pipelines" else "Workflows") }
-                        )
-                        Tab(
-                            selected = section == 1,
-                            onClick = { section = 1 },
-                            text = { Text("Releases") }
-                        )
                     }
+                )
+            }
+        },
+        floatingActionButton = {
+            if (state.workflows.isNotEmpty()) {
+                FloatingActionButton(onClick = { showWorkflowPicker = true }) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Run workflow")
                 }
             }
         }
@@ -234,40 +184,9 @@ fun WorkflowsScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
             Column(Modifier.fillMaxSize()) {
-                // Workflow filter chips
-                if (state.workflows.isNotEmpty()) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = state.selectedWorkflowId == null,
-                                onClick = { vm.selectWorkflow(null) },
-                                label = { Text("All workflows") }
-                            )
-                        }
-                        items(state.workflows, key = { it.id }) { wf ->
-                            FilterChip(
-                                selected = state.selectedWorkflowId == wf.id,
-                                onClick = { vm.selectWorkflow(wf.id) },
-                                label = { Text(wf.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = { showDispatch = wf },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(Icons.Default.PlayArrow, "Run", Modifier.size(16.dp))
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Status filter
+                // Always show all workflows — status filter only
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     WorkflowRunFilter.entries.forEach { f ->
@@ -310,6 +229,42 @@ fun WorkflowsScreen(
             }
             }
         }
+    }
+
+    if (showWorkflowPicker) {
+        AlertDialog(
+            onDismissRequest = { showWorkflowPicker = false },
+            title = { Text("Run workflow") },
+            text = {
+                if (state.workflows.isEmpty()) {
+                    Text("No workflows found that support manual dispatch.")
+                } else {
+                    Column {
+                        Text(
+                            "Select a workflow to run:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        state.workflows.forEach { wf ->
+                            TextButton(
+                                onClick = {
+                                    showWorkflowPicker = false
+                                    showDispatch = wf
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(wf.name, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWorkflowPicker = false }) { Text("Cancel") }
+            }
+        )
     }
 
     showDispatch?.let { wf ->

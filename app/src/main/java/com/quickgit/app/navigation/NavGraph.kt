@@ -532,7 +532,7 @@ fun QuickGitNavGraph() {
                 onBack = { navController.popBackStack() },
                 onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 repoPath = repoPath,
-                showReleasesTab = true,
+                showReleasesTab = false,
                 onOpenIssues = { navController.navigate(Dest.issues(repoPath)) { launchSingleTop = true } }
             )
         }
@@ -547,7 +547,8 @@ fun QuickGitNavGraph() {
             ReleasesScreen(
                 vm = vm,
                 onBack = { navController.popBackStack() },
-                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } }
+                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
+                onOpenIssues = { navController.navigate(Dest.issues(repoPath)) { launchSingleTop = true } }
             )
         }
 

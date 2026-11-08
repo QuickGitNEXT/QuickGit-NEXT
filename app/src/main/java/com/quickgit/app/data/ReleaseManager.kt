@@ -37,4 +37,44 @@ class ReleaseManager(
         val result = api.getLatestRelease(owner, repo)
         return result.getOrNull() to result.toPrOpResult(host)
     }
+
+    fun createRelease(
+        owner: String,
+        repo: String,
+        tagName: String,
+        name: String?,
+        body: String?,
+        draft: Boolean,
+        prerelease: Boolean,
+        targetCommitish: String?
+    ): Pair<Release?, PrOpResult> {
+        val result = api.createRelease(owner, repo, tagName, name, body, draft, prerelease, targetCommitish)
+        return result.getOrNull() to result.toPrOpResult(host)
+    }
+
+    fun updateRelease(
+        owner: String,
+        repo: String,
+        releaseId: Long,
+        tagName: String?,
+        name: String?,
+        body: String?,
+        draft: Boolean?,
+        prerelease: Boolean?
+    ): Pair<Release?, PrOpResult> {
+        val result = api.updateRelease(owner, repo, releaseId, tagName, name, body, draft, prerelease)
+        return result.getOrNull() to result.toPrOpResult(host)
+    }
+
+    fun uploadReleaseAsset(
+        owner: String,
+        repo: String,
+        releaseId: Long,
+        fileName: String,
+        bytes: ByteArray,
+        contentType: String = "application/octet-stream"
+    ): Pair<com.quickgit.app.data.models.ReleaseAsset?, PrOpResult> {
+        val result = api.uploadReleaseAsset(owner, repo, releaseId, fileName, bytes, contentType)
+        return result.getOrNull() to result.toPrOpResult(host)
+    }
 }

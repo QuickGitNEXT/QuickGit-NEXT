@@ -16,6 +16,7 @@ data class ReleasesUiState(
     val supported: Boolean = true,
     val releases: List<Release> = emptyList(),
     val loading: Boolean = false,
+    val busy: Boolean = false,
     val errorMessage: String? = null,
     val authRequiredHost: String? = null,
     val statusMessage: String? = null,
@@ -78,6 +79,67 @@ class ReleasesViewModel(private val releaseManager: ReleaseManager) : ViewModel(
 
     fun closeDetail() {
         _state.value = _state.value.copy(selected = null)
+    }
+
+    fun createRelease(
+        tagName: String,
+        name: String?,
+        body: String?,
+        draft: Boolean,
+        prerelease: Boolean,
+        targetCommitish: String?,
+        assets: List<Pair<String, ByteArray>> = emptyList()
+    ) {
+        val o = owner ?: return
+        val r = repo ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(busy = true)
+            val (created, result) = withContext(Dispatchers.IO) {
+                releaseManager.createRelease(o, r, tagName, name, body, draft, prerelease, targetCommitish)
+            }
+            if (created != null && assets.isNotEmpty()) {
+                for ((fileName, bytes) in assets) {
+                    withContext(Dispatchers.IO) {
+                        releaseManager.uploadReleaseAsset(o, r, created.id, fileName, bytes)
+                    }
+                }
+            }
+            _state.value = applyResult(
+                _state.value.copy(
+                    busy = false,
+                    statusMessage = if (created != null) "Release “${created.tagName}” created" else null
+                ),
+                result
+            )
+            if (created != null) refresh()
+        }
+    }
+
+    fun updateRelease(
+        releaseId: Long,
+        tagName: String?,
+        name: String?,
+        body: String?,
+        draft: Boolean?,
+        prerelease: Boolean?
+    ) {
+        val o = owner ?: return
+        val r = repo ?: return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(busy = true)
+            val (updated, result) = withContext(Dispatchers.IO) {
+                releaseManager.updateRelease(o, r, releaseId, tagName, name, body, draft, prerelease)
+            }
+            _state.value = applyResult(
+                _state.value.copy(
+                    busy = false,
+                    selected = updated ?: _state.value.selected,
+                    statusMessage = if (updated != null) "Release updated" else null
+                ),
+                result
+            )
+            if (updated != null) refresh()
+        }
     }
 
     fun consumeMessages() {
