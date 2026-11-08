@@ -358,6 +358,19 @@ fun RepoDetailScreenDesktop(
                         }
                     }
                 }
+                // Chromebook Files tab: current directory centered on the same line as repo/branch.
+                if (isChromebook && tabIndex == 1) {
+                    Text(
+                        text = if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 96.dp) // clear Back+title and end actions
+                    )
+                }
                 Row(
                     Modifier.align(Alignment.CenterEnd),
                     verticalAlignment = Alignment.CenterVertically,
@@ -452,7 +465,8 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Repo name + branch (tablet); Chromebook already shows them next to Back
+            // Repo name + branch (tablet); Chromebook already shows them next to Back.
+            // Files path on Chromebook is centered on the top chrome line, not this row.
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -474,7 +488,7 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                 }
-                if (tabIndex == 1) {
+                if (tabIndex == 1 && !isChromebook) {
                     Text(
                         if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
                         style = MaterialTheme.typography.titleSmall,
