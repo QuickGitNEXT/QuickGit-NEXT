@@ -386,17 +386,16 @@ jobs:
           done
           if [ "$DOWNLOADED" = "1" ]; then
             chmod +x /tmp/appimagetool
-            (cd /tmp && APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool --appimage-extract >/dev/null 2>&1) || true
-            if [ -x /tmp/squashfs-root/AppRun ]; then
-              sudo ln -sfn /tmp/squashfs-root/AppRun /usr/local/bin/appimagetool
-            else
-              # Run the AppImage itself under EXTRACT_AND_RUN (no FUSE needed)
-              printf '%s\n' '#!/bin/sh' 'export APPIMAGE_EXTRACT_AND_RUN=1' 'exec /tmp/appimagetool "$@"' \
-                | sudo tee /usr/local/bin/appimagetool >/dev/null
-              sudo chmod +x /usr/local/bin/appimagetool
-            fi
-            appimagetool --version || true
-            echo "appimagetool installed"
+            # Always run the AppImage under EXTRACT_AND_RUN. Do not symlink extracted
+            # AppRun — some appimagetool builds resolve paths like /usr/local/bin/usr/bin/...
+            printf '%s\n' \
+              '#!/bin/sh' \
+              'export APPIMAGE_EXTRACT_AND_RUN=1' \
+              'exec /tmp/appimagetool "$@"' \
+              | sudo tee /usr/local/bin/appimagetool >/dev/null
+            sudo chmod +x /usr/local/bin/appimagetool
+            appimagetool --version 2>&1 | head -5 || true
+            echo "appimagetool installed at $(command -v appimagetool)"
           else
             echo "::error::appimagetool download failed from all mirrors"
             exit 1
@@ -572,10 +571,54 @@ jobs:
           Write-Host "Stamped packageVersion = $ver"
         shell: pwsh
 
-      - name: Build desktop MSI
+      # Compose's :downloadWix hits GitHub releases and often gets HTTP 504.
+      # Pre-seed the zip (with retries) so the task can use a local file / succeed.
+      - name: Pre-download WiX 3.11 binaries for Compose
+        shell: pwsh
         run: |
-          gradle :desktop:packageMsi --no-daemon "-Pquickgitnext.version=${{ needs.version.outputs.name }}"
-        shell: cmd
+          $urls = @(
+            "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip",
+            "https://github.com/wixtoolset/wix3/releases/download/wix3111rtm/wix311-binaries.zip"
+          )
+          $destDir = "build/wix"
+          New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+          $dest = Join-Path $destDir "wix311-binaries.zip"
+          $ok = $false
+          foreach ($url in $urls) {
+            for ($i = 1; $i -le 5; $i++) {
+              try {
+                Write-Host "Downloading WiX ($i/5): $url"
+                Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 120
+                if ((Test-Path $dest) -and ((Get-Item $dest).Length -gt 1000000)) {
+                  Write-Host "Downloaded $((Get-Item $dest).Length) bytes"
+                  $ok = $true
+                  break
+                }
+              } catch {
+                Write-Host "Attempt $i failed: $($_.Exception.Message)"
+                Start-Sleep -Seconds (3 * $i)
+              }
+            }
+            if ($ok) { break }
+          }
+          if (-not $ok) {
+            Write-Error "Could not download WiX binaries (GitHub may be returning 504). MSI packaging will fail."
+            exit 1
+          }
+
+      - name: Build desktop MSI
+        shell: pwsh
+        run: |
+          $ver = "${{ needs.version.outputs.name }}"
+          $ok = $false
+          for ($i = 1; $i -le 3; $i++) {
+            Write-Host "packageMsi attempt $i/3"
+            & gradle :desktop:packageMsi --no-daemon "-Pquickgitnext.version=$ver"
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            Write-Host "packageMsi failed (exit $LASTEXITCODE); retrying after delay..."
+            Start-Sleep -Seconds (10 * $i)
+          }
+          if (-not $ok) { exit 1 }
 
       - name: Locate and stage Windows MSI
         run: |
