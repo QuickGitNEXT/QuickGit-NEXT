@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -193,14 +196,19 @@ fun ChromeOsAppChrome(
     }
 }
 
-/** Soft brand watermark for Chromebook / Googlebook pages (bottom-centered). */
+/**
+ * Soft brand watermark for Chromebook / Googlebook pages (bottom-centered).
+ * Sits above the ChromeOS shelf / system navigation bar so it is not hidden under the taskbar.
+ */
 @Composable
 fun BoxScope.ChromeOsWatermark() {
     AppBrandLogo(
         size = 88.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = 32.dp)
+            // System nav / shelf insets first, then extra gap so the mark clears the taskbar.
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(bottom = 56.dp)
             // Low opacity so it stays readable as a mark without competing with content.
             .alpha(0.11f)
     )
