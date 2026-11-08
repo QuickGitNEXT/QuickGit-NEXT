@@ -10,13 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -204,7 +203,7 @@ fun ChromeOsAppChrome(
 
 /**
  * Soft brand watermark for Chromebook / Googlebook pages (bottom-centered).
- * Sits above the ChromeOS shelf / system navigation bar so it is not hidden under the taskbar.
+ * Parent already pads above the shelf; only a small extra gap is needed.
  */
 @Composable
 fun BoxScope.ChromeOsWatermark() {
@@ -212,9 +211,7 @@ fun BoxScope.ChromeOsWatermark() {
         size = 88.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            // System nav / shelf insets first, then extra gap so the mark clears the taskbar.
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(bottom = 56.dp)
+            .padding(bottom = 8.dp)
             // Low opacity so it stays readable as a mark without competing with content.
             .alpha(0.11f)
     )
@@ -225,8 +222,9 @@ fun BoxScope.ChromeOsWatermark() {
  * Watermark is drawn *after* [content] so opaque scaffolds cannot cover it; the logo
  * has no pointer input so taps pass through to the UI below.
  *
- * Consumes navigation-bar window insets so Material [Scaffold]s do not reserve a blank
- * strip above the ChromeOS shelf — content fills down to the bottom of the app window.
+ * ChromeOS / ARC often reports 0 navigation-bar insets while the shelf still overlays
+ * the window, so we always reserve a fixed bottom band (~shelf height) in addition to
+ * any system insets that do apply.
  */
 @Composable
 fun ChromeOsContentWithWatermark(
@@ -237,7 +235,10 @@ fun ChromeOsContentWithWatermark(
     Box(
         modifier
             .fillMaxSize()
-            .consumeWindowInsets(WindowInsets.navigationBars)
+            .navigationBarsPadding()
+            // Fixed shelf clearance — ChromeOS taskbar is typically ~48–56dp and may
+            // not be reflected in WindowInsets on ARC.
+            .padding(bottom = 56.dp)
     ) {
         content()
         if (showWatermark) {
