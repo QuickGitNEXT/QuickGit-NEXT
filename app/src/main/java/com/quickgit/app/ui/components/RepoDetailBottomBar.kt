@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.CallMerge
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,12 +40,12 @@ import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.theme.GitGreen
 
 enum class RepoDetailBottomTab {
-    Files, Branches, PullRequests, Actions
+    Files, Branches, PullRequests, Actions, Releases
 }
 
 /**
  * Compact floating bar matching [FloatingTabletNavBar] large-phone sizing.
- * Used on repo detail and repo sub-pages (Files / Branches / PRs / Actions).
+ * Used on repo detail and repo sub-pages (Files / Branches / PRs / Actions / Releases / Issues).
  */
 @Composable
 fun RepoDetailBottomBar(
@@ -53,6 +54,7 @@ fun RepoDetailBottomBar(
     onBranches: () -> Unit,
     onPullRequests: () -> Unit,
     onActions: () -> Unit,
+    onReleases: () -> Unit,
     prLabel: String = "PRs",
     actionsLabel: String = "Actions",
     modifier: Modifier = Modifier
@@ -62,6 +64,7 @@ fun RepoDetailBottomBar(
         Triple(Icons.Default.AccountTree, "Branches", onBranches to RepoDetailBottomTab.Branches),
         Triple(Icons.Default.CallMerge, prLabel, onPullRequests to RepoDetailBottomTab.PullRequests),
         Triple(Icons.Default.PlayCircle, actionsLabel, onActions to RepoDetailBottomTab.Actions),
+        Triple(Icons.Default.NewReleases, "Releases", onReleases to RepoDetailBottomTab.Releases),
     )
     val navPad = WindowInsets.navigationBars.asPaddingValues()
     val shape = RoundedCornerShape(22.dp)
@@ -75,8 +78,8 @@ fun RepoDetailBottomBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = 400.dp)
-                .fillMaxWidth(0.88f)
+                .widthIn(max = 460.dp)
+                .fillMaxWidth(0.94f)
                 .clip(shape)
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

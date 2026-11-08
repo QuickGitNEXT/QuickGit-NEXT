@@ -106,7 +106,8 @@ fun QuickGitNavGraph() {
         currentRoute.startsWith("branches/") ||
         currentRoute.startsWith("issues/") ||
         currentRoute.startsWith("pull_requests/") ||
-        currentRoute.startsWith("workflows/")
+        currentRoute.startsWith("workflows/") ||
+        currentRoute.startsWith("releases/")
     )
     val hideFloatingBarOnRepoDetail =
         useFloatingBar && (largePhoneRepoSubRoute || (onRepoDetailRoute && !isLargePhone))
@@ -124,6 +125,7 @@ fun QuickGitNavGraph() {
         currentRoute?.startsWith("branches/") == true -> RepoDetailBottomTab.Branches
         currentRoute?.startsWith("pull_requests/") == true -> RepoDetailBottomTab.PullRequests
         currentRoute?.startsWith("workflows/") == true -> RepoDetailBottomTab.Actions
+        currentRoute?.startsWith("releases/") == true -> RepoDetailBottomTab.Releases
         else -> null // repo_detail / issues
     }
 
@@ -189,10 +191,8 @@ fun QuickGitNavGraph() {
                 },
                 onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
                 onOpenCredentials = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
-                // Large phones: user search lives under Profile (no Users tab on the bar).
-                onSearchPeople = if (isLargePhone) {
-                    { navController.navigate(Dest.USER_SEARCH) { launchSingleTop = true } }
-                } else null
+                // Search lives on the main floating nav bar, not under Profile.
+                onSearchPeople = null
             )
         }
 
@@ -626,15 +626,14 @@ fun QuickGitNavGraph() {
         items += FloatingNavItem(
             icon = Icons.Default.Person,
             label = "Profiles",
-            selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/") ||
-                (!includeUsers && isSelected(Dest.USER_SEARCH))
+            selected = isSelected(Dest.PROFILE_SELF) || isSelected("profile/")
         ) {
             tabNavigate(Dest.profile())
         }
         if (includeUsers) {
             items += FloatingNavItem(
                 icon = Icons.Default.Search,
-                label = "Users",
+                label = "Search",
                 selected = isSelected(Dest.USER_SEARCH)
             ) {
                 tabNavigate(Dest.USER_SEARCH)
@@ -709,10 +708,11 @@ fun QuickGitNavGraph() {
                 }
                 if (!hideFloatingBarOnRepoDetail) {
                     FloatingTabletNavBar(
-                        // Large phones: drop Browse/Users/Logs from the bar (Logs lives in Settings).
+                        // Large phones: drop Browse/Logs from the bar (Logs lives in Settings).
+                        // Search is always on the main floating bar (Repos, Clone, Profiles, Settings, Search).
                         items = navItems(
                             includeBrowse = !isLargePhone,
-                            includeUsers = !isLargePhone,
+                            includeUsers = true,
                             includeLogs = !isLargePhone,
                             // Large phones: credentials live under Profile only.
                             includeCreds = !isLargePhone
@@ -745,6 +745,12 @@ fun QuickGitNavGraph() {
                             },
                             onActions = {
                                 navController.navigate(Dest.workflows(path)) {
+                                    launchSingleTop = true
+                                    popUpTo(Dest.repoDetail(path)) { inclusive = false }
+                                }
+                            },
+                            onReleases = {
+                                navController.navigate(Dest.releases(path)) {
                                     launchSingleTop = true
                                     popUpTo(Dest.repoDetail(path)) { inclusive = false }
                                 }

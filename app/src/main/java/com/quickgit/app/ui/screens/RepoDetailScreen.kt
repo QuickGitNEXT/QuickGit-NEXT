@@ -154,7 +154,7 @@ fun RepoDetailScreen(
             val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
             val ciLabel = if (state.isGitLabRemote) "Build" else "Actions"
             // Small phones: full sub-page row under the title (incl. Releases).
-            // Large phones: sub-pages sit here (Releases lives under Actions); git ops move above commit.
+            // Large phones: sub-pages live on the floating repo bar (incl. Releases); git ops move above commit.
             if (!largePhone) {
                 androidx.compose.foundation.lazy.LazyRow(
                     Modifier
@@ -548,12 +548,13 @@ fun RepoDetailScreen(
             }
 
 
-            // Large phone: 4 bottom options (Issues is top-right; History opens from Files).
+            // Large phone: bottom bar options (Issues is top-right; History opens from Files).
             val pageNavItems = listOf(
                 SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
                 SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
                 SubNavItem(Icons.Default.CallMerge, prLabel, onOpenPullRequests),
                 SubNavItem(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows),
+                SubNavItem(Icons.Default.NewReleases, "Releases", onOpenReleases),
             )
             val gitOpsItems = listOf(
                 SubNavItem(Icons.Default.ArrowDownward, "Pull") {
