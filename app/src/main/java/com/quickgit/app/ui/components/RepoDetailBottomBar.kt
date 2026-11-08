@@ -78,7 +78,8 @@ fun RepoDetailBottomBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = 460.dp)
+                // Same max width as FloatingTabletNavBar so the bars match end-to-end
+                .widthIn(max = 560.dp)
                 .fillMaxWidth(0.94f)
                 .clip(shape)
         ) {

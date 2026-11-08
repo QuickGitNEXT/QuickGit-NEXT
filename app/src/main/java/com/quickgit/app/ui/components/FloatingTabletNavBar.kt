@@ -87,12 +87,11 @@ fun FloatingTabletNavBar(
     compact: Boolean = true
 ) {
     val navPad = WindowInsets.navigationBars.asPaddingValues()
-    // Same outer chrome as RepoDetailBottomBar on phones and tablets
+    // Shared chrome with RepoDetailBottomBar so both bars match in length and density.
     val shape = RoundedCornerShape(22.dp)
     val hPad = 28.dp
     val vPad = 6.dp
-    // Wider max when many destinations (Browse/Creds/etc. on tablets)
-    val maxBarWidth = if (items.size >= 6) 560.dp else 460.dp
+    val maxBarWidth = 560.dp
 
     Box(
         modifier = modifier

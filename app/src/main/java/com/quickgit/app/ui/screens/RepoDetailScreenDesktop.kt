@@ -304,7 +304,7 @@ fun RepoDetailScreenDesktop(
                         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                     ),
                     modifier = Modifier
-                        .widthIn(max = 520.dp)
+                        .widthIn(max = 560.dp)
                         .fillMaxWidth(0.94f)
                 ) {
                     Row(
