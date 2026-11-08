@@ -193,19 +193,24 @@ fun ChromeOsAppChrome(
     }
 }
 
-/** Soft brand watermark for Chromebook pages (bottom-centered). */
+/** Soft brand watermark for Chromebook / Googlebook pages (bottom-centered). */
 @Composable
 fun BoxScope.ChromeOsWatermark() {
     AppBrandLogo(
-        size = 96.dp,
+        size = 88.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = 28.dp)
-            .alpha(0.07f)
+            .padding(bottom = 32.dp)
+            // Low opacity so it stays readable as a mark without competing with content.
+            .alpha(0.11f)
     )
 }
 
-/** Content host with optional Chromebook watermark behind [content]. */
+/**
+ * Content host with Chromebook watermark overlaid at the bottom center of every screen.
+ * Watermark is drawn *after* [content] so opaque scaffolds cannot cover it; the logo
+ * has no pointer input so taps pass through to the UI below.
+ */
 @Composable
 fun ChromeOsContentWithWatermark(
     showWatermark: Boolean,
@@ -213,10 +218,10 @@ fun ChromeOsContentWithWatermark(
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(modifier.fillMaxSize()) {
+        content()
         if (showWatermark) {
             ChromeOsWatermark()
         }
-        content()
     }
 }
 

@@ -801,7 +801,14 @@ fun QuickGitNavGraph() {
                             }
                         )
                 ) {
-                    NavContent()
+                    if (isChromebook) {
+                        ChromeOsContentWithWatermark(
+                            showWatermark = true,
+                            modifier = Modifier.fillMaxSize()
+                        ) { NavContent() }
+                    } else {
+                        NavContent()
+                    }
                 }
                 if (!hideFloatingBarOnRepoDetail) {
                     FloatingTabletNavBar(
@@ -857,6 +864,15 @@ fun QuickGitNavGraph() {
                         )
                     }
                 }
+            }
+        }
+        // Chromebook without wide-chrome shell still gets the bottom logo watermark on every screen.
+        isChromebook -> {
+            ChromeOsContentWithWatermark(
+                showWatermark = true,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                NavContent()
             }
         }
         else -> NavContent()
