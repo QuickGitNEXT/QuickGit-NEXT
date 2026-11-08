@@ -166,7 +166,7 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left only (stage / Git Actions / History live on the Changes name row)
+            // Top: back left; History top-right on Changes only
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -186,18 +186,28 @@ fun RepoDetailScreenDesktop(
                         AppBrandLogo(size = 36.dp)
                     }
                 }
-                if (state.busy) {
-                    CircularProgressIndicator(
-                        Modifier
-                            .align(Alignment.CenterEnd)
-                            .padding(end = 8.dp)
-                            .size(20.dp),
-                        strokeWidth = 2.dp
-                    )
+                Row(
+                    Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.busy) {
+                        CircularProgressIndicator(
+                            Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    if (tabIndex == 0) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            onClick = { showHistory = true }
+                        )
+                    }
                 }
             }
 
-            // Repo name + branch; on Changes: stage/discard/Git Actions + History on the right
+            // Repo name + branch; on Changes: stage/discard/Git Actions on the right
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -249,11 +259,6 @@ fun RepoDetailScreenDesktop(
                             onClick = { gitActionsStep = "root" },
                             enabled = !state.busy
                         ) { Text("Git Actions") }
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "History",
-                            onClick = { showHistory = true }
-                        )
                     }
                 }
             }
