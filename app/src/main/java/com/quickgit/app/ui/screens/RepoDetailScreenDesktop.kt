@@ -169,25 +169,27 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left; History top-right on Changes only
+            // Top bar: Chromebook = flat ChromeOS IconButtons; tablet = floating circles
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = if (isChromebook) 4.dp else 8.dp, vertical = 6.dp)
             ) {
                 Row(
                     Modifier.align(Alignment.CenterStart),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
                 ) {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        onClick = onBack
-                    )
                     if (isChromebook) {
-                        // Chromebook: repo + branch beside Back (no brand logo)
-                        Column(Modifier.padding(start = 2.dp)) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        AppBrandLogo(size = 28.dp)
+                        Column(Modifier.padding(start = 6.dp)) {
                             Text(
                                 repoName,
                                 style = MaterialTheme.typography.titleMedium,
@@ -200,14 +202,21 @@ fun RepoDetailScreenDesktop(
                                 maxLines = 1
                             )
                         }
-                    } else if (!isPortrait) {
-                        AppBrandLogo(size = 36.dp)
+                    } else {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                        if (!isPortrait) {
+                            AppBrandLogo(size = 36.dp)
+                        }
                     }
                 }
                 Row(
                     Modifier.align(Alignment.CenterEnd),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.busy) {
                         CircularProgressIndicator(
@@ -216,11 +225,21 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                     if (tabIndex == 0) {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "History",
-                            onClick = { showHistory = true }
-                        )
+                        if (isChromebook) {
+                            IconButton(onClick = { showHistory = true }) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = "History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.History,
+                                contentDescription = "History",
+                                onClick = { showHistory = true }
+                            )
+                        }
                     }
                 }
             }
