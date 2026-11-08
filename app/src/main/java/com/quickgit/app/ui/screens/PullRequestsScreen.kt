@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,7 +38,8 @@ import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 fun PullRequestsScreen(
     vm: PullRequestsViewModel,
     onBack: (() -> Unit)? = null,
-    onNeedsAuth: (String) -> Unit
+    onNeedsAuth: (String) -> Unit,
+    onOpenIssues: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -68,7 +70,16 @@ fun PullRequestsScreen(
                             onClick = back
                         )
                     }
-                }
+                },
+                    actions = {
+                        if (onOpenIssues != null) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "Issues",
+                                onClick = onOpenIssues
+                            )
+                        }
+                    }
                 )
             }
         ) { padding ->
@@ -95,6 +106,15 @@ fun PullRequestsScreen(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             onClick = back
+                        )
+                    }
+                },
+                actions = {
+                    if (onOpenIssues != null) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.BugReport,
+                            contentDescription = "Issues",
+                            onClick = onOpenIssues
                         )
                     }
                 }

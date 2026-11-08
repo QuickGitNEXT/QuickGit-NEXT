@@ -384,7 +384,12 @@ fun QuickGitNavGraph() {
         ) { backStackEntry ->
             val repoPath = Dest.decode(backStackEntry.arguments!!.getString("repoPath")!!)
             val vm: BranchesViewModel = viewModel(factory = factory)
-            BranchesScreen(repoPath = repoPath, vm = vm, onBack = { navController.popBackStack() })
+            BranchesScreen(
+                repoPath = repoPath,
+                vm = vm,
+                onBack = { navController.popBackStack() },
+                onOpenIssues = { navController.navigate(Dest.issues(repoPath)) { launchSingleTop = true } }
+            )
         }
 
         composable(
@@ -556,7 +561,8 @@ fun QuickGitNavGraph() {
             PullRequestsScreen(
                 vm = vm,
                 onBack = { navController.popBackStack() },
-                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } }
+                onNeedsAuth = { navController.navigate(Dest.CREDENTIALS) { launchSingleTop = true } },
+                onOpenIssues = { navController.navigate(Dest.issues(repoPath)) { launchSingleTop = true } }
             )
         }
 

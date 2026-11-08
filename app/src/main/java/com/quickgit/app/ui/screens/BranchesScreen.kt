@@ -23,7 +23,12 @@ import com.quickgit.app.viewmodel.BranchesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)? = null) {
+fun BranchesScreen(
+    repoPath: String,
+    vm: BranchesViewModel,
+    onBack: (() -> Unit)? = null,
+    onOpenIssues: (() -> Unit)? = null
+) {
     LaunchedEffect(repoPath) { vm.init(repoPath) }
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -69,13 +74,20 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
                         )
                     },
                     actions = {
-                        // "Add remote" is no longer in the top bar; it lives in the
-                        // Remotes list below ("Add remote (e.g. a fork)").
-                        IconButton(onClick = { showCreate = true }) {
-                            Icon(Icons.Default.Add, "New branch")
+                        if (onOpenIssues != null) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "Issues",
+                                onClick = onOpenIssues
+                            )
                         }
                     }
                 )
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showCreate = true }) {
+                Icon(Icons.Default.Add, contentDescription = "New branch")
             }
         }
     ) { padding ->
@@ -86,7 +98,6 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = { showAddRemote = true }) { Text("Add remote") }
-                TextButton(onClick = { showCreate = true }) { Text("New branch") }
             }
         }
         PullToRefreshBox(
@@ -156,7 +167,7 @@ fun BranchesScreen(repoPath: String, vm: BranchesViewModel, onBack: (() -> Unit)
                         )
                         HorizontalDivider()
                     }
-                    item { Spacer(Modifier.height(24.dp)) }
+                    item { Spacer(Modifier.height(80.dp)) }
                 }
             }
         }
