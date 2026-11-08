@@ -162,6 +162,7 @@ private fun FloatingNavBarItem(
         "Browse" -> "Browse"
         "Profiles" -> "Profiles"
         "Users" -> "Users"
+        "Search" -> "Search"
         "Logs" -> "Logs"
         "Creds" -> "Creds"
         "Settings" -> "Settings"

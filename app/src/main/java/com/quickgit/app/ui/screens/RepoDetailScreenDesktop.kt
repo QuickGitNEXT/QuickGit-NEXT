@@ -8,11 +8,19 @@ import androidx.compose.foundation.layout.*
 // wrapContentWidth via foundation.layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CallMerge
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -21,11 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import android.content.res.Configuration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
@@ -123,8 +133,16 @@ fun RepoDetailScreenDesktop(
         }
     }
 
-    // Changes first, then Files, Branches, Issues, PRs, Actions, Releases, History last — same order as desktop.
-    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "History")
+    // Changes first, then Files, Branches, Issues, PRs, Actions, History last.
+    val tabs = listOf(
+        "Changes" to Icons.Default.Edit,
+        "Files" to Icons.Default.FolderOpen,
+        "Branches" to Icons.Default.AccountTree,
+        "Issues" to Icons.Default.BugReport,
+        "PRs" to Icons.Default.CallMerge,
+        "Actions" to Icons.Default.PlayCircle,
+        "History" to Icons.Default.History,
+    )
     var tabIndex by remember { mutableStateOf(0) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
@@ -258,54 +276,63 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Tabs floating bar where the app bottom nav normally sits
+            // Tabs floating bar — same compact chrome as RepoDetailBottomBar / FloatingTabletNavBar
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 28.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
+                    shape = RoundedCornerShape(22.dp),
                     tonalElevation = 4.dp,
-                    shadowElevation = 10.dp,
+                    shadowElevation = 12.dp,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-                    modifier = Modifier.wrapContentWidth()
+                    border = BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth(0.94f)
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        tabs.forEachIndexed { i, title ->
+                        tabs.forEachIndexed { i, (title, icon) ->
                             val selected = tabIndex == i
-                            val selectedBg = if (selected) {
-                                com.quickgit.app.ui.theme.GitGreen.copy(alpha = 0.2f)
-                            } else {
-                                Color.Transparent
-                            }
-                            TextButton(
-                                onClick = { tabIndex = i },
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = if (selected) {
-                                        com.quickgit.app.ui.theme.GitGreen
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                ),
+                            val selectedBg =
+                                if (selected) GitGreen.copy(alpha = 0.2f) else Color.Transparent
+                            val contentColor =
+                                if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+                            Column(
                                 modifier = Modifier
+                                    .weight(1f)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(selectedBg)
+                                    .clickable { tabIndex = i }
+                                    .padding(vertical = 3.dp, horizontal = 1.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = title,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
                                 Text(
                                     title,
                                     maxLines = 1,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (selected) {
-                                        androidx.compose.ui.text.font.FontWeight.SemiBold
-                                    } else {
-                                        androidx.compose.ui.text.font.FontWeight.Normal
-                                    }
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 9.sp,
+                                        lineHeight = 11.sp
+                                    ),
+                                    color = contentColor,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                                 )
                             }
                         }
