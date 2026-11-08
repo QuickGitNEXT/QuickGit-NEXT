@@ -1,0 +1,303 @@
+name: Build and Release Android
+
+# Manual only. Android phone/tablet/Chromebook + Wear OS.
+# Enter version as x.y.z (e.g. 2.4.9). Tag becomes A{version}, release title
+# "QuickGitNEXT Android {version}". Changelog only includes app/ + wear/ commits.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 2.4.9) — becomes QuickGitNEXT Android x.y.z, tag Ax.y.z'
+        required: true
+        type: string
+      version_code:
+        description: 'Android versionCode (integer). Leave blank to derive from version.'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: release-android
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.version.outputs.code }}
+      name: ${{ steps.version.outputs.name }}
+      tag: ${{ steps.version.outputs.tag }}
+      title: ${{ steps.version.outputs.title }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - name: Checkout (for previous tag / changelog)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Android version from input
+        id: version
+        run: |
+          set -euo pipefail
+          RAW="${{ inputs.version }}"
+          RAW="${RAW#QuickGitNEXT Android }"
+          RAW="${RAW#QuickGitNEXT }"
+          RAW="${RAW#QuickGit }"
+          RAW="${RAW#v}"
+          RAW="${RAW#A}"
+          VERSION_NAME="$(echo "$RAW" | tr -d '[:space:]')"
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.]+)?$ ]]; then
+            echo "Invalid version '$VERSION_NAME'. Use x.y.z (e.g. 2.4.9)."
+            exit 1
+          fi
+          if [ -n "${{ inputs.version_code }}" ]; then
+            VERSION_CODE="${{ inputs.version_code }}"
+          else
+            IFS=. read -r MAJ MIN PAT <<<"${VERSION_NAME%%-*}"
+            PAT="${PAT%%[^0-9]*}"
+            VERSION_CODE=$(( MAJ * 1000000 + MIN * 1000 + PAT ))
+          fi
+          TAG="A${VERSION_NAME}"
+          TITLE="QuickGitNEXT Android ${VERSION_NAME}"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          echo "Version: $TITLE (code $VERSION_CODE), tag $TAG"
+
+      - name: Build Android/Wear changelog since previous Android release
+        id: changelog
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          # Prefer previous A* tag; fall back to legacy v* for first split release
+          PREV="$(git tag -l 'A*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          if [ -z "$PREV" ]; then
+            PREV="$(git tag -l 'v*' --sort=-v:refname | head -n1 || true)"
+          fi
+          PATHS=(app wear)
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            echo "## What's changed (Android / Wear / Chromebook)"
+            echo ""
+            if [ -n "$PREV" ]; then
+              echo "Commits since \`${PREV}\` touching \`app/\` or \`wear/\`:"
+              echo ""
+              LOG="$(git log "${PREV}..HEAD" --pretty=format:'- %s (%h)' --no-merges -- "${PATHS[@]}" || true)"
+              if [ -n "$LOG" ]; then
+                echo "$LOG"
+              else
+                echo "_No Android/Wear path changes since ${PREV}._"
+              fi
+              echo ""
+              echo ""
+              COUNT="$(git rev-list --count "${PREV}..HEAD" --no-merges -- "${PATHS[@]}" 2>/dev/null || echo 0)"
+              echo "_${COUNT} Android/Wear commit(s) since ${PREV}_"
+            else
+              echo "First Android tagged release (no previous A* / v* tag found)."
+              echo ""
+              git log -20 --pretty=format:'- %s (%h)' --no-merges -- "${PATHS[@]}" || true
+              echo ""
+            fi
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Previous Android-related tag: ${PREV:-none}"
+
+  # ── Android phone (store + debug) + Wear ─────────────────────────────────
+  build-android:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: >
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Stamp version into phone and Wear build files
+        run: |
+          for f in app/build.gradle.kts wear/build.gradle.kts; do
+            sed -i "s/versionCode = [0-9]\+/versionCode = ${{ needs.version.outputs.code }}/" "$f"
+            sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ needs.version.outputs.name }}\"/" "$f"
+          done
+
+      - name: Decode keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${SIGNING_KEYSTORE_BASE64:-}" ] && missing+=("SIGNING_KEYSTORE_BASE64")
+          [ -z "${SIGNING_STORE_PASSWORD:-}" ] && missing+=("SIGNING_STORE_PASSWORD")
+          [ -z "${SIGNING_KEY_ALIAS:-}" ] && missing+=("SIGNING_KEY_ALIAS")
+          [ -z "${SIGNING_KEY_PASSWORD:-}" ] && missing+=("SIGNING_KEY_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing GitHub Actions secrets: ${missing[*]}" >&2
+            echo "Repo → Settings → Secrets and variables → Actions → New repository secret" >&2
+            echo "See README / docs for creating a release keystore and encoding it as base64." >&2
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/quickgitnext-release.jks"
+          if [ ! -s "$RUNNER_TEMP/quickgitnext-release.jks" ]; then
+            echo "Decoded keystore is empty — check SIGNING_KEYSTORE_BASE64 encoding." >&2
+            exit 1
+          fi
+          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/quickgitnext-release.jks" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "Keystore decoded ($(wc -c < "$RUNNER_TEMP/quickgitnext-release.jks") bytes), alias=$SIGNING_KEY_ALIAS"
+
+      - name: Build phone store + logging (debug) release APKs and Wear release APK
+        env:
+          # Packaging + lintVital + L8 can peak above the default 2G heap on CI runners.
+          GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false
+        run: |
+          set -euo pipefail
+          # Retry on transient Maven/CDN failures (e.g. GitHub 504 for kotlin-compiler-embeddable)
+          attempts=3
+          n=1
+          until gradle \
+            :app:assembleStoreRelease \
+            :app:assembleLoggingRelease \
+            :wear:assembleRelease \
+            --no-daemon \
+            --stacktrace
+          do
+            if [ "$n" -ge "$attempts" ]; then
+              echo "Gradle build failed after $attempts attempts" >&2
+              exit 1
+            fi
+            echo "Gradle build failed (attempt $n/$attempts) — retrying in 30s…"
+            n=$((n + 1))
+            sleep 30
+          done
+
+      - name: Stage Android artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          STORE_APK=$(find app/build/outputs/apk/store/release -name '*.apk' 2>/dev/null | head -n 1 || true)
+          DEBUG_APK=$(find app/build/outputs/apk/logging/release -name '*.apk' 2>/dev/null | head -n 1 || true)
+          WEAR_APK=$(find wear/build/outputs/apk/release -name '*.apk' 2>/dev/null | head -n 1 || true)
+          if [ -z "$STORE_APK" ] || [ ! -f "$STORE_APK" ]; then
+            echo "Store release APK not found under app/build/outputs/apk/store/release" >&2
+            find app/build/outputs -type f -name '*.apk' 2>/dev/null || true
+            exit 1
+          fi
+          if [ -z "$DEBUG_APK" ] || [ ! -f "$DEBUG_APK" ]; then
+            echo "Debug release APK not found under app/build/outputs/apk/logging/release" >&2
+            find app/build/outputs -type f -name '*.apk' 2>/dev/null || true
+            exit 1
+          fi
+          if [ -z "$WEAR_APK" ] || [ ! -f "$WEAR_APK" ]; then
+            echo "Wear release APK not found under wear/build/outputs/apk/release" >&2
+            exit 1
+          fi
+          cp "$STORE_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
+          cp "$DEBUG_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
+          cp "$WEAR_APK" "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
+          ls -la dist/
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-packages
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+
+  publish-release:
+    needs: [version, build-android]
+    if: |
+      always() &&
+      needs.version.result == 'success' &&
+      needs.build-android.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Android packages
+        uses: actions/download-artifact@v4
+        with:
+          name: android-packages
+          path: dist
+
+      - name: List release files
+        run: |
+          ls -la dist/
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
+          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
+          test -f "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
+
+      - name: Tag the release commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.version.outputs.tag }}"
+          git push origin "${{ needs.version.outputs.tag }}"
+
+      - name: Build release file list
+        id: files
+        run: |
+          set -euo pipefail
+          FILES=()
+          for f in dist/*; do
+            [ -f "$f" ] || continue
+            FILES+=("$f")
+            echo "include: $f"
+          done
+          {
+            echo "list<<EOF"
+            printf '%s\n' "${FILES[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.title }}
+          body: |
+            **${{ needs.version.outputs.title }}**
+
+            Built from commit `${{ github.sha }}`.
+
+            ${{ needs.version.outputs.changelog }}
+
+            ---
+
+            ### Artifacts
+            - `quickgitnext-${{ needs.version.outputs.name }}.apk` — phone / tablet / Chromebook **release** (no Logs UI)
+            - `quickgitnext-${{ needs.version.outputs.name }}-debug.apk` — phone / tablet / Chromebook **debug** (includes Logs UI; id `com.quickgitnext.app.debug`)
+            - `quickgitnext-wear-${{ needs.version.outputs.name }}.apk` — Wear OS
+          files: ${{ steps.files.outputs.list }}

@@ -1,45 +1,31 @@
-name: Build and Release
+name: Build and Release Desktop
 
-# Manual only. Run from Actions → Build and Release → Run workflow.
-# Set "version" to the release number (e.g. 2.0.1). Artifacts and the GitHub
-# Release are published as QuickGitNEXT x.x.x with a changelog of every commit
-# since the previous tag.
-#
-# Compile jobs (separate, same release):
-#   - build-android   — phone store + debug APKs, Wear APK
-#   - build-deb       — Linux .deb
-#   - build-rpm       — Linux .rpm
-#   - build-appimage  — Linux AppImage
-#   - build-windows   — Windows MSI (best-effort)
-# publish-release attaches every successful artifact to one GitHub Release.
+# Manual only. Linux (.deb / .rpm / AppImage) + Windows MSI.
+# Enter version as x.y.z (e.g. 2.4.9). Tag becomes D{version}, release title
+# "QuickGitNEXT Desktop {version}". Changelog only includes desktop/ commits.
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 2.0.1) — becomes QuickGitNEXT x.x.x'
+        description: 'Release version (e.g. 2.4.9) — becomes QuickGitNEXT Desktop x.y.z, tag Dx.y.z'
         required: true
         type: string
-      version_code:
-        description: 'Android versionCode (integer). Leave blank to derive from version.'
-        required: false
-        type: string
-        default: ''
 
 concurrency:
-  group: release
+  group: release-desktop
   cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  # ── Shared version stamp ───────────────────────────────────────────────────
   version:
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.version.outputs.code }}
       name: ${{ steps.version.outputs.name }}
       tag: ${{ steps.version.outputs.tag }}
+      title: ${{ steps.version.outputs.title }}
       changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
       - name: Checkout (for previous tag / changelog)
@@ -47,187 +33,63 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve version from input
+      - name: Resolve Desktop version from input
         id: version
         run: |
           set -euo pipefail
           RAW="${{ inputs.version }}"
+          RAW="${RAW#QuickGitNEXT Desktop }"
           RAW="${RAW#QuickGitNEXT }"
           RAW="${RAW#QuickGit }"
-          RAW="${RAW#quickgitnext }"
-          RAW="${RAW#QuickGitNEXT }"
-          RAW="${RAW#quickgit }"
           RAW="${RAW#v}"
+          RAW="${RAW#D}"
           VERSION_NAME="$(echo "$RAW" | tr -d '[:space:]')"
           if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.]+)?$ ]]; then
-            echo "Invalid version '$VERSION_NAME'. Use x.y.z (e.g. 2.0.1)."
+            echo "Invalid version '$VERSION_NAME'. Use x.y.z (e.g. 2.4.9)."
             exit 1
           fi
-          if [ -n "${{ inputs.version_code }}" ]; then
-            VERSION_CODE="${{ inputs.version_code }}"
-          else
-            IFS=. read -r MAJ MIN PAT <<<"${VERSION_NAME%%-*}"
-            PAT="${PAT%%[^0-9]*}"
-            VERSION_CODE=$(( MAJ * 1000000 + MIN * 1000 + PAT ))
-          fi
-          TAG="v${VERSION_NAME}"
-          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          TAG="D${VERSION_NAME}"
+          TITLE="QuickGitNEXT Desktop ${VERSION_NAME}"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Version: QuickGitNEXT $VERSION_NAME (code $VERSION_CODE), tag $TAG"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          echo "Version: $TITLE, tag $TAG"
 
-      - name: Build changelog since previous release
+      - name: Build Desktop changelog since previous Desktop release
         id: changelog
         run: |
           set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
-          PREV="$(git tag -l 'v*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          PREV="$(git tag -l 'D*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          if [ -z "$PREV" ]; then
+            PREV="$(git tag -l 'v*' --sort=-v:refname | head -n1 || true)"
+          fi
           {
             echo "changelog<<CHANGELOG_EOF"
-            echo "## What's changed"
+            echo "## What's changed (Desktop)"
             echo ""
             if [ -n "$PREV" ]; then
-              echo "Commits since \`${PREV}\`:"
+              echo "Commits since \`${PREV}\` touching \`desktop/\`:"
               echo ""
-              git log "${PREV}..HEAD" --pretty=format:'- %s (%h)' --no-merges
+              LOG="$(git log "${PREV}..HEAD" --pretty=format:'- %s (%h)' --no-merges -- desktop || true)"
+              if [ -n "$LOG" ]; then
+                echo "$LOG"
+              else
+                echo "_No desktop/ path changes since ${PREV}._"
+              fi
               echo ""
               echo ""
-              COUNT="$(git rev-list --count "${PREV}..HEAD" --no-merges 2>/dev/null || echo 0)"
-              echo "_${COUNT} commit(s) since ${PREV}_"
+              COUNT="$(git rev-list --count "${PREV}..HEAD" --no-merges -- desktop 2>/dev/null || echo 0)"
+              echo "_${COUNT} desktop commit(s) since ${PREV}_"
             else
-              echo "First tagged release (no previous tag found)."
+              echo "First Desktop tagged release (no previous D* / v* tag found)."
               echo ""
-              git log -20 --pretty=format:'- %s (%h)' --no-merges
+              git log -20 --pretty=format:'- %s (%h)' --no-merges -- desktop || true
               echo ""
             fi
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
-          echo "Previous tag: ${PREV:-none}"
-
-  # ── Android phone (store + debug) + Wear ─────────────────────────────────
-  build-android:
-    needs: version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: >
-            platform-tools
-            platforms;android-34
-            build-tools;34.0.0
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Stamp version into phone and Wear build files
-        run: |
-          for f in app/build.gradle.kts wear/build.gradle.kts; do
-            sed -i "s/versionCode = [0-9]\+/versionCode = ${{ needs.version.outputs.code }}/" "$f"
-            sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ needs.version.outputs.name }}\"/" "$f"
-          done
-
-      - name: Decode keystore
-        env:
-          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -z "${SIGNING_KEYSTORE_BASE64:-}" ] && missing+=("SIGNING_KEYSTORE_BASE64")
-          [ -z "${SIGNING_STORE_PASSWORD:-}" ] && missing+=("SIGNING_STORE_PASSWORD")
-          [ -z "${SIGNING_KEY_ALIAS:-}" ] && missing+=("SIGNING_KEY_ALIAS")
-          [ -z "${SIGNING_KEY_PASSWORD:-}" ] && missing+=("SIGNING_KEY_PASSWORD")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            echo "Missing GitHub Actions secrets: ${missing[*]}" >&2
-            echo "Repo → Settings → Secrets and variables → Actions → New repository secret" >&2
-            echo "See README / docs for creating a release keystore and encoding it as base64." >&2
-            exit 1
-          fi
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/quickgitnext-release.jks"
-          if [ ! -s "$RUNNER_TEMP/quickgitnext-release.jks" ]; then
-            echo "Decoded keystore is empty — check SIGNING_KEYSTORE_BASE64 encoding." >&2
-            exit 1
-          fi
-          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/quickgitnext-release.jks" >> "$GITHUB_ENV"
-          echo "SIGNING_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "SIGNING_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
-          echo "Keystore decoded ($(wc -c < "$RUNNER_TEMP/quickgitnext-release.jks") bytes), alias=$SIGNING_KEY_ALIAS"
-
-      - name: Build phone store + logging (debug) release APKs and Wear release APK
-        env:
-          # Packaging + lintVital + L8 can peak above the default 2G heap on CI runners.
-          GRADLE_OPTS: -Xmx4096m -XX:MaxMetaspaceSize=1024m -Dorg.gradle.daemon=false
-        run: |
-          set -euo pipefail
-          # Retry on transient Maven/CDN failures (e.g. GitHub 504 for kotlin-compiler-embeddable)
-          attempts=3
-          n=1
-          until gradle \
-            :app:assembleStoreRelease \
-            :app:assembleLoggingRelease \
-            :wear:assembleRelease \
-            --no-daemon \
-            --stacktrace
-          do
-            if [ "$n" -ge "$attempts" ]; then
-              echo "Gradle build failed after $attempts attempts" >&2
-              exit 1
-            fi
-            echo "Gradle build failed (attempt $n/$attempts) — retrying in 30s…"
-            n=$((n + 1))
-            sleep 30
-          done
-
-      - name: Stage Android artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          STORE_APK=$(find app/build/outputs/apk/store/release -name '*.apk' 2>/dev/null | head -n 1 || true)
-          DEBUG_APK=$(find app/build/outputs/apk/logging/release -name '*.apk' 2>/dev/null | head -n 1 || true)
-          WEAR_APK=$(find wear/build/outputs/apk/release -name '*.apk' 2>/dev/null | head -n 1 || true)
-          if [ -z "$STORE_APK" ] || [ ! -f "$STORE_APK" ]; then
-            echo "Store release APK not found under app/build/outputs/apk/store/release" >&2
-            find app/build/outputs -type f -name '*.apk' 2>/dev/null || true
-            exit 1
-          fi
-          if [ -z "$DEBUG_APK" ] || [ ! -f "$DEBUG_APK" ]; then
-            echo "Debug release APK not found under app/build/outputs/apk/logging/release" >&2
-            find app/build/outputs -type f -name '*.apk' 2>/dev/null || true
-            exit 1
-          fi
-          if [ -z "$WEAR_APK" ] || [ ! -f "$WEAR_APK" ]; then
-            echo "Wear release APK not found under wear/build/outputs/apk/release" >&2
-            exit 1
-          fi
-          cp "$STORE_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
-          cp "$DEBUG_APK" "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
-          cp "$WEAR_APK" "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
-          ls -la dist/
-
-      - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-packages
-          path: dist/*
-          if-no-files-found: error
-          retention-days: 7
+          echo "Previous Desktop-related tag: ${PREV:-none}"
 
   # ── Linux .deb (separate compile) ────────────────────────────────────────
   build-deb:
@@ -643,13 +505,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # ── Single GitHub Release (all successful artifacts) ─────────────────────
+
   publish-release:
-    needs: [version, build-android, build-deb, build-rpm, build-appimage, build-windows]
+    needs: [version, build-deb, build-rpm, build-appimage, build-windows]
     if: |
       always() &&
       needs.version.result == 'success' &&
-      needs.build-android.result == 'success' &&
       needs.build-deb.result == 'success' &&
       needs.build-rpm.result == 'success' &&
       needs.build-appimage.result == 'success'
@@ -659,12 +520,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Download Android packages
-        uses: actions/download-artifact@v4
-        with:
-          name: android-packages
-          path: dist
 
       - name: Download Deb
         uses: actions/download-artifact@v4
@@ -695,9 +550,6 @@ jobs:
       - name: List release files
         run: |
           ls -la dist/
-          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}.apk"
-          test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-debug.apk"
-          test -f "dist/quickgitnext-wear-${{ needs.version.outputs.name }}.apk"
           test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage"
           test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb"
           test -f "dist/quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.rpm"
@@ -734,9 +586,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: QuickGitNEXT ${{ needs.version.outputs.name }}
+          name: ${{ needs.version.outputs.title }}
           body: |
-            **QuickGitNEXT ${{ needs.version.outputs.name }}**
+            **${{ needs.version.outputs.title }}**
 
             Built from commit `${{ github.sha }}`.
 
@@ -745,15 +597,10 @@ jobs:
             ---
 
             ### Artifacts
-            - `quickgitnext-${{ needs.version.outputs.name }}.apk` — phone / tablet **release** (no Logs UI)
-            - `quickgitnext-${{ needs.version.outputs.name }}-debug.apk` — phone / tablet **debug** (includes Logs UI; id `com.quickgitnext.app.debug`)
-            - `quickgitnext-wear-${{ needs.version.outputs.name }}.apk` — Wear OS
             - `quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb` — native Linux (.deb; Debian/Ubuntu)
             - `quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.rpm` — native Linux (.rpm; Fedora/RHEL/openSUSE)
             - `quickgitnext-${{ needs.version.outputs.name }}-linux-x86_64.AppImage` — native Linux (AppImage)
             - `quickgitnext-${{ needs.version.outputs.name }}-windows-x64.msi` — native Windows (MSI; included when the Windows job succeeds)
 
             **Desktop auto-update:** Linux (.deb / .rpm / AppImage) and Windows (.msi) builds check this Releases page for newer packages for their platform.
-
-            Android, Deb, Rpm, and AppImage are compiled in **separate** CI jobs and published together in this release.
           files: ${{ steps.files.outputs.list }}
