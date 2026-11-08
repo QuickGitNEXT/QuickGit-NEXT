@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -107,7 +109,10 @@ fun ChromeOsAppChrome(
     val sectionIndex = section.selectedIndex.intValue
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        // Stretch full width; pad only under the status bar so chrome stays usable edge-to-edge.
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp
     ) {

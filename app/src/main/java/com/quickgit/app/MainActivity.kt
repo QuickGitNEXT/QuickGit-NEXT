@@ -22,7 +22,6 @@ import com.quickgit.app.data.GitProgressNotifier
 import com.quickgit.app.navigation.QuickGitNavGraph
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.AutoUpdateHost
-import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.ui.theme.QuickGitTheme
 
 /** FragmentActivity so [androidx.biometric.BiometricPrompt] can gate Credentials. */
@@ -42,13 +41,11 @@ class MainActivity : FragmentActivity() {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Draw under system bars on all form factors, including Chromebook freeform windows.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        // Chromebook windows already sit above the shelf; fitting system windows avoids a
-        // blank inset strip at the bottom of every Scaffold page.
-        if (isChromebookDevice()) {
-            WindowCompat.setDecorFitsSystemWindows(window, true)
-        }
+        // Keep edge-to-edge on Chromebook (do not re-fit decor to system windows).
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         preferHighestRefreshRate()
         GitProgressNotifier.ensureChannel(this)
         requestPermissionsIfNeeded()

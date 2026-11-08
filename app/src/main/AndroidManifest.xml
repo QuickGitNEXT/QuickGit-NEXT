@@ -49,13 +49,20 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Tablets / ChromeOS / freeform: any orientation and unrestricted window size -->
+            <!-- Tablets / ChromeOS / freeform: stretch to the available window, any orientation -->
             <layout
-                android:defaultWidth="800dp"
-                android:defaultHeight="600dp"
+                android:defaultWidth="1100dp"
+                android:defaultHeight="800dp"
                 android:minWidth="320dp"
                 android:minHeight="400dp"
-                android:gravity="center" />
+                android:gravity="fill" />
+            <!-- ChromeOS: open maximized / full freeform when possible -->
+            <meta-data
+                android:name="WindowManagerPreference:FreeformWindowSize"
+                android:value="maximize" />
+            <meta-data
+                android:name="WindowManagerPreference:FreeformWindowOrientation"
+                android:value="landscape" />
         </activity>
 
         <!-- Wear OS Data Layer: answers /quickgitnext/request_sync from the companion watch app -->

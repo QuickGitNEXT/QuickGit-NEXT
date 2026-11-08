@@ -382,7 +382,15 @@ fun QuickGitNavGraph() {
                 repoPath = repoPath,
                 repoName = repoPath.substringAfterLast('/'),
                 vm = vm,
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    // Always land on the repo list. On Chromebook also drop the open repo tab
+                    // so chrome does not keep a stale section after leaving detail.
+                    if (isChromebook && chromeRepoTabs.any { it.path == repoPath }) {
+                        closeChromeRepoTab(repoPath)
+                    } else {
+                        navController.popBackStack(Dest.REPO_LIST, inclusive = false)
+                    }
+                },
                 onOpenDiff = { filePath, mode -> navController.navigate(Dest.diff(repoPath, filePath, mode)) },
                 onOpenFile = { filePath -> navController.navigate(Dest.editor(repoPath, filePath)) },
                 onOpenHistory = { navController.navigate(Dest.history(repoPath)) },

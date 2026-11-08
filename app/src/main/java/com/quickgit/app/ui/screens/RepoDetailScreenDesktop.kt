@@ -289,9 +289,8 @@ fun RepoDetailScreenDesktop(
                             else -> onBack()
                         }
                     }
-                    BackHandler(enabled = releaseOpen || workflowOpen || tabIndex != 0) {
-                        onHeaderBack()
-                    }
+                    // Always intercept: nested detail → section → Changes → repo list (onBack).
+                    BackHandler { onHeaderBack() }
                     if (isChromebook) {
                         IconButton(onClick = onHeaderBack) {
                             Icon(
