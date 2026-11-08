@@ -83,12 +83,16 @@ fun Context.isLargePhoneForFloatingNav(): Boolean {
 fun FloatingTabletNavBar(
     items: List<FloatingNavItem>,
     modifier: Modifier = Modifier,
-    compact: Boolean = false
+    /** Always match [RepoDetailBottomBar] chrome (icons 20.dp, labelSmall). */
+    compact: Boolean = true
 ) {
     val navPad = WindowInsets.navigationBars.asPaddingValues()
-    val shape = RoundedCornerShape(if (compact) 22.dp else 28.dp)
-    val hPad = if (compact) 28.dp else 16.dp
-    val vPad = if (compact) 6.dp else 12.dp
+    // Same outer chrome as RepoDetailBottomBar on phones and tablets
+    val shape = RoundedCornerShape(22.dp)
+    val hPad = 28.dp
+    val vPad = 6.dp
+    // Wider max when many destinations (Browse/Creds/etc. on tablets)
+    val maxBarWidth = if (items.size >= 6) 560.dp else 460.dp
 
     Box(
         modifier = modifier
@@ -99,8 +103,8 @@ fun FloatingTabletNavBar(
     ) {
         Box(
             Modifier
-                .widthIn(max = if (compact) 460.dp else 720.dp)
-                .then(if (compact) Modifier.fillMaxWidth(0.94f) else Modifier.fillMaxWidth())
+                .widthIn(max = maxBarWidth)
+                .fillMaxWidth(0.94f)
                 .clip(shape)
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -127,17 +131,13 @@ fun FloatingTabletNavBar(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(
-                            horizontal = if (compact) 2.dp else 6.dp,
-                            vertical = if (compact) 5.dp else 8.dp
-                        ),
+                        .padding(horizontal = 2.dp, vertical = 5.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     items.forEach { item ->
                         FloatingNavBarItem(
                             item = item,
-                            compact = compact,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -150,7 +150,6 @@ fun FloatingTabletNavBar(
 @Composable
 private fun FloatingNavBarItem(
     item: FloatingNavItem,
-    compact: Boolean,
     modifier: Modifier = Modifier
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -178,29 +177,20 @@ private fun FloatingNavBarItem(
                 indication = null,
                 onClick = item.onClick
             )
-            // Match RepoDetailBottomBar item padding when compact
-            .padding(vertical = if (compact) 3.dp else 5.dp, horizontal = 1.dp),
+            // Match RepoDetailBottomBar item padding exactly
+            .padding(vertical = 3.dp, horizontal = 1.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             item.icon,
             contentDescription = item.label,
             tint = contentColor,
-            // Compact = same 20.dp icons as RepoDetailBottomBar
-            modifier = Modifier.size(if (compact) 20.dp else 22.dp)
+            modifier = Modifier.size(20.dp)
         )
         Text(
             shortLabel,
             color = contentColor,
-            // Compact uses stock labelSmall (same as RepoDetailBottomBar) — no 9.sp shrink
-            style = if (compact) {
-                MaterialTheme.typography.labelSmall
-            } else {
-                MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    lineHeight = 11.sp
-                )
-            },
+            style = MaterialTheme.typography.labelSmall,
             maxLines = 1,
             overflow = TextOverflow.Clip,
             textAlign = TextAlign.Center,

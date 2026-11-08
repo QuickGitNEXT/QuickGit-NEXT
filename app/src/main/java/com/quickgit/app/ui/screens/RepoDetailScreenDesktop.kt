@@ -327,10 +327,7 @@ fun RepoDetailScreenDesktop(
                                 Text(
                                     title,
                                     maxLines = 1,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 9.sp,
-                                        lineHeight = 11.sp
-                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = contentColor,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                                 )
