@@ -69,7 +69,16 @@ fun WorkflowsScreen(
     repoPath: String? = null,
     showReleasesTab: Boolean = false,
     /** Opens Issues from the Actions top bar (replaces Refresh). */
-    onOpenIssues: (() -> Unit)? = null
+    onOpenIssues: (() -> Unit)? = null,
+    /** Hosted under tablet/Chromebook repo detail (no outer Actions app bar). */
+    embedded: Boolean = false,
+    /**
+     * Chromebook repo chrome hosts the run title + watch/cancel/rerun/refresh.
+     * When true, [RunDetailContent] omits its own floating back / logo / action row.
+     */
+    chromeHostsDetailHeader: Boolean = false,
+    /** Notifies the host when a run detail (or nested log/live page) is open. */
+    onDetailOpenChange: ((Boolean) -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -82,6 +91,15 @@ fun WorkflowsScreen(
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.statusMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
         state.authRequiredHost?.let { onNeedsAuth("https://$it/"); vm.consumeMessages() }
+    }
+
+    val detailOpen =
+        state.selectedRun != null || state.logJobId != null || state.livePageUrl != null
+    LaunchedEffect(detailOpen) {
+        onDetailOpenChange?.invoke(detailOpen)
+    }
+    DisposableEffect(Unit) {
+        onDispose { onDetailOpenChange?.invoke(false) }
     }
 
     if (state.livePageUrl != null) {
@@ -111,7 +129,8 @@ fun WorkflowsScreen(
         RunDetailContent(
             vm = vm,
             snackbarHost = snackbarHost,
-            onBack = { vm.closeDetail() }
+            onBack = { vm.closeDetail() },
+            chromeHostsDetailHeader = chromeHostsDetailHeader
         )
         return
     }
@@ -340,7 +359,9 @@ private fun RunCard(run: WorkflowRun, onClick: () -> Unit) {
 private fun RunDetailContent(
     vm: WorkflowsViewModel,
     snackbarHost: SnackbarHostState,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Chromebook/tablet parent chrome shows title + actions; hide floating back/logo/actions here. */
+    chromeHostsDetailHeader: Boolean = false
 ) {
     val state by vm.state.collectAsState()
     val run = state.selectedRun ?: return
@@ -348,48 +369,50 @@ private fun RunDetailContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    AppScreenTitle(
-                        pageTitle = run.displayTitle.ifBlank { run.name },
-                        subtitle = "Run #${run.runNumber}",
-                        showLogo = onBack != null
-                    )
-                },
-                navigationIcon = {
-                FloatingCircleIconButton(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    onClick = onBack
+            if (!chromeHostsDetailHeader) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = run.displayTitle.ifBlank { run.name },
+                            subtitle = "Run #${run.runNumber}",
+                            showLogo = true
+                        )
+                    },
+                    navigationIcon = {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    },
+                    actions = {
+                        if (state.watching) {
+                            IconButton(onClick = { vm.stopWatching() }) {
+                                Icon(Icons.Default.Pause, "Stop watching")
+                            }
+                        } else if (isLiveStatus(run.status)) {
+                            IconButton(onClick = { vm.startWatching(run.id) }) {
+                                Icon(Icons.Default.PlayArrow, "Watch live")
+                            }
+                        }
+                        if (isLiveStatus(run.status)) {
+                            IconButton(onClick = { vm.cancelRun(run.id) }, enabled = !state.busy) {
+                                Icon(Icons.Default.Cancel, "Cancel")
+                            }
+                        } else {
+                            IconButton(onClick = { vm.rerun(run.id) }, enabled = !state.busy) {
+                                Icon(Icons.Default.Replay, "Re-run")
+                            }
+                        }
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            onClick = { vm.openRun(run.id) },
+                            enabled = !state.detailLoading
+                        )
+                    }
                 )
-            },
-                actions = {
-                    if (state.watching) {
-                        IconButton(onClick = { vm.stopWatching() }) {
-                            Icon(Icons.Default.Pause, "Stop watching")
-                        }
-                    } else if (isLiveStatus(run.status)) {
-                        IconButton(onClick = { vm.startWatching(run.id) }) {
-                            Icon(Icons.Default.PlayArrow, "Watch live")
-                        }
-                    }
-                    if (isLiveStatus(run.status)) {
-                        IconButton(onClick = { vm.cancelRun(run.id) }, enabled = !state.busy) {
-                            Icon(Icons.Default.Cancel, "Cancel")
-                        }
-                    } else {
-                        IconButton(onClick = { vm.rerun(run.id) }, enabled = !state.busy) {
-                            Icon(Icons.Default.Replay, "Re-run")
-                        }
-                    }
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        onClick = { vm.openRun(run.id) },
-                        enabled = !state.detailLoading
-                    )
-                }
-            )
+            }
         }
     ) { padding ->
         if (state.detailLoading && state.jobs.isEmpty()) {

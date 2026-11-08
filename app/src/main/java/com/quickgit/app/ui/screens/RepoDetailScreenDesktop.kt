@@ -29,6 +29,10 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -96,6 +100,7 @@ fun RepoDetailScreenDesktop(
     val issuesVm: IssuesViewModel = viewModel(factory = factory)
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
+    val workflowsState by workflowsVm.state.collectAsState()
     val releasesVm: ReleasesViewModel = viewModel(factory = factory)
     val releasesState by releasesVm.state.collectAsState()
     val historyVm: HistoryViewModel = viewModel(factory = factory)
@@ -106,6 +111,8 @@ fun RepoDetailScreenDesktop(
     var releaseEditRequest by remember { mutableIntStateOf(0) }
     // Driven by ReleasesScreen so header Back closes detail even if VM selected lags.
     var releaseDetailOpen by remember { mutableStateOf(false) }
+    // Driven by WorkflowsScreen when a run / job log / live page is open.
+    var workflowDetailOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -194,8 +201,13 @@ fun RepoDetailScreenDesktop(
         if (tabIndex != 1) selectedEditorPath = null
         if (tabIndex != 6) {
             releaseDetailOpen = false
-            // Leaving Releases while a detail was open — clear so list is clean next time.
             if (releasesState.selected != null) releasesVm.closeDetail()
+        }
+        if (tabIndex != 5) {
+            workflowDetailOpen = false
+            if (workflowsState.selectedRun != null) workflowsVm.closeDetail()
+            if (workflowsState.logJobId != null) workflowsVm.closeJobLog()
+            if (workflowsState.livePageUrl != null) workflowsVm.closeLivePage()
         }
         if (tabIndex == 0) vm.refresh()
     }
@@ -243,64 +255,102 @@ fun RepoDetailScreenDesktop(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
                 ) {
-                    // When a release detail is open, Back returns to the Releases list
-                    // instead of closing the whole repo tab.
+                    // Nested detail: Back closes release / workflow run instead of leaving the repo.
                     val openRelease =
                         if (tabIndex == 6) releasesState.selected else null
+                    val openRun =
+                        if (tabIndex == 5) workflowsState.selectedRun else null
                     val releaseOpen = openRelease != null || (tabIndex == 6 && releaseDetailOpen)
+                    val workflowOpen = openRun != null || (tabIndex == 5 && workflowDetailOpen)
+                    fun isWorkflowLive(status: String) =
+                        status == "queued" || status == "in_progress" || status == "requested" ||
+                            status == "waiting" || status == "pending"
                     val onHeaderBack: () -> Unit = {
-                        if (releaseOpen) {
-                            releasesVm.closeDetail()
-                            releaseDetailOpen = false
-                        } else {
-                            onBack()
+                        when {
+                            releaseOpen -> {
+                                releasesVm.closeDetail()
+                                releaseDetailOpen = false
+                            }
+                            workflowOpen -> {
+                                when {
+                                    workflowsState.livePageUrl != null -> workflowsVm.closeLivePage()
+                                    workflowsState.logJobId != null -> workflowsVm.closeJobLog()
+                                    else -> {
+                                        workflowsVm.closeDetail()
+                                        workflowDetailOpen = false
+                                    }
+                                }
+                            }
+                            else -> onBack()
                         }
                     }
-                    // System / gesture back also closes release detail before leaving the repo.
-                    BackHandler(enabled = releaseOpen) {
-                        releasesVm.closeDetail()
-                        releaseDetailOpen = false
+                    BackHandler(enabled = releaseOpen || workflowOpen) {
+                        onHeaderBack()
                     }
                     if (isChromebook) {
                         IconButton(onClick = onHeaderBack) {
                             Icon(
                                 Icons.Default.ArrowBack,
-                                contentDescription = if (openRelease != null) "Back to releases" else "Back",
+                                contentDescription = when {
+                                    releaseOpen -> "Back to releases"
+                                    workflowOpen -> "Back to actions"
+                                    else -> "Back"
+                                },
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        // Releases detail open: show release name/version instead of repo/branch.
-                        Column(Modifier.padding(start = 2.dp)) {
-                            if (openRelease != null) {
-                                Text(
-                                    openRelease.name.ifBlank { openRelease.tagName },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    openRelease.tagName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
-                            } else {
-                                Text(
-                                    repoName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    state.branch,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
+                        // Detail open: show release / workflow title instead of repo/branch.
+                        Column(Modifier.padding(start = 2.dp).weight(1f, fill = true)) {
+                            when {
+                                openRelease != null -> {
+                                    Text(
+                                        openRelease.name.ifBlank { openRelease.tagName },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        openRelease.tagName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                openRun != null -> {
+                                    Text(
+                                        openRun.displayTitle.ifBlank { openRun.name },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        "Run #${openRun.runNumber}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        repoName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        state.branch,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     } else {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = if (openRelease != null) "Back to releases" else "Back",
+                            contentDescription = when {
+                                releaseOpen -> "Back to releases"
+                                workflowOpen -> "Back to actions"
+                                else -> "Back"
+                            },
                             onClick = onHeaderBack
                         )
                         if (!isPortrait) {
@@ -315,6 +365,43 @@ fun RepoDetailScreenDesktop(
                 ) {
                     if (state.busy) {
                         BrandLoadingSpinner(size = 20.dp)
+                    }
+                    // Chromebook + workflow run: watch / cancel / re-run / refresh on the header line.
+                    if (isChromebook && tabIndex == 5 && workflowsState.selectedRun != null) {
+                        val run = workflowsState.selectedRun!!
+                        val live = run.status == "queued" || run.status == "in_progress" ||
+                            run.status == "requested" || run.status == "waiting" ||
+                            run.status == "pending"
+                        if (workflowsState.watching) {
+                            IconButton(onClick = { workflowsVm.stopWatching() }) {
+                                Icon(Icons.Default.Pause, contentDescription = "Stop watching")
+                            }
+                        } else if (live) {
+                            IconButton(onClick = { workflowsVm.startWatching(run.id) }) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Watch live")
+                            }
+                        }
+                        if (live) {
+                            IconButton(
+                                onClick = { workflowsVm.cancelRun(run.id) },
+                                enabled = !workflowsState.busy
+                            ) {
+                                Icon(Icons.Default.Cancel, contentDescription = "Cancel")
+                            }
+                        } else {
+                            IconButton(
+                                onClick = { workflowsVm.rerun(run.id) },
+                                enabled = !workflowsState.busy
+                            ) {
+                                Icon(Icons.Default.Replay, contentDescription = "Re-run")
+                            }
+                        }
+                        IconButton(
+                            onClick = { workflowsVm.openRun(run.id) },
+                            enabled = !workflowsState.detailLoading
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
                     }
                     // Chromebook + open release: flat Edit at the right end of the top bar line.
                     if (isChromebook && tabIndex == 6 && releasesState.selected != null) {
@@ -502,7 +589,10 @@ fun RepoDetailScreenDesktop(
                             onBack = null,
                             onNeedsAuth = onNeedsAuth,
                             repoPath = repoPath,
-                            showReleasesTab = false
+                            showReleasesTab = false,
+                            embedded = true,
+                            chromeHostsDetailHeader = isChromebook,
+                            onDetailOpenChange = { open -> workflowDetailOpen = open }
                         )
                         6 -> ReleasesScreen(
                             vm = releasesVm,
