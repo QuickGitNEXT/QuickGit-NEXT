@@ -166,7 +166,7 @@ fun RepoDetailScreenDesktop(
         snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            // Top: back left · stage/git actions right (no refresh — pull to refresh instead)
+            // Top: back left only (stage / Git Actions / History live on the Changes name row)
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -186,40 +186,18 @@ fun RepoDetailScreenDesktop(
                         AppBrandLogo(size = 36.dp)
                     }
                 }
-
-                Row(
-                    Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (state.busy) {
-                        CircularProgressIndicator(
-                            Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    if (tabIndex == 0) {
-                        OutlinedButton(
-                            onClick = { vm.stageAll() },
-                            enabled = !state.busy
-                        ) { Text("Stage all") }
-                        OutlinedButton(
-                            onClick = { vm.unstageAll() },
-                            enabled = !state.busy
-                        ) { Text("Unstage all") }
-                        OutlinedButton(
-                            onClick = { vm.discardAll() },
-                            enabled = !state.busy
-                        ) { Text("Discard") }
-                    }
-                    OutlinedButton(
-                        onClick = { gitActionsStep = "root" },
-                        enabled = !state.busy
-                    ) { Text("Git Actions") }
+                if (state.busy) {
+                    CircularProgressIndicator(
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 8.dp)
+                            .size(20.dp),
+                        strokeWidth = 2.dp
+                    )
                 }
             }
 
-            // Repo name + branch; path on Files tab; History top-right
+            // Repo name + branch; on Changes: stage/discard/Git Actions + History on the right
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -250,11 +228,34 @@ fun RepoDetailScreenDesktop(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                FloatingCircleIconButton(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "History",
-                    onClick = { showHistory = true }
-                )
+                if (tabIndex == 0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { vm.stageAll() },
+                            enabled = !state.busy
+                        ) { Text("Stage all") }
+                        OutlinedButton(
+                            onClick = { vm.unstageAll() },
+                            enabled = !state.busy
+                        ) { Text("Unstage all") }
+                        OutlinedButton(
+                            onClick = { vm.discardAll() },
+                            enabled = !state.busy
+                        ) { Text("Discard") }
+                        OutlinedButton(
+                            onClick = { gitActionsStep = "root" },
+                            enabled = !state.busy
+                        ) { Text("Git Actions") }
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "History",
+                            onClick = { showHistory = true }
+                        )
+                    }
+                }
             }
 
             PullToRefreshBox(
