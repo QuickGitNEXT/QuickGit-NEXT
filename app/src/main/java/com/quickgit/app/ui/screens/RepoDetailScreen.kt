@@ -680,10 +680,11 @@ fun RepoDetailScreen(
                         ) {
                             ChangesLazy(bottomPad = 8.dp)
                         }
-                        // Match RepoDetailBottomBar width so ops + commit don't stretch wider than the nav pill
+                        // Same outer chrome as RepoDetailBottomBar: 28.dp side pad + max 560 + 0.94 width
                         Box(
                             Modifier
                                 .fillMaxWidth()
+                                .padding(horizontal = 28.dp)
                                 .padding(bottom = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -691,14 +692,16 @@ fun RepoDetailScreen(
                                 Modifier
                                     .widthIn(max = 560.dp)
                                     .fillMaxWidth(0.94f)
-                                    .padding(bottom = 8.dp)
+                                    .padding(bottom = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                                 )
                                 RepoSubNavFloatingBar(items = gitOpsItems, flat = true)
                                 HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                    Modifier.padding(bottom = 4.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                                 )
                                 if (status != null) {
                                     if (!commitExpanded) {
@@ -707,7 +710,7 @@ fun RepoDetailScreen(
                                             shape = RoundedCornerShape(22.dp),
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 4.dp, vertical = 8.dp)
+                                                .padding(vertical = 6.dp)
                                         ) {
                                             Text(
                                                 when {
