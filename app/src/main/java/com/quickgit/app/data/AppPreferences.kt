@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Phone navigation density:
  * - [AUTO] — use device diagonal / dp heuristics (~6.3″ threshold)
- * - [LARGE] — force large-phone floating bottom nav (≥6.3″ style)
- * - [COMPACT] — force compact in-screen navigation (<6.3″ style)
+ * - [LARGE] — NEXT: floating bottom nav (≥6.3″ style)
+ * - [COMPACT] — Classic: original in-screen phone chrome
  */
 enum class PhoneNavMode {
     AUTO,

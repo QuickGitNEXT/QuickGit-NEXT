@@ -142,16 +142,16 @@ fun SettingsScreen(
                 }
             } else {
                 Text(
-                    "Phone navigation size. Auto uses your screen (~6.3″ and larger get the " +
-                        "floating bottom bar). You can force large-phone or compact phone chrome.",
+                    "Phone navigation style. Auto picks by screen size. " +
+                        "NEXT uses the floating bottom bar; Classic uses the original phone chrome.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
                 val phoneOptions = listOf(
                     PhoneNavMode.AUTO to "Auto (by screen size)",
-                    PhoneNavMode.LARGE to "6.3″ and over (floating nav)",
-                    PhoneNavMode.COMPACT to "Under 6.3″ (compact)"
+                    PhoneNavMode.LARGE to "NEXT (floating nav)",
+                    PhoneNavMode.COMPACT to "Classic"
                 )
                 phoneOptions.forEach { (mode, label) ->
                     Row(
