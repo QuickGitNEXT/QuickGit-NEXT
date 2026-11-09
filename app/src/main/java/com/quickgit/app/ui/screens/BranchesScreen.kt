@@ -19,6 +19,8 @@ import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.AppScreenTitle
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.viewmodel.BranchesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +38,15 @@ fun BranchesScreen(
     var showAddRemote by remember { mutableStateOf(false) }
     var branchToDelete by remember { mutableStateOf<BranchInfo?>(null) }
     var remoteToDelete by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val phoneNavMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.phoneNavMode.collectAsState()
+    val compactPhone = when (phoneNavMode) {
+        com.quickgit.app.data.PhoneNavMode.COMPACT -> true
+        com.quickgit.app.data.PhoneNavMode.LARGE -> false
+        com.quickgit.app.data.PhoneNavMode.AUTO ->
+            !context.isLargePhoneForFloatingNav()
+    }
 
     LaunchedEffect(state.lastResult, state.statusMessage) {
         state.statusMessage?.let {
@@ -74,7 +85,13 @@ fun BranchesScreen(
                         )
                     },
                     actions = {
-                        if (onOpenIssues != null) {
+                        if (compactPhone) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "New branch",
+                                onClick = { showCreate = true }
+                            )
+                        } else if (onOpenIssues != null) {
                             FloatingCircleIconButton(
                                 imageVector = Icons.Default.BugReport,
                                 contentDescription = "Issues",
@@ -86,8 +103,11 @@ fun BranchesScreen(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Default.Add, contentDescription = "New branch")
+            // Classic compact: + is top-right; NEXT keeps bottom FAB
+            if (!compactPhone) {
+                FloatingActionButton(onClick = { showCreate = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "New branch")
+                }
             }
         }
     ) { padding ->
