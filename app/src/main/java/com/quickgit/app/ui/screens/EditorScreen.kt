@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import com.quickgit.app.ui.components.SyntaxHighlight
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
-import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.rememberSyntaxPalette
 import com.quickgit.app.ui.theme.GitGreen
@@ -56,9 +55,7 @@ fun EditorScreen(
     repoPath: String,
     relativePath: String,
     vm: EditorViewModel,
-    onBack: () -> Unit,
-    /** Called after a successful save so the host (e.g. Changes tab) can refresh status. */
-    onSaved: (() -> Unit)? = null
+    onBack: () -> Unit
 ) {
     LaunchedEffect(repoPath, relativePath) { vm.load(repoPath, relativePath) }
     val state by vm.state.collectAsState()
@@ -71,7 +68,6 @@ fun EditorScreen(
     LaunchedEffect(state.savedMessage, state.error) {
         state.savedMessage?.let {
             snackbarHost.showSnackbar(it)
-            onSaved?.invoke()
             vm.consumeMessage()
         }
         state.error?.let {
@@ -157,7 +153,11 @@ fun EditorScreen(
                             enabled = state.isDirty && !state.saving
                         ) {
                             if (state.saving) {
-                                BrandLoadingSpinner(size = 18.dp)
+                                CircularProgressIndicator(
+                                    Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             } else {
                                 Icon(Icons.Default.Save, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))

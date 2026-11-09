@@ -12,8 +12,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.security.isChromebookDevice
-import com.quickgit.app.ui.components.BrandLoadingPlaceholder
-import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.ChromeOsSectionItem
 import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import androidx.compose.material.icons.Icons
@@ -29,10 +27,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -45,9 +39,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import android.content.res.Configuration
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,7 +52,6 @@ import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.viewmodel.BranchesViewModel
-import com.quickgit.app.viewmodel.EditorViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
 import com.quickgit.app.viewmodel.IssuesViewModel
@@ -96,23 +86,11 @@ fun RepoDetailScreenDesktop(
     val branchesVm: BranchesViewModel = viewModel(factory = factory)
     val filesVm: FilesViewModel = viewModel(factory = factory)
     val filesState by filesVm.state.collectAsState()
-    val editorVm: EditorViewModel = viewModel(factory = factory)
     val issuesVm: IssuesViewModel = viewModel(factory = factory)
     val pullRequestsVm: PullRequestsViewModel = viewModel(factory = factory)
     val workflowsVm: WorkflowsViewModel = viewModel(factory = factory)
-    val workflowsState by workflowsVm.state.collectAsState()
     val releasesVm: ReleasesViewModel = viewModel(factory = factory)
-    val releasesState by releasesVm.state.collectAsState()
     val historyVm: HistoryViewModel = viewModel(factory = factory)
-
-    // Chromebook / wide: Files list stays on the left as a vertical nav; editor opens on the right.
-    var selectedEditorPath by remember { mutableStateOf<String?>(null) }
-    // Incremented from Chromebook top chrome to open the Releases edit dialog.
-    var releaseEditRequest by remember { mutableIntStateOf(0) }
-    // Driven by ReleasesScreen so header Back closes detail even if VM selected lags.
-    var releaseDetailOpen by remember { mutableStateOf(false) }
-    // Driven by WorkflowsScreen when a run / job log / live page is open.
-    var workflowDetailOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(repoPath) {
         issuesVm.init(repoPath)
@@ -177,7 +155,6 @@ fun RepoDetailScreenDesktop(
     val isChromebook = LocalContext.current.isChromebookDevice()
     val chromeSection = LocalChromeOsRepoSection.current
     // Chromebook: section selection lives in the top chrome under main destinations.
-    // Keep activate/deactivate stable so rapid section taps don't tear down chrome state.
     if (isChromebook) {
         DisposableEffect(Unit) {
             chromeSection.activate(
@@ -187,44 +164,10 @@ fun RepoDetailScreenDesktop(
             onDispose { chromeSection.deactivate() }
         }
     }
-    // Read MutableIntState during composition so clicks in ChromeOsAppChrome recompose this tree.
-    val chromeTabIndex = chromeSection.selectedIndex.intValue
-    val tabIndex = if (isChromebook) chromeTabIndex else localTabIndex
+    val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
     fun setTabIndex(i: Int) {
-        if (i == tabIndex) return
         if (isChromebook) chromeSection.selectedIndex.intValue = i
         else localTabIndex = i
-    }
-    // Leave the split editor when switching away from Files; refresh Changes when landing on it
-    // so saves / external overwrites show up in staging without leaving the repo.
-    LaunchedEffect(tabIndex) {
-        if (tabIndex != 1) selectedEditorPath = null
-        if (tabIndex != 6) {
-            releaseDetailOpen = false
-            if (releasesState.selected != null) releasesVm.closeDetail()
-        }
-        if (tabIndex != 5) {
-            workflowDetailOpen = false
-            if (workflowsState.selectedRun != null) workflowsVm.closeDetail()
-            if (workflowsState.logJobId != null) workflowsVm.closeJobLog()
-            if (workflowsState.livePageUrl != null) workflowsVm.closeLivePage()
-        }
-        if (tabIndex == 0) vm.refresh()
-    }
-    // Re-scan working tree whenever the activity returns to the foreground (e.g. after
-    // another app overwrote files). Fixes stale Changes until leaving/re-entering the repo.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val currentTab by rememberUpdatedState(tabIndex)
-    val currentFilesDir by rememberUpdatedState(filesState.currentDir)
-    DisposableEffect(lifecycleOwner, repoPath) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                vm.refresh()
-                if (currentTab == 1) filesVm.openDir(currentFilesDir)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
@@ -255,127 +198,37 @@ fun RepoDetailScreenDesktop(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
                 ) {
-                    // Nested detail: Back closes release / workflow run instead of leaving the repo.
-                    val openRelease =
-                        if (tabIndex == 6) releasesState.selected else null
-                    val openRun =
-                        if (tabIndex == 5) workflowsState.selectedRun else null
-                    val releaseOpen = openRelease != null || (tabIndex == 6 && releaseDetailOpen)
-                    val workflowOpen = openRun != null || (tabIndex == 5 && workflowDetailOpen)
-                    fun isWorkflowLive(status: String) =
-                        status == "queued" || status == "in_progress" || status == "requested" ||
-                            status == "waiting" || status == "pending"
-                    // Back hierarchy:
-                    // 1) close open release / workflow run detail
-                    // 2) from Files/Branches/Issues/PRs/Actions/Releases → Changes
-                    // 3) from Changes → leave the repo
-                    val onHeaderBack: () -> Unit = {
-                        when {
-                            releaseOpen -> {
-                                releasesVm.closeDetail()
-                                releaseDetailOpen = false
-                            }
-                            workflowOpen -> {
-                                when {
-                                    workflowsState.livePageUrl != null -> workflowsVm.closeLivePage()
-                                    workflowsState.logJobId != null -> workflowsVm.closeJobLog()
-                                    else -> {
-                                        workflowsVm.closeDetail()
-                                        workflowDetailOpen = false
-                                    }
-                                }
-                            }
-                            tabIndex != 0 -> setTabIndex(0)
-                            else -> onBack()
-                        }
-                    }
-                    // Always intercept: nested detail → section → Changes → repo list (onBack).
-                    BackHandler { onHeaderBack() }
                     if (isChromebook) {
-                        IconButton(onClick = onHeaderBack) {
+                        IconButton(onClick = onBack) {
                             Icon(
                                 Icons.Default.ArrowBack,
-                                contentDescription = when {
-                                    releaseOpen -> "Back to releases"
-                                    workflowOpen -> "Back to actions"
-                                    tabIndex != 0 -> "Back to changes"
-                                    else -> "Back"
-                                },
+                                contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        // Detail open: show release / workflow title instead of repo/branch.
-                        Column(Modifier.padding(start = 2.dp).weight(1f, fill = true)) {
-                            when {
-                                openRelease != null -> {
-                                    Text(
-                                        openRelease.name.ifBlank { openRelease.tagName },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        openRelease.tagName,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                openRun != null -> {
-                                    Text(
-                                        openRun.displayTitle.ifBlank { openRun.name },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        "Run #${openRun.runNumber}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                else -> {
-                                    Text(
-                                        repoName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        state.branch,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
+                        Column(Modifier.padding(start = 2.dp)) {
+                            Text(
+                                repoName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1
+                            )
+                            Text(
+                                state.branch,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
                         }
                     } else {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = when {
-                                releaseOpen -> "Back to releases"
-                                workflowOpen -> "Back to actions"
-                                tabIndex != 0 -> "Back to changes"
-                                else -> "Back"
-                            },
-                            onClick = onHeaderBack
+                            contentDescription = "Back",
+                            onClick = onBack
                         )
                         if (!isPortrait) {
                             AppBrandLogo(size = 36.dp)
                         }
                     }
-                }
-                // Chromebook Files tab: current directory centered on the same line as repo/branch.
-                if (isChromebook && tabIndex == 1) {
-                    Text(
-                        text = if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = 96.dp) // clear Back+title and end actions
-                    )
                 }
                 Row(
                     Modifier.align(Alignment.CenterEnd),
@@ -383,96 +236,32 @@ fun RepoDetailScreenDesktop(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.busy) {
-                        BrandLoadingSpinner(size = 20.dp)
+                        CircularProgressIndicator(
+                            Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
                     }
-                    // Chromebook + workflow run: watch / cancel / re-run / refresh on the header line.
-                    if (isChromebook && tabIndex == 5 && workflowsState.selectedRun != null) {
-                        val run = workflowsState.selectedRun!!
-                        val live = run.status == "queued" || run.status == "in_progress" ||
-                            run.status == "requested" || run.status == "waiting" ||
-                            run.status == "pending"
-                        if (workflowsState.watching) {
-                            IconButton(onClick = { workflowsVm.stopWatching() }) {
-                                Icon(Icons.Default.Pause, contentDescription = "Stop watching")
-                            }
-                        } else if (live) {
-                            IconButton(onClick = { workflowsVm.startWatching(run.id) }) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Watch live")
-                            }
-                        }
-                        if (live) {
-                            IconButton(
-                                onClick = { workflowsVm.cancelRun(run.id) },
-                                enabled = !workflowsState.busy
-                            ) {
-                                Icon(Icons.Default.Cancel, contentDescription = "Cancel")
+                    if (tabIndex == 0) {
+                        if (isChromebook) {
+                            IconButton(onClick = { showHistory = true }) {
+                                Icon(
+                                    Icons.Default.History,
+                                    contentDescription = "History",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         } else {
-                            IconButton(
-                                onClick = { workflowsVm.rerun(run.id) },
-                                enabled = !workflowsState.busy
-                            ) {
-                                Icon(Icons.Default.Replay, contentDescription = "Re-run")
-                            }
-                        }
-                        IconButton(
-                            onClick = { workflowsVm.openRun(run.id) },
-                            enabled = !workflowsState.detailLoading
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
-                    }
-                    // Chromebook + open release: flat Edit at the right end of the top bar line.
-                    if (isChromebook && tabIndex == 6 && releasesState.selected != null) {
-                        IconButton(onClick = { releaseEditRequest++ }) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit release",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    // Chromebook: Stage / Unstage / Discard / Git Actions live left of History
-                    if (isChromebook && tabIndex == 0) {
-                        OutlinedButton(
-                            onClick = { vm.stageAll() },
-                            enabled = !state.busy,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                        ) { Text("Stage all", style = MaterialTheme.typography.labelMedium) }
-                        OutlinedButton(
-                            onClick = { vm.unstageAll() },
-                            enabled = !state.busy,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                        ) { Text("Unstage all", style = MaterialTheme.typography.labelMedium) }
-                        OutlinedButton(
-                            onClick = { vm.discardAll() },
-                            enabled = !state.busy,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                        ) { Text("Discard", style = MaterialTheme.typography.labelMedium) }
-                        OutlinedButton(
-                            onClick = { gitActionsStep = "root" },
-                            enabled = !state.busy,
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                        ) { Text("Git Actions", style = MaterialTheme.typography.labelMedium) }
-                        IconButton(onClick = { showHistory = true }) {
-                            Icon(
-                                Icons.Default.History,
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.History,
                                 contentDescription = "History",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                onClick = { showHistory = true }
                             )
                         }
-                    } else if (tabIndex == 0) {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.History,
-                            contentDescription = "History",
-                            onClick = { showHistory = true }
-                        )
                     }
                 }
             }
 
-            // Repo name + branch (tablet); Chromebook already shows them next to Back.
-            // Files path on Chromebook is centered on the top chrome line, not this row.
+            // Repo name + branch (tablet); Chromebook already shows them next to Back
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -494,7 +283,7 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                 }
-                if (tabIndex == 1 && !isChromebook) {
+                if (tabIndex == 1) {
                     Text(
                         if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
                         style = MaterialTheme.typography.titleSmall,
@@ -505,8 +294,7 @@ fun RepoDetailScreenDesktop(
                 } else {
                     Spacer(Modifier.weight(1f))
                 }
-                // Tablet only: action row under the title. Chromebook moves these next to History.
-                if (tabIndex == 0 && !isChromebook) {
+                if (tabIndex == 0) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -541,89 +329,25 @@ fun RepoDetailScreenDesktop(
                 },
                 modifier = Modifier.weight(1f).fillMaxSize()
             ) {
-                // key() forces a clean composition when switching sections — avoids
-                // leftover state / layout from the previous tab that caused glitchy transitions.
-                key(tabIndex) {
-                    when (tabIndex) {
-                        0 -> ChangesTabDesktop(vm)
-                        1 -> {
-                            // Always dual-pane on desktop/Chromebook Files:
-                            // left = file explorer, right = editor (or placeholder).
-                            BackHandler(enabled = selectedEditorPath != null) {
-                                selectedEditorPath = null
-                                // Returning from editor: pick up any saves into Changes.
-                                vm.refresh()
-                            }
-                            Row(Modifier.fillMaxSize()) {
-                                Box(
-                                    Modifier
-                                        .weight(0.38f)
-                                        .fillMaxHeight()
-                                ) {
-                                    FilesScreen(
-                                        repoPath = repoPath,
-                                        vm = filesVm,
-                                        onBack = null,
-                                        onOpenFile = { path -> selectedEditorPath = path }
-                                    )
-                                }
-                                VerticalDivider(
-                                    thickness = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
-                                Box(Modifier.weight(0.62f).fillMaxHeight()) {
-                                    val path = selectedEditorPath
-                                    if (path != null) {
-                                        key(path) {
-                                            EditorScreen(
-                                                repoPath = repoPath,
-                                                relativePath = path,
-                                                vm = editorVm,
-                                                onBack = {
-                                                    selectedEditorPath = null
-                                                    vm.refresh()
-                                                },
-                                                onSaved = { vm.refresh() }
-                                            )
-                                        }
-                                    } else {
-                                        Box(
-                                            Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                "Select a file to edit",
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
-                        3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                        4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
-                        5 -> WorkflowsScreen(
-                            vm = workflowsVm,
-                            onBack = null,
-                            onNeedsAuth = onNeedsAuth,
-                            repoPath = repoPath,
-                            showReleasesTab = false,
-                            embedded = true,
-                            chromeHostsDetailHeader = isChromebook,
-                            onDetailOpenChange = { open -> workflowDetailOpen = open }
-                        )
-                        6 -> ReleasesScreen(
-                            vm = releasesVm,
-                            onBack = null,
-                            onNeedsAuth = onNeedsAuth,
-                            embedded = true,
-                            chromeHostsDetailHeader = isChromebook,
-                            externalEditRequest = releaseEditRequest,
-                            onDetailOpenChange = { open -> releaseDetailOpen = open }
-                        )
-                    }
+                when (tabIndex) {
+                    0 -> ChangesTabDesktop(vm)
+                    1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
+                    2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
+                    3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
+                    4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)
+                    5 -> WorkflowsScreen(
+                        vm = workflowsVm,
+                        onBack = null,
+                        onNeedsAuth = onNeedsAuth,
+                        repoPath = repoPath,
+                        showReleasesTab = false
+                    )
+                    6 -> ReleasesScreen(
+                        vm = releasesVm,
+                        onBack = null,
+                        onNeedsAuth = onNeedsAuth,
+                        embedded = true
+                    )
                 }
             }
 
@@ -1067,7 +791,7 @@ private fun ChangesTabDesktop(vm: RepoDetailViewModel) {
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         if (state.busy && status == null) {
-            BrandLoadingPlaceholder()
+            CircularProgressIndicator()
         } else if (staged.isEmpty() && unstagedAll.isEmpty()) {
             Text("Working tree clean", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {

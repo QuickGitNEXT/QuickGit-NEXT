@@ -6,7 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.quickgit.app.data.AccountManager
 import com.quickgit.app.data.AppLog
 import com.quickgit.app.data.AppPreferences
-import com.quickgit.app.data.DesktopLayoutMode
+import com.quickgit.app.data.PhoneNavMode
+import com.quickgit.app.data.WideUiMode
 import com.quickgit.app.data.CredentialStore
 import com.quickgit.app.data.GitHubAccountManager
 import com.quickgit.app.data.GitLabAccountManager
@@ -57,7 +58,8 @@ data class SettingsUiState(
     val updateNotes: String? = null,
     val updateReleasesUrl: String? = null,
     /** Left NavigationRail layout (matches Linux desktop). Auto / Always / Never. */
-    val desktopLayoutMode: DesktopLayoutMode = DesktopLayoutMode.AUTO,
+    val phoneNavMode: PhoneNavMode = PhoneNavMode.AUTO,
+    val wideUiMode: WideUiMode = WideUiMode.AUTO,
     /** All managed GitHub / GitLab / Gerrit accounts. */
     val managedAccounts: List<AccountManager.Account> = emptyList(),
     val activeAccountIds: Map<AccountManager.Provider, String> = emptyMap()
@@ -183,13 +185,19 @@ class SettingsViewModel(
 
     private fun refreshDesktopLayout() {
         _state.value = _state.value.copy(
-            desktopLayoutMode = appPreferences.desktopLayoutMode.value
+            phoneNavMode = appPreferences.phoneNavMode.value,
+            wideUiMode = appPreferences.wideUiMode.value
         )
     }
 
-    fun setDesktopLayoutMode(mode: DesktopLayoutMode) {
-        appPreferences.setDesktopLayoutMode(mode)
-        _state.value = _state.value.copy(desktopLayoutMode = mode)
+    fun setPhoneNavMode(mode: PhoneNavMode) {
+        appPreferences.setPhoneNavMode(mode)
+        _state.value = _state.value.copy(phoneNavMode = mode)
+    }
+
+    fun setWideUiMode(mode: WideUiMode) {
+        appPreferences.setWideUiMode(mode)
+        _state.value = _state.value.copy(wideUiMode = mode)
     }
 
     private fun refreshAppVersion() {

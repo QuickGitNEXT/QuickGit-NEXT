@@ -33,7 +33,6 @@ import com.quickgit.app.viewmodel.ReleasesViewModel
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
-import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.PullToRefreshBox
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,15 +43,7 @@ fun ReleasesScreen(
     onNeedsAuth: (String) -> Unit,
     /** When true (hosted under Actions tabs), omit the outer top app bar. */
     embedded: Boolean = false,
-    onOpenIssues: (() -> Unit)? = null,
-    /**
-     * When true (Chromebook repo chrome hosts title + edit), omit the in-detail header row.
-     * Parent increments [externalEditRequest] to open the edit dialog.
-     */
-    chromeHostsDetailHeader: Boolean = false,
-    externalEditRequest: Int = 0,
-    /** Notifies the host (repo detail chrome) when a release detail is open or closed. */
-    onDetailOpenChange: ((Boolean) -> Unit)? = null
+    onOpenIssues: (() -> Unit)? = null
 ) {
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
@@ -65,43 +56,52 @@ fun ReleasesScreen(
         state.authRequiredHost?.let { onNeedsAuth("https://$it/"); vm.consumeMessages() }
     }
 
-    // Keep parent chrome in sync with whether a release detail is showing.
-    LaunchedEffect(state.selected) {
-        onDetailOpenChange?.invoke(state.selected != null)
-    }
-    DisposableEffect(Unit) {
-        onDispose { onDetailOpenChange?.invoke(false) }
-    }
-
-    // Parent Chromebook chrome can request edit while a release detail is open.
-    LaunchedEffect(externalEditRequest) {
-        if (externalEditRequest > 0 && state.selected != null) {
-            editingRelease = state.selected
-        }
+    if (state.selected != null) {
+        BackHandler { vm.closeDetail() }
+        ReleaseDetailContent(
+            release = state.selected!!,
+            loading = state.detailLoading,
+            onBack = { vm.closeDetail() },
+            onEdit = { editingRelease = state.selected }
+        )
+        return
     }
 
-    // Detail / list / unsupported body. Dialogs are composed AFTER this so Edit still works
-    // when a release is open (previous early-return skipped the edit dialog entirely).
-    when {
-        state.selected != null -> {
-            BackHandler { vm.closeDetail() }
-            ReleaseDetailContent(
-                release = state.selected!!,
-                loading = state.detailLoading,
-                onBack = { vm.closeDetail() },
-                onEdit = { editingRelease = state.selected },
-                // Embedded under repo detail (tablet/Chromebook): no second back, no floating chrome.
-                embedded = embedded,
-                // Chromebook top bar already shows name/version + edit.
-                hideHeader = chromeHostsDetailHeader
-            )
+    if (!state.supported) {
+        Scaffold(
+            topBar = {
+                if (onBack != null) CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Releases", showLogo = true) },
+                    navigationIcon = {
+                    onBack?.let { back ->
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = back
+                        )
+                    }
+                }
+                )
+            }
+        ) { padding ->
+            Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    "Releases are only available for repositories whose origin points at github.com.",
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        !state.supported -> {
-            Scaffold(
-                topBar = {
-                    if (onBack != null) CenterAlignedTopAppBar(
-                        title = { AppScreenTitle("Releases", showLogo = true) },
-                        navigationIcon = {
+        return
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            if (!embedded) {
+                CenterAlignedTopAppBar(
+                    title = { AppScreenTitle("Releases", showLogo = true) },
+                    navigationIcon = {
                         onBack?.let { back ->
                             FloatingCircleIconButton(
                                 imageVector = Icons.Default.ArrowBack,
@@ -109,84 +109,54 @@ fun ReleasesScreen(
                                 onClick = back
                             )
                         }
+                    },
+                    actions = {
+                        if (onOpenIssues != null) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "Issues",
+                                onClick = onOpenIssues
+                            )
+                        }
                     }
-                    )
-                }
-            ) { padding ->
-                Box(Modifier.padding(padding).fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        "Releases are only available for repositories whose origin points at github.com.",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                )
+            }
+        },
+        floatingActionButton = {
+            if (state.supported) {
+                FloatingActionButton(onClick = { showCreateDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "New release")
                 }
             }
         }
-        else -> {
-            Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHost) },
-                topBar = {
-                    if (!embedded) {
-                        CenterAlignedTopAppBar(
-                            title = { AppScreenTitle("Releases", showLogo = true) },
-                            navigationIcon = {
-                                onBack?.let { back ->
-                                    FloatingCircleIconButton(
-                                        imageVector = Icons.Default.ArrowBack,
-                                        contentDescription = "Back",
-                                        onClick = back
-                                    )
-                                }
-                            },
-                            actions = {
-                                if (onOpenIssues != null) {
-                                    FloatingCircleIconButton(
-                                        imageVector = Icons.Default.BugReport,
-                                        contentDescription = "Issues",
-                                        onClick = onOpenIssues
-                                    )
-                                }
-                            }
-                        )
-                    }
-                },
-                floatingActionButton = {
-                    if (state.supported) {
-                        FloatingActionButton(onClick = { showCreateDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = "New release")
-                        }
-                    }
+    ) { padding ->
+        PullToRefreshBox(
+            isRefreshing = state.loading,
+            onRefresh = { vm.refresh() },
+            modifier = Modifier.padding(padding).fillMaxSize()
+        ) {
+            when {
+                state.loading && state.releases.isEmpty() -> {
+                    BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
                 }
-            ) { padding ->
-                PullToRefreshBox(
-                    isRefreshing = state.loading,
-                    onRefresh = { vm.refresh() },
-                    modifier = Modifier.padding(padding).fillMaxSize()
-                ) {
-                    when {
-                        state.loading && state.releases.isEmpty() -> {
-                            BrandLoadingPlaceholder(modifier = Modifier.align(Alignment.Center))
+                state.releases.isEmpty() -> {
+                    Text(
+                        "No releases published yet.",
+                        Modifier.align(Alignment.Center).padding(32.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(state.releases, key = { it.id }) { release ->
+                            ReleaseCard(release = release, onClick = { vm.openDetail(release.id) })
                         }
-                        state.releases.isEmpty() -> {
-                            Text(
-                                "No releases published yet.",
-                                Modifier.align(Alignment.Center).padding(32.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        else -> {
-                            LazyColumn(
-                                contentPadding = PaddingValues(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(state.releases, key = { it.id }) { release ->
-                                    ReleaseCard(release = release, onClick = { vm.openDetail(release.id) })
-                                }
-                                item { Spacer(Modifier.height(80.dp)) }
-                            }
-                        }
+                        item { Spacer(Modifier.height(80.dp)) }
                     }
                 }
             }
@@ -280,11 +250,7 @@ private fun ReleaseDetailContent(
     release: Release,
     loading: Boolean,
     onBack: () -> Unit,
-    onEdit: () -> Unit = {},
-    /** When true (repo-detail tablet/Chromebook): no second back, flat header row instead of floating top bar. */
-    embedded: Boolean = false,
-    /** When true, parent chrome already shows title + edit — skip the in-content header. */
-    hideHeader: Boolean = false
+    onEdit: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -300,37 +266,30 @@ private fun ReleaseDetailContent(
         }
     }
 
-    val releaseTitle = release.name.ifBlank { release.tagName }
-    val releaseVersion = release.tagName
-
-    // Phone: full top app bar with back + floating edit.
-    // Embedded (Chromebook/tablet under repo detail): no second back; title + flat edit only.
     Scaffold(
         topBar = {
-            if (!embedded) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        AppScreenTitle(
-                            pageTitle = releaseTitle,
-                            subtitle = releaseVersion
-                        )
-                    },
-                    navigationIcon = {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = onBack
-                        )
-                    },
-                    actions = {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit release",
-                            onClick = onEdit
-                        )
-                    }
-                )
-            }
+            CenterAlignedTopAppBar(
+                title = {
+                    AppScreenTitle(
+                        pageTitle = release.name.ifBlank { release.tagName },
+                        subtitle = release.tagName
+                    )
+                },
+                navigationIcon = {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        onClick = onBack
+                    )
+                },
+                actions = {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit release",
+                        onClick = onEdit
+                    )
+                }
+            )
         }
     ) { padding ->
         if (loading) {
@@ -345,41 +304,8 @@ private fun ReleaseDetailContent(
                 .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = if (embedded) 4.dp else 16.dp)
+                .padding(16.dp)
         ) {
-            if (embedded && !hideHeader) {
-                // Same band as repo name / branch: title + version + flat edit (no floating circle).
-                Row(
-                    Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            releaseTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            releaseVersion,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit release",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (release.draft) {
                     AssistChip(onClick = {}, label = { Text("Draft") }, enabled = false)
@@ -639,7 +565,7 @@ private fun CreateOrEditReleaseDialog(
                 enabled = !busy && tag.isNotBlank()
             ) {
                 if (busy) {
-                    BrandLoadingSpinner(size = 18.dp)
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(if (allowAssets) "Create" else "Save")

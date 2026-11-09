@@ -15,7 +15,6 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.quickgit.app.data.AppLog
 import com.quickgit.app.data.GitProgressNotifier
@@ -41,11 +40,8 @@ class MainActivity : FragmentActivity() {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Draw under system bars on all form factors, including Chromebook freeform windows.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        // Keep edge-to-edge on Chromebook (do not re-fit decor to system windows).
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         preferHighestRefreshRate()
         GitProgressNotifier.ensureChannel(this)
         requestPermissionsIfNeeded()

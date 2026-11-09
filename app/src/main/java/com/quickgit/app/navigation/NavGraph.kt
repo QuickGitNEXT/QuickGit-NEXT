@@ -44,7 +44,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.quickgit.app.BuildConfig
 import com.quickgit.app.QuickGitApp
-import com.quickgit.app.data.DesktopLayoutMode
+import com.quickgit.app.data.PhoneNavMode
+import com.quickgit.app.data.WideUiMode
 import com.quickgit.app.data.models.RepoInfo
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.adaptive.isTabletOrWider
@@ -74,7 +75,7 @@ import java.io.File
  * - Tablet / large phone (> 6.3″ diagonal): floating blurred bottom bar (all destinations)
  * - Smaller phones (≤ 6.3″): original in-screen layout
  *
- * Wide vs compact content is still gated by [desktopLayoutMode] (Settings → Layout).
+ * Phone size: [PhoneNavMode]. Tablet/Chromebook chrome: [WideUiMode] (Settings → Layout).
  */
 @Composable
 fun QuickGitNavGraph() {
@@ -86,25 +87,28 @@ fun QuickGitNavGraph() {
     val settingsVm: SettingsViewModel = viewModel(viewModelStoreOwner = activity, factory = factory)
     val wsc = LocalWindowSizeClass.current
     val app = context.applicationContext as QuickGitApp
-    val desktopMode by app.appPreferences.desktopLayoutMode.collectAsState()
+    val phoneNavMode by app.appPreferences.phoneNavMode.collectAsState()
+    val wideUiMode by app.appPreferences.wideUiMode.collectAsState()
     val isChromebook = remember(context) { context.isChromebookDevice() }
-    // Phones > ~6.3″ (diagonal + dp fallbacks). Tablets use width class separately.
-    val isLargePhone = remember(context, wsc) {
-        !wsc.isTabletOrWider && context.isLargePhoneForFloatingNav()
+    // Phones: Auto / force large (≥6.3″ floating) / force compact
+    val isLargePhone = when (phoneNavMode) {
+        PhoneNavMode.LARGE -> !wsc.isTabletOrWider
+        PhoneNavMode.COMPACT -> false
+        PhoneNavMode.AUTO -> !wsc.isTabletOrWider && context.isLargePhoneForFloatingNav()
     }
-    val preferWideChrome = when (desktopMode) {
-        DesktopLayoutMode.ALWAYS -> true
-        DesktopLayoutMode.NEVER -> false
-        DesktopLayoutMode.AUTO -> wsc.isTabletOrWider
+    val preferWideChrome = wsc.isTabletOrWider
+    // Wide UI: tablet floating vs Chromebook top chrome
+    val useChromeOsShell = when (wideUiMode) {
+        WideUiMode.CHROMEBOOK -> preferWideChrome || isChromebook
+        WideUiMode.TABLET -> false
+        WideUiMode.AUTO -> isChromebook && preferWideChrome
     }
-    // Chromebook: ChromeOS top chrome + repo tabs (no floating bottom bars, no rail).
     val useRail = false
-    val useChromeOsShell = isChromebook && preferWideChrome
-    // Floating navbar: large phones always; tablets when not Chromebook.
+    // Floating navbar: large phones; tablets when not using ChromeOS shell
     val useFloatingBar =
-        !useRail && !useChromeOsShell && (isLargePhone || (preferWideChrome && !isChromebook))
+        !useRail && !useChromeOsShell && (isLargePhone || (preferWideChrome && !useChromeOsShell))
     val floatingBarCompact = isLargePhone
-    val isDesktopLayout = preferWideChrome
+    val isDesktopLayout = preferWideChrome || useChromeOsShell
     val chromeRepoTabs = remember { mutableStateListOf<ChromeOsRepoTab>() }
     val chromeRepoSection = remember { ChromeOsRepoSectionController() }
 
@@ -382,15 +386,7 @@ fun QuickGitNavGraph() {
                 repoPath = repoPath,
                 repoName = repoPath.substringAfterLast('/'),
                 vm = vm,
-                onBack = {
-                    // Always land on the repo list. On Chromebook also drop the open repo tab
-                    // so chrome does not keep a stale section after leaving detail.
-                    if (isChromebook && chromeRepoTabs.any { it.path == repoPath }) {
-                        closeChromeRepoTab(repoPath)
-                    } else {
-                        navController.popBackStack(Dest.REPO_LIST, inclusive = false)
-                    }
-                },
+                onBack = { navController.popBackStack() },
                 onOpenDiff = { filePath, mode -> navController.navigate(Dest.diff(repoPath, filePath, mode)) },
                 onOpenFile = { filePath -> navController.navigate(Dest.editor(repoPath, filePath)) },
                 onOpenHistory = { navController.navigate(Dest.history(repoPath)) },
@@ -809,14 +805,7 @@ fun QuickGitNavGraph() {
                             }
                         )
                 ) {
-                    if (isChromebook) {
-                        ChromeOsContentWithWatermark(
-                            showWatermark = true,
-                            modifier = Modifier.fillMaxSize()
-                        ) { NavContent() }
-                    } else {
-                        NavContent()
-                    }
+                    NavContent()
                 }
                 if (!hideFloatingBarOnRepoDetail) {
                     FloatingTabletNavBar(
@@ -872,15 +861,6 @@ fun QuickGitNavGraph() {
                         )
                     }
                 }
-            }
-        }
-        // Chromebook without wide-chrome shell still gets the bottom logo watermark on every screen.
-        isChromebook -> {
-            ChromeOsContentWithWatermark(
-                showWatermark = true,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                NavContent()
             }
         }
         else -> NavContent()

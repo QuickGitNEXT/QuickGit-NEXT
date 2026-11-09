@@ -42,7 +42,6 @@ import com.quickgit.app.ui.adaptive.AdaptiveContent
 import com.quickgit.app.ui.components.AppBrandLogo
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
-import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.UserAvatar
@@ -610,7 +609,7 @@ private fun CreateRepoFromListDialog(
                 enabled = !creating && name.isNotBlank() && availableProviders.isNotEmpty()
             ) {
                 if (creating) {
-                    BrandLoadingSpinner(size = 16.dp)
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Create")
                 }

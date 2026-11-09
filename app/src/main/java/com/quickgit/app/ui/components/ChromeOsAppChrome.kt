@@ -9,16 +9,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -108,10 +103,7 @@ fun ChromeOsAppChrome(
     val sectionIndex = section.selectedIndex.intValue
 
     Surface(
-        // Stretch full width; pad only under the status bar so chrome stays usable edge-to-edge.
-        modifier = modifier
-            .fillMaxWidth()
-            .statusBarsPadding(),
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 1.dp
     ) {
@@ -146,8 +138,7 @@ fun ChromeOsAppChrome(
                     sectionItems.forEachIndexed { i, item ->
                         val selected = sectionIndex == i
                         val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        // Icon-only section chips on Chromebook (labels removed; a11y via contentDescription).
-                        Box(
+                        Row(
                             Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
@@ -155,14 +146,22 @@ fun ChromeOsAppChrome(
                                     else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
                                 )
                                 .clickable { section.selectedIndex.intValue = i }
-                                .padding(horizontal = 10.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 item.icon,
                                 contentDescription = item.label,
                                 tint = fg,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                item.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = fg,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1
                             )
                         }
                     }
@@ -201,49 +200,30 @@ fun ChromeOsAppChrome(
     }
 }
 
-/**
- * Soft brand watermark for Chromebook / Googlebook pages (bottom-centered).
- * Parent already pads above the shelf; only a small extra gap is needed.
- */
+/** Soft brand watermark for Chromebook pages (bottom-centered). */
 @Composable
 fun BoxScope.ChromeOsWatermark() {
     AppBrandLogo(
-        size = 88.dp,
+        size = 96.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = 8.dp)
-            // Low opacity so it stays readable as a mark without competing with content.
-            .alpha(0.11f)
+            .padding(bottom = 28.dp)
+            .alpha(0.07f)
     )
 }
 
-/**
- * Content host with Chromebook watermark overlaid at the bottom center of every screen.
- * Watermark is drawn *after* [content] so opaque scaffolds cannot cover it; the logo
- * has no pointer input so taps pass through to the UI below.
- *
- * ChromeOS / ARC often reports 0 navigation-bar insets while the shelf still overlays
- * the window, so we always reserve a fixed bottom band (~shelf height) in addition to
- * any system insets that do apply.
- */
+/** Content host with optional Chromebook watermark behind [content]. */
 @Composable
 fun ChromeOsContentWithWatermark(
     showWatermark: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(
-        modifier
-            .fillMaxSize()
-            .navigationBarsPadding()
-            // Fixed shelf clearance — ChromeOS taskbar is typically ~48–56dp and may
-            // not be reflected in WindowInsets on ARC.
-            .padding(bottom = 56.dp)
-    ) {
-        content()
+    Box(modifier.fillMaxSize()) {
         if (showWatermark) {
             ChromeOsWatermark()
         }
+        content()
     }
 }
 

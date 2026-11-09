@@ -16,10 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.quickgit.app.ui.security.isChromebookDevice
 
 /**
  * Provides the current [WindowSizeClass] (from Activity) to the composition tree.
@@ -51,13 +49,11 @@ val WindowSizeClass.isTabletOrWider: Boolean
 
 /**
  * Horizontal content padding that grows on larger windows so lists and forms
- * don't stretch edge-to-edge on tablets.
- * Chromebook / Googlebook: always 0 — content fills the window side to side.
+ * don't stretch edge-to-edge on tablets and Chromebooks.
  * On compact-height landscape, use slightly less padding so vertical space wins.
  */
 @Composable
 fun adaptiveContentPadding(): Dp {
-    if (LocalContext.current.isChromebookDevice()) return 0.dp
     val wsc = LocalWindowSizeClass.current
     return when {
         wsc.widthSizeClass == WindowWidthSizeClass.Compact -> 0.dp
@@ -68,12 +64,11 @@ fun adaptiveContentPadding(): Dp {
 }
 
 /**
- * Max width for primary reading / form content on tablets.
- * Chromebook / Googlebook: unrestricted so pages stretch full window width.
+ * Max width for primary reading / form content. Keeps lines readable on ultra-wide
+ * Chromebook or desktop windows while still using available space on phones.
  */
 @Composable
 fun adaptiveMaxContentWidth(): Dp {
-    if (LocalContext.current.isChromebookDevice()) return Dp.Unspecified
     val wsc = LocalWindowSizeClass.current
     return when (wsc.widthSizeClass) {
         WindowWidthSizeClass.Compact -> Dp.Unspecified
@@ -85,9 +80,8 @@ fun adaptiveMaxContentWidth(): Dp {
 /**
  * Centers children and optionally constrains max width on medium/expanded screens.
  * Use as the outermost content wrapper inside a Scaffold's content slot so lists,
- * detail panes, and forms scale cleanly on tablets and freeform windows.
+ * detail panes, and forms scale cleanly on tablets, Chromebooks, and freeform windows.
  *
- * Chromebook: full width, no side gutter (edge-to-edge horizontally).
  * Phone (Compact width) is unchanged: full width, no extra padding.
  *
  * @param constrainWidth when true (default), apply [adaptiveMaxContentWidth].
@@ -102,14 +96,12 @@ fun AdaptiveContent(
 ) {
     val maxW = adaptiveMaxContentWidth()
     val hPad = adaptiveContentPadding()
-    val isChromebook = LocalContext.current.isChromebookDevice()
     Box(
         modifier = modifier
             .fillMaxWidth()
             .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier)
             .padding(horizontal = hPad),
-        // Chromebook: stretch to both edges (no centered column).
-        contentAlignment = if (isChromebook) Alignment.TopStart else Alignment.TopCenter
+        contentAlignment = Alignment.TopCenter
     ) {
         Box(
             modifier = Modifier

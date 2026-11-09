@@ -40,7 +40,6 @@ import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.adaptive.isCompactHeight
 import com.quickgit.app.ui.adaptive.isTabletOrWider
 import com.quickgit.app.ui.components.PullToRefreshBox
-import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.ui.theme.GitAmber
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
@@ -67,10 +66,8 @@ fun RepoDetailScreen(
 ) {
     // Tablet / Chromebook / desktop-window sized: use the same single-screen,
     // tabbed layout as the Linux/Mac desktop app instead of navigating to
-    // separate screens. Chromebooks always use this path so the Files left
-    // pane + editor split works even in narrower freeform windows.
-    val isChromebook = LocalContext.current.isChromebookDevice()
-    if (LocalWindowSizeClass.current.isTabletOrWider || isChromebook) {
+    // separate screens.
+    if (LocalWindowSizeClass.current.isTabletOrWider) {
         RepoDetailScreenDesktop(
             repoPath = repoPath,
             repoName = repoName,

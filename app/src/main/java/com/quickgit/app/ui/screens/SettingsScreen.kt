@@ -21,13 +21,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.BuildConfig
 import com.quickgit.app.data.AppUpdateConfig
-import com.quickgit.app.data.DesktopLayoutMode
+import com.quickgit.app.data.PhoneNavMode
+import com.quickgit.app.data.WideUiMode
 import com.quickgit.app.ui.adaptive.AdaptiveContent
+import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
+import com.quickgit.app.ui.adaptive.isTabletOrWider
+import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.viewmodel.SettingsViewModel
-import com.quickgit.app.ui.components.BrandLoadingSpinner
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,34 +107,67 @@ fun SettingsScreen(
             HorizontalDivider(Modifier.padding(vertical = 20.dp))
             Text("Layout", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
-            Text(
-                "Desktop layout shows a permanent left NavigationRail (Repos, Clone, Browse, " +
-                    "Profile, Users, Logs, Creds, Settings) — the same chrome as the Linux desktop app. " +
-                    "Auto follows window width (Chromebook / tablet / freeform). " +
-                    "Always forces the rail even on phones; Never keeps phone-style navigation.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            val layoutOptions = listOf(
-                DesktopLayoutMode.AUTO to "Auto (by screen size)",
-                DesktopLayoutMode.ALWAYS to "Always (desktop rail)",
-                DesktopLayoutMode.NEVER to "Never (phone only)"
-            )
-            layoutOptions.forEach { (mode, label) ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { vm.setDesktopLayoutMode(mode) }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = state.desktopLayoutMode == mode,
-                        onClick = { vm.setDesktopLayoutMode(mode) }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(label, style = MaterialTheme.typography.bodyLarge)
+            val wsc = LocalWindowSizeClass.current
+            val isWide = wsc.isTabletOrWider
+            val isChromebook = context.isChromebookDevice()
+            if (isWide || isChromebook) {
+                Text(
+                    "Choose chrome for tablets and Chromebooks. " +
+                        "Tablet mode uses touch-friendly floating navigation; " +
+                        "Chromebook mode uses the top ChromeOS-style toolbar and repo tabs.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                val wideOptions = listOf(
+                    WideUiMode.AUTO to "Auto (Chromebook hardware → Chromebook UI, else tablet)",
+                    WideUiMode.TABLET to "Tablet mode (touch / floating nav)",
+                    WideUiMode.CHROMEBOOK to "Chromebook mode (top chrome)"
+                )
+                wideOptions.forEach { (mode, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { vm.setWideUiMode(mode) }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = state.wideUiMode == mode,
+                            onClick = { vm.setWideUiMode(mode) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            } else {
+                Text(
+                    "Phone navigation size. Auto uses your screen (~6.3″ and larger get the " +
+                        "floating bottom bar). You can force large-phone or compact phone chrome.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                val phoneOptions = listOf(
+                    PhoneNavMode.AUTO to "Auto (by screen size)",
+                    PhoneNavMode.LARGE to "6.3″ and over (floating nav)",
+                    PhoneNavMode.COMPACT to "Under 6.3″ (compact)"
+                )
+                phoneOptions.forEach { (mode, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { vm.setPhoneNavMode(mode) }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = state.phoneNavMode == mode,
+                            onClick = { vm.setPhoneNavMode(mode) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
 
@@ -187,7 +224,7 @@ fun SettingsScreen(
                     enabled = !state.updateChecking
                 ) {
                     if (state.updateChecking) {
-                        BrandLoadingSpinner(size = 18.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     } else {
                         Icon(Icons.Default.SystemUpdate, null, Modifier.size(18.dp))
