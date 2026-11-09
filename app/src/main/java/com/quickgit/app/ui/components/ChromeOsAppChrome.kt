@@ -151,34 +151,22 @@ fun ChromeOsAppChrome(
                     sectionItems.forEachIndexed { i, item ->
                         val selected = sectionIndex == i
                         val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        Row(
-                            Modifier
+                        // Icon-only section controls (Changes / Files / Branches / Issues / PRs / Actions / Releases)
+                        IconButton(
+                            onClick = { section.selectedIndex.intValue = i },
+                            modifier = Modifier
+                                .size(if (compactForTablet) 36.dp else 40.dp)
                                 .clip(RoundedCornerShape(if (compactForTablet) 6.dp else 8.dp))
                                 .background(
                                     if (selected) GitGreen.copy(alpha = 0.14f)
                                     else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
                                 )
-                                .clickable { section.selectedIndex.intValue = i }
-                                .padding(horizontal = chipPadH, vertical = chipPadV),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 4.dp else 6.dp)
                         ) {
                             Icon(
                                 item.icon,
                                 contentDescription = item.label,
                                 tint = fg,
                                 modifier = Modifier.size(iconSize)
-                            )
-                            Text(
-                                item.label,
-                                style = if (compactForTablet) {
-                                    MaterialTheme.typography.labelMedium
-                                } else {
-                                    MaterialTheme.typography.labelLarge
-                                },
-                                color = fg,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                maxLines = 1
                             )
                         }
                     }
