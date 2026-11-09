@@ -35,6 +35,9 @@ import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.security.isChromebookDevice
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -271,6 +274,11 @@ private fun ReleaseDetailContent(
     onEdit: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val hardwareChromebook = context.isChromebookDevice()
+    val wideUiMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.wideUiMode.collectAsState()
+    val chromeShell =
+        hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
 
     fun openUrl(url: String?) {
         if (url.isNullOrBlank()) return
@@ -288,24 +296,41 @@ private fun ReleaseDetailContent(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
+                    // Chromebook shell: release name + tag centered, no brand logo
                     AppScreenTitle(
                         pageTitle = release.name.ifBlank { release.tagName },
-                        subtitle = release.tagName
+                        subtitle = release.tagName,
+                        showLogo = !chromeShell
                     )
                 },
                 navigationIcon = {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        onClick = onBack
-                    )
+                    if (chromeShell) {
+                        // Edit on the left of the title line; no floating-circle back
+                        IconButton(onClick = onEdit) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit release",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    }
                 },
                 actions = {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit release",
-                        onClick = onEdit
-                    )
+                    if (chromeShell) {
+                        // Optional close via system/gesture back; no floating actions
+                    } else {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit release",
+                            onClick = onEdit
+                        )
+                    }
                 }
             )
         }
