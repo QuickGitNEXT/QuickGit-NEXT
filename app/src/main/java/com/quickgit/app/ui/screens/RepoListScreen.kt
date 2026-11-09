@@ -152,24 +152,13 @@ fun RepoListScreen(
                                 }
                             }
                         )
-                    }
-                },
-                actions = {
-                    // Top-right: import an existing folder from device storage
-                    if (floatingTopActions) {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = "Import folder",
-                            onClick = { importFolderLauncher.launch(null) }
-                        )
-                    }
-                    // Profile + Search — hidden when rail or floating navbar owns those destinations.
-                    if (!hideChromeNav) {
+                    } else if (!hideChromeNav) {
+                        // Classic compact: Profiles in the left corner
                         Box {
                             IconButton(onClick = { accountMenuExpanded = true }) {
                                 val avatarUrl = account?.avatarUrl
                                 if (avatarUrl.isNullOrBlank()) {
-                                    Icon(Icons.Default.Person, contentDescription = "Account")
+                                    Icon(Icons.Default.Person, contentDescription = "Profiles")
                                 } else {
                                     UserAvatar(
                                         avatarUrl = avatarUrl,
@@ -234,7 +223,6 @@ fun RepoListScreen(
                                     }
                                     HorizontalDivider()
                                 } else {
-                                    // No connected profile accounts — single Profile entry
                                     DropdownMenuItem(
                                         text = { Text("Profiles") },
                                         onClick = {
@@ -262,6 +250,16 @@ fun RepoListScreen(
                                 )
                             }
                         }
+                    }
+                },
+                actions = {
+                    // Top-right: import an existing folder from device storage
+                    if (floatingTopActions) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = "Import folder",
+                            onClick = { importFolderLauncher.launch(null) }
+                        )
                     }
                     // Logs / Settings — hidden when rail or floating navbar owns them.
                     if (!hideChromeNav) {
