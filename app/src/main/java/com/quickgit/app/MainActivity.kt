@@ -15,12 +15,14 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import com.quickgit.app.data.AppLog
 import com.quickgit.app.data.GitProgressNotifier
 import com.quickgit.app.navigation.QuickGitNavGraph
 import com.quickgit.app.ui.adaptive.LocalWindowSizeClass
 import com.quickgit.app.ui.components.AutoUpdateHost
+import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.ui.theme.QuickGitTheme
 
 /** FragmentActivity so [androidx.biometric.BiometricPrompt] can gate Credentials. */
@@ -42,6 +44,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        applyTabletSystemWindowFit()
         preferHighestRefreshRate()
         GitProgressNotifier.ensureChannel(this)
         requestPermissionsIfNeeded()
@@ -64,6 +67,7 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         // Re-apply in case the user switched displays / system refresh policy while away.
+        applyTabletSystemWindowFit()
         preferHighestRefreshRate()
         // Re-push repo list whenever the phone app is foregrounded so the watch
         // can receive data even if it missed the cold-start broadcast.
@@ -113,6 +117,19 @@ class MainActivity : FragmentActivity() {
         } catch (e: Exception) {
             AppLog.w("MainActivity", "preferHighestRefreshRate failed: ${e.message}")
         }
+    }
+
+    /**
+     * Tablets (and multi-window) draw a top system caption / status region.
+     * Keep edge-to-edge on phones and real Chromebooks; on tablets let the
+     * window fit system bars so chrome is not under the multi-window pill.
+     */
+    private fun applyTabletSystemWindowFit() {
+        val smallestSw = resources.configuration.smallestScreenWidthDp
+        val isTabletSw = smallestSw >= 600
+        val chromebook = isChromebookDevice()
+        // Tablets: fit system windows. Phones + Chromebooks: edge-to-edge (insets in Compose).
+        WindowCompat.setDecorFitsSystemWindows(window, isTabletSw && !chromebook)
     }
 
     private fun requestPermissionsIfNeeded() {

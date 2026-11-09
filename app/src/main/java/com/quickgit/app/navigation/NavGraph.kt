@@ -3,9 +3,14 @@ package com.quickgit.app.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.CloudDownload
@@ -722,7 +727,20 @@ fun QuickGitNavGraph() {
         useChromeOsShell -> {
             val compactChromeForTablet = !isChromebook
             CompositionLocalProvider(LocalChromeOsRepoSection provides chromeRepoSection) {
-                Column(Modifier.fillMaxSize()) {
+                // Tablets in Chromebook mode still need top inset under the multi-window pill
+                // when the activity is edge-to-edge; real Chromebooks keep full-bleed chrome.
+                val chromeRootMod = Modifier.fillMaxSize().then(
+                    if (compactChromeForTablet) {
+                        Modifier.windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                            )
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                Column(chromeRootMod) {
                     ChromeOsAppChrome(
                         destinations = chromeOsDefaultDestinations(
                             selectedRoute = currentRoute,
@@ -797,7 +815,19 @@ fun QuickGitNavGraph() {
         }
         // Android tablets / large phones: M3 floating bottom bar.
         useFloatingBar -> {
-            Box(Modifier.fillMaxSize()) {
+            // Tablets: clear status / caption bar (multi-window pill). Large phones: keep edge-to-edge.
+            val floatingRootMod = Modifier.fillMaxSize().then(
+                if (!isLargePhone) {
+                    Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                        )
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            Box(floatingRootMod) {
                 Box(
                     Modifier
                         .fillMaxSize()
