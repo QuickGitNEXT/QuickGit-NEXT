@@ -717,8 +717,10 @@ fun QuickGitNavGraph() {
     }
 
     when {
-        // Chromebook: ChromeOS top toolbar + section strip + repo tabs (no floating bars).
+        // Chromebook shell: real Chromebook hardware, or tablet with WideUiMode.CHROMEBOOK.
+        // Tablets get denser chrome (compactForTablet); hardware Chromebooks stay as designed.
         useChromeOsShell -> {
+            val compactChromeForTablet = !isChromebook
             CompositionLocalProvider(LocalChromeOsRepoSection provides chromeRepoSection) {
                 Column(Modifier.fillMaxSize()) {
                     ChromeOsAppChrome(
@@ -760,10 +762,12 @@ fun QuickGitNavGraph() {
                                 popUpTo(Dest.REPO_LIST) { inclusive = false }
                             }
                         },
-                        onCloseRepoTab = { path -> closeChromeRepoTab(path) }
+                        onCloseRepoTab = { path -> closeChromeRepoTab(path) },
+                        compactForTablet = compactChromeForTablet
                     )
                     ChromeOsContentWithWatermark(
                         showWatermark = true,
+                        compactForTablet = compactChromeForTablet,
                         modifier = Modifier.weight(1f).fillMaxSize()
                     ) {
                         NavContent()

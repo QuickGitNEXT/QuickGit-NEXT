@@ -87,6 +87,10 @@ val LocalChromeOsRepoSection = staticCompositionLocalOf { ChromeOsRepoSectionCon
 /**
  * ChromeOS-style top chrome: app destinations + optional repo section strip + repo tabs.
  * No floating bottom bars — Chromebook / ARC desktop shells only.
+ *
+ * @param compactForTablet When true (tablet forcing Chromebook mode, not real Chromebook
+ * hardware), use denser padding and slightly smaller controls so the strip fits portrait
+ * and mid-size tablet windows. Real Chromebooks leave [compactForTablet] false.
  */
 @Composable
 fun ChromeOsAppChrome(
@@ -95,12 +99,21 @@ fun ChromeOsAppChrome(
     activeRepoPath: String?,
     onSelectRepoTab: (String) -> Unit,
     onCloseRepoTab: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compactForTablet: Boolean = false
 ) {
     val section = LocalChromeOsRepoSection.current
     val sectionActive = section.active.value
     val sectionItems = section.items.value
     val sectionIndex = section.selectedIndex.intValue
+
+    val barPadH = if (compactForTablet) 8.dp else 12.dp
+    val barPadV = if (compactForTablet) 4.dp else 6.dp
+    val sectionPadH = if (compactForTablet) 6.dp else 10.dp
+    val sectionPadV = if (compactForTablet) 2.dp else 4.dp
+    val chipPadH = if (compactForTablet) 8.dp else 12.dp
+    val chipPadV = if (compactForTablet) 5.dp else 7.dp
+    val iconSize = if (compactForTablet) 16.dp else 18.dp
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -113,12 +126,12 @@ fun ChromeOsAppChrome(
                 Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = barPadH, vertical = barPadV),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 2.dp else 4.dp)
             ) {
                 destinations.forEach { dest ->
-                    ChromeOsToolbarItem(dest)
+                    ChromeOsToolbarItem(dest, compact = compactForTablet)
                 }
             }
 
@@ -131,34 +144,38 @@ fun ChromeOsAppChrome(
                     Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                        .padding(horizontal = sectionPadH, vertical = sectionPadV),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     sectionItems.forEachIndexed { i, item ->
                         val selected = sectionIndex == i
                         val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
                         Row(
                             Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(if (compactForTablet) 6.dp else 8.dp))
                                 .background(
                                     if (selected) GitGreen.copy(alpha = 0.14f)
                                     else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
                                 )
                                 .clickable { section.selectedIndex.intValue = i }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                                .padding(horizontal = chipPadH, vertical = chipPadV),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 4.dp else 6.dp)
                         ) {
                             Icon(
                                 item.icon,
                                 contentDescription = item.label,
                                 tint = fg,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(iconSize)
                             )
                             Text(
                                 item.label,
-                                style = MaterialTheme.typography.labelLarge,
+                                style = if (compactForTablet) {
+                                    MaterialTheme.typography.labelMedium
+                                } else {
+                                    MaterialTheme.typography.labelLarge
+                                },
                                 color = fg,
                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                                 maxLines = 1
@@ -202,13 +219,13 @@ fun ChromeOsAppChrome(
 
 /** Soft brand watermark for Chromebook pages (bottom-centered). */
 @Composable
-fun BoxScope.ChromeOsWatermark() {
+fun BoxScope.ChromeOsWatermark(compactForTablet: Boolean = false) {
     AppBrandLogo(
-        size = 96.dp,
+        size = if (compactForTablet) 72.dp else 96.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = 28.dp)
-            .alpha(0.07f)
+            .padding(bottom = if (compactForTablet) 16.dp else 28.dp)
+            .alpha(if (compactForTablet) 0.05f else 0.07f)
     )
 }
 
@@ -217,18 +234,19 @@ fun BoxScope.ChromeOsWatermark() {
 fun ChromeOsContentWithWatermark(
     showWatermark: Boolean,
     modifier: Modifier = Modifier,
+    compactForTablet: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(modifier.fillMaxSize()) {
         if (showWatermark) {
-            ChromeOsWatermark()
+            ChromeOsWatermark(compactForTablet = compactForTablet)
         }
         content()
     }
 }
 
 @Composable
-private fun ChromeOsToolbarItem(item: ChromeOsDestItem) {
+private fun ChromeOsToolbarItem(item: ChromeOsDestItem, compact: Boolean = false) {
     val bg = if (item.selected) {
         GitGreen.copy(alpha = 0.16f)
     } else {
@@ -237,17 +255,26 @@ private fun ChromeOsToolbarItem(item: ChromeOsDestItem) {
     val fg = if (item.selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(if (compact) 6.dp else 8.dp))
             .background(bg)
             .clickable(onClick = item.onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(
+                horizontal = if (compact) 8.dp else 10.dp,
+                vertical = if (compact) 5.dp else 6.dp
+            ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
     ) {
-        Icon(item.icon, contentDescription = item.label, tint = fg, modifier = Modifier.size(18.dp))
+        Icon(
+            item.icon,
+            contentDescription = item.label,
+            tint = fg,
+            modifier = Modifier.size(if (compact) 16.dp else 18.dp)
+        )
         Text(
             item.label,
-            style = MaterialTheme.typography.labelLarge,
+            style = if (compact) MaterialTheme.typography.labelMedium
+            else MaterialTheme.typography.labelLarge,
             color = fg,
             fontWeight = if (item.selected) FontWeight.SemiBold else FontWeight.Medium,
             maxLines = 1

@@ -152,10 +152,17 @@ fun RepoDetailScreenDesktop(
     var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
-    val isChromebook = LocalContext.current.isChromebookDevice()
+    val hardwareChromebook = LocalContext.current.isChromebookDevice()
+    val appPrefs = (LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp).appPreferences
+    val wideUiMode by appPrefs.wideUiMode.collectAsState()
+    // ChromeOS shell on real Chromebooks, or tablets forced into Chromebook mode.
+    val useChromeShell =
+        hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
+    // Tablet-only denser chrome — never applied on real Chromebook hardware.
+    val tabletChromeCompact = useChromeShell && !hardwareChromebook
     val chromeSection = LocalChromeOsRepoSection.current
-    // Chromebook: section selection lives in the top chrome under main destinations.
-    if (isChromebook) {
+    // Section selection lives in the top chrome under main destinations when shell is on.
+    if (useChromeShell) {
         DisposableEffect(Unit) {
             chromeSection.activate(
                 tabs.map { (label, icon) -> ChromeOsSectionItem(icon, label) },
@@ -164,9 +171,9 @@ fun RepoDetailScreenDesktop(
             onDispose { chromeSection.deactivate() }
         }
     }
-    val tabIndex = if (isChromebook) chromeSection.selectedIndex.intValue else localTabIndex
+    val tabIndex = if (useChromeShell) chromeSection.selectedIndex.intValue else localTabIndex
     fun setTabIndex(i: Int) {
-        if (isChromebook) chromeSection.selectedIndex.intValue = i
+        if (useChromeShell) chromeSection.selectedIndex.intValue = i
         else localTabIndex = i
     }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
@@ -191,14 +198,23 @@ fun RepoDetailScreenDesktop(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = if (isChromebook) 4.dp else 8.dp, vertical = 6.dp)
+                    .padding(
+                        horizontal = if (useChromeShell) {
+                            if (tabletChromeCompact) 2.dp else 4.dp
+                        } else 8.dp,
+                        vertical = if (tabletChromeCompact) 4.dp else 6.dp
+                    )
             ) {
                 Row(
                     Modifier.align(Alignment.CenterStart),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (isChromebook) 4.dp else 8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(
+                        if (useChromeShell) {
+                            if (tabletChromeCompact) 2.dp else 4.dp
+                        } else 8.dp
+                    )
                 ) {
-                    if (isChromebook) {
+                    if (useChromeShell) {
                         IconButton(onClick = onBack) {
                             Icon(
                                 Icons.Default.ArrowBack,
@@ -242,7 +258,7 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                     if (tabIndex == 0) {
-                        if (isChromebook) {
+                        if (useChromeShell) {
                             IconButton(onClick = { showHistory = true }) {
                                 Icon(
                                     Icons.Default.History,
@@ -268,7 +284,7 @@ fun RepoDetailScreenDesktop(
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (!isChromebook) {
+                if (!useChromeShell) {
                     Column {
                         Text(
                             repoName,
@@ -352,7 +368,8 @@ fun RepoDetailScreenDesktop(
             }
 
             // Tablet: floating bottom section bar. Chromebook uses the top strip instead.
-            if (!isChromebook) {
+            // Tablet floating bottom tabs (not used under ChromeOS shell, including tablet Chromebook mode).
+            if (!useChromeShell) {
                 Box(
                     Modifier
                         .fillMaxWidth()
