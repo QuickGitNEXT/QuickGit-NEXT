@@ -36,6 +36,7 @@ import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.security.isChromebookDevice
+import com.quickgit.app.ui.components.LocalChromeOsPageHeader
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 
@@ -279,6 +280,27 @@ private fun ReleaseDetailContent(
         .appPreferences.wideUiMode.collectAsState()
     val chromeShell =
         hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
+    val pageHeader = LocalChromeOsPageHeader.current
+
+    // ChromeOS shell: put release name/tag + Edit on the parent repo/branch line.
+    if (chromeShell) {
+        DisposableEffect(release.id, release.name, release.tagName) {
+            pageHeader.show(
+                title = release.name.ifBlank { release.tagName },
+                subtitle = release.tagName,
+                endActions = {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit release",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            )
+            onDispose { pageHeader.clear() }
+        }
+    }
 
     fun openUrl(url: String?) {
         if (url.isNullOrBlank()) return
@@ -294,45 +316,32 @@ private fun ReleaseDetailContent(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    // Chromebook shell: release name + tag centered, no brand logo
-                    AppScreenTitle(
-                        pageTitle = release.name.ifBlank { release.tagName },
-                        subtitle = release.tagName,
-                        showLogo = !chromeShell
-                    )
-                },
-                navigationIcon = {
-                    if (chromeShell) {
-                        // Edit on the left of the title line; no floating-circle back
-                        IconButton(onClick = onEdit) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit release",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    } else {
+            // ChromeOS shell: no secondary title/back row
+            if (!chromeShell) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = release.name.ifBlank { release.tagName },
+                            subtitle = release.tagName,
+                            showLogo = true
+                        )
+                    },
+                    navigationIcon = {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             onClick = onBack
                         )
-                    }
-                },
-                actions = {
-                    if (chromeShell) {
-                        // Optional close via system/gesture back; no floating actions
-                    } else {
+                    },
+                    actions = {
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit release",
                             onClick = onEdit
                         )
                     }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         if (loading) {
