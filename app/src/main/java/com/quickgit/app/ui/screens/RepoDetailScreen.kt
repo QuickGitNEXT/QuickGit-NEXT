@@ -118,8 +118,8 @@ fun RepoDetailScreen(
                     LocalContext.current.isLargePhoneForFloatingNav()
             }
 
-            // Compact phones: classic top bar — Back · title · History (no Issues shortcut).
-            // Large phones: same chrome with History (Issues lives on the floating repo bar).
+            // Classic compact: Back · title · History.
+            // NEXT (large phone): Back · title · Issues top-right.
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -143,12 +143,21 @@ fun RepoDetailScreen(
                         subtitle = state.branch
                     )
                 }
-                FloatingCircleIconButton(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "History",
-                    onClick = onOpenHistory,
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                )
+                if (largePhone) {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.BugReport,
+                        contentDescription = "Issues",
+                        onClick = onOpenIssues,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
+                } else {
+                    FloatingCircleIconButton(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "History",
+                        onClick = onOpenHistory,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
+                }
             }
             // GitLab: MRs / Issues board / Build. GitHub: PRs / Issues / Actions.
             val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
@@ -549,7 +558,7 @@ fun RepoDetailScreen(
             }
 
 
-            // Large phone: bottom bar options (History is top-right floating).
+            // Large phone: bottom bar options (Issues is top-right floating).
             val pageNavItems = listOf(
                 SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
                 SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
