@@ -108,9 +108,18 @@ fun RepoDetailScreen(
         val status = state.status
         AdaptiveContent(Modifier.padding(padding)) {
         Column(Modifier.fillMaxSize()) {
-            val largePhone = LocalContext.current.isLargePhoneForFloatingNav()
+            val app = LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp
+            val phoneNavMode by app.appPreferences.phoneNavMode.collectAsState()
+            // Respect Settings → Layout compact / large override (not only physical diagonal).
+            val largePhone = when (phoneNavMode) {
+                com.quickgit.app.data.PhoneNavMode.LARGE -> true
+                com.quickgit.app.data.PhoneNavMode.COMPACT -> false
+                com.quickgit.app.data.PhoneNavMode.AUTO ->
+                    LocalContext.current.isLargePhoneForFloatingNav()
+            }
 
-            // Back (left) · repo title · Issues (large phone) or History (small phone)
+            // Compact phones: classic top bar — Back · title · History (no Issues shortcut).
+            // Large phones: same chrome with History (Issues lives on the floating repo bar).
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -130,32 +139,23 @@ fun RepoDetailScreen(
                 ) {
                     AppScreenTitle(
                         pageTitle = repoName,
-                        logoSize = 40.dp,
+                        logoSize = if (largePhone) 40.dp else 36.dp,
                         subtitle = state.branch
                     )
                 }
-                if (largePhone) {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.BugReport,
-                        contentDescription = "Issues",
-                        onClick = onOpenIssues,
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    )
-                } else {
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.History,
-                        contentDescription = "History",
-                        onClick = onOpenHistory,
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    )
-                }
+                FloatingCircleIconButton(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "History",
+                    onClick = onOpenHistory,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
             }
             // GitLab: MRs / Issues board / Build. GitHub: PRs / Issues / Actions.
             val prLabel = if (state.isGitLabRemote) "MRs" else "PRs"
             val issuesLabel = if (state.isGitLabRemote) "Board" else "Issues"
             val ciLabel = if (state.isGitLabRemote) "Build" else "Actions"
-            // Small phones: full sub-page row under the title (incl. Releases).
-            // Large phones: sub-pages live on the floating repo bar (incl. Releases); git ops move above commit.
+            // Compact phones: sub-page row under the title (Files → Releases).
+            // Large phones: sub-pages live on the floating repo bar.
             if (!largePhone) {
                 androidx.compose.foundation.lazy.LazyRow(
                     Modifier
@@ -168,9 +168,9 @@ fun RepoDetailScreen(
                     item { Spacer(Modifier.width(4.dp)) }
                     item { SubPageButton(Icons.Default.AccountTree, "Branches", onOpenBranches) }
                     item { Spacer(Modifier.width(4.dp)) }
-                    item { SubPageButton(Icons.Default.CallMerge, prLabel, onOpenPullRequests) }
-                    item { Spacer(Modifier.width(4.dp)) }
                     item { SubPageButton(Icons.Default.BugReport, issuesLabel, onOpenIssues) }
+                    item { Spacer(Modifier.width(4.dp)) }
+                    item { SubPageButton(Icons.Default.CallMerge, prLabel, onOpenPullRequests) }
                     item { Spacer(Modifier.width(4.dp)) }
                     item { SubPageButton(Icons.Default.PlayCircle, ciLabel, onOpenWorkflows) }
                     item { Spacer(Modifier.width(4.dp)) }
@@ -549,7 +549,7 @@ fun RepoDetailScreen(
             }
 
 
-            // Large phone: bottom bar options (Issues is top-right; History opens from Files).
+            // Large phone: bottom bar options (History is top-right floating).
             val pageNavItems = listOf(
                 SubNavItem(Icons.Default.FolderOpen, "Files", onOpenFiles),
                 SubNavItem(Icons.Default.AccountTree, "Branches", onOpenBranches),
