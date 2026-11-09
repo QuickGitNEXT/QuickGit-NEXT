@@ -57,6 +57,8 @@ import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +76,15 @@ fun WorkflowsScreen(
     val snackbarHost = remember { SnackbarHostState() }
     var showDispatch by remember { mutableStateOf<Workflow?>(null) }
     var showWorkflowPicker by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val phoneNavMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.phoneNavMode.collectAsState()
+    val compactPhone = when (phoneNavMode) {
+        com.quickgit.app.data.PhoneNavMode.COMPACT -> true
+        com.quickgit.app.data.PhoneNavMode.LARGE -> false
+        com.quickgit.app.data.PhoneNavMode.AUTO ->
+            !context.isLargePhoneForFloatingNav()
+    }
     // Ensure we always show all workflows (no per-workflow filter)
     LaunchedEffect(Unit) { vm.selectWorkflow(null) }
 
@@ -158,7 +169,13 @@ fun WorkflowsScreen(
                         )
                     },
                     actions = {
-                        if (onOpenIssues != null) {
+                        if (compactPhone && state.workflows.isNotEmpty()) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Run workflow",
+                                onClick = { showWorkflowPicker = true }
+                            )
+                        } else if (onOpenIssues != null) {
                             FloatingCircleIconButton(
                                 imageVector = Icons.Default.BugReport,
                                 contentDescription = "Issues",
@@ -170,7 +187,8 @@ fun WorkflowsScreen(
             }
         },
         floatingActionButton = {
-            if (state.workflows.isNotEmpty()) {
+            // Large phones keep the bottom run FAB; compact moves run to top-right.
+            if (state.workflows.isNotEmpty() && !compactPhone) {
                 FloatingActionButton(onClick = { showWorkflowPicker = true }) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Run workflow")
                 }

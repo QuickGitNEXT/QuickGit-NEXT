@@ -34,6 +34,7 @@ import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +50,16 @@ fun ReleasesScreen(
     val snackbarHost = remember { SnackbarHostState() }
     var showCreateDialog by remember { mutableStateOf(false) }
     var editingRelease by remember { mutableStateOf<Release?>(null) }
+    val context = LocalContext.current
+    val phoneNavMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.phoneNavMode.collectAsState()
+    // Compact phones only: + lives top-right. Large-phone chrome is unchanged.
+    val compactPhone = when (phoneNavMode) {
+        com.quickgit.app.data.PhoneNavMode.COMPACT -> true
+        com.quickgit.app.data.PhoneNavMode.LARGE -> false
+        com.quickgit.app.data.PhoneNavMode.AUTO ->
+            !context.isLargePhoneForFloatingNav()
+    }
 
     LaunchedEffect(state.errorMessage, state.statusMessage, state.authRequiredHost) {
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
@@ -111,7 +122,13 @@ fun ReleasesScreen(
                         }
                     },
                     actions = {
-                        if (onOpenIssues != null) {
+                        if (compactPhone && state.supported) {
+                            FloatingCircleIconButton(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "New release",
+                                onClick = { showCreateDialog = true }
+                            )
+                        } else if (onOpenIssues != null) {
                             FloatingCircleIconButton(
                                 imageVector = Icons.Default.BugReport,
                                 contentDescription = "Issues",
@@ -123,7 +140,8 @@ fun ReleasesScreen(
             }
         },
         floatingActionButton = {
-            if (state.supported) {
+            // Large phones keep the bottom + FAB; compact moves + to the top-right circle.
+            if (state.supported && !compactPhone) {
                 FloatingActionButton(onClick = { showCreateDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = "New release")
                 }
