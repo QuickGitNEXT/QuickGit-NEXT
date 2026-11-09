@@ -51,7 +51,9 @@ import com.quickgit.app.ui.components.ExpressiveTaskOverlay
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.AppBrandLogo
+import androidx.compose.material3.VerticalDivider
 import com.quickgit.app.viewmodel.BranchesViewModel
+import com.quickgit.app.viewmodel.EditorViewModel
 import com.quickgit.app.viewmodel.FilesViewModel
 import com.quickgit.app.viewmodel.HistoryViewModel
 import com.quickgit.app.viewmodel.IssuesViewModel
@@ -246,6 +248,18 @@ fun RepoDetailScreenDesktop(
                         }
                     }
                 }
+                // Files tab (ChromeOS shell): current directory centered on the repo/branch line
+                if (useChromeShell && tabIndex == 1) {
+                    Text(
+                        if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 120.dp)
+                    )
+                }
                 Row(
                     Modifier.align(Alignment.CenterEnd),
                     verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +306,8 @@ fun RepoDetailScreenDesktop(
                 }
             }
 
-            // Repo name + branch (tablet); Chromebook already shows them next to Back
+            // Title row: tablet shows repo/branch left + actions; ChromeOS shell puts
+            // current directory centered on the Files tab (same band as repo/branch).
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -314,7 +329,7 @@ fun RepoDetailScreenDesktop(
                         )
                     }
                 }
-                if (tabIndex == 1) {
+                if (tabIndex == 1 && !useChromeShell) {
                     Text(
                         if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
                         style = MaterialTheme.typography.titleSmall,
@@ -363,7 +378,62 @@ fun RepoDetailScreenDesktop(
             ) {
                 when (tabIndex) {
                     0 -> ChangesTabDesktop(vm)
-                    1 -> FilesScreen(repoPath = repoPath, vm = filesVm, onBack = null, onOpenFile = onOpenFile)
+                    1 -> {
+                        if (useChromeShell) {
+                            // Chromebook / tablet Chromebook mode: file tree left, editor right
+                            var selectedFile by remember { mutableStateOf<String?>(null) }
+                            val editorVm: EditorViewModel = viewModel(factory = factory)
+                            Row(Modifier.fillMaxSize()) {
+                                Box(
+                                    Modifier
+                                        .weight(0.38f)
+                                        .fillMaxHeight()
+                                ) {
+                                    FilesScreen(
+                                        repoPath = repoPath,
+                                        vm = filesVm,
+                                        onBack = null,
+                                        onOpenFile = { path -> selectedFile = path }
+                                    )
+                                }
+                                VerticalDivider()
+                                Box(
+                                    Modifier
+                                        .weight(0.62f)
+                                        .fillMaxHeight()
+                                ) {
+                                    val path = selectedFile
+                                    if (path != null) {
+                                        EditorScreen(
+                                            repoPath = repoPath,
+                                            relativePath = path,
+                                            vm = editorVm,
+                                            onBack = { selectedFile = null },
+                                            embedded = true
+                                        )
+                                    } else {
+                                        Box(
+                                            Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                "Select a file to edit",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            FilesScreen(
+                                repoPath = repoPath,
+                                vm = filesVm,
+                                onBack = null,
+                                onOpenFile = onOpenFile
+                            )
+                        }
+                    }
                     2 -> BranchesScreen(repoPath = repoPath, vm = branchesVm, onBack = null)
                     3 -> IssuesScreen(vm = issuesVm, onBack = null, onNeedsAuth = onNeedsAuth)
                     4 -> PullRequestsScreen(vm = pullRequestsVm, onBack = null, onNeedsAuth = onNeedsAuth)

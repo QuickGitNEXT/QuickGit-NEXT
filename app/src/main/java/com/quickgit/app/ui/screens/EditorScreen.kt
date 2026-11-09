@@ -55,7 +55,9 @@ fun EditorScreen(
     repoPath: String,
     relativePath: String,
     vm: EditorViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** When true (Chromebook split Files pane), use a denser header without leaving the tab. */
+    embedded: Boolean = false
 ) {
     LaunchedEffect(repoPath, relativePath) { vm.load(repoPath, relativePath) }
     val state by vm.state.collectAsState()
@@ -91,7 +93,8 @@ fun EditorScreen(
                 title = {
                     AppScreenTitle(
                         pageTitle = relativePath.substringAfterLast('/'),
-                        subtitle = relativePath
+                        subtitle = if (embedded) null else relativePath,
+                        showLogo = !embedded
                     )
                 },
                 navigationIcon = {
