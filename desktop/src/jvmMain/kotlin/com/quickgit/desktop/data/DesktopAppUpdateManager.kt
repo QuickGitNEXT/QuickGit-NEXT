@@ -226,7 +226,13 @@ class DesktopAppUpdateManager(
         private val VERSION_PATTERN = Pattern.compile("""(\d+)\.(\d+)(?:\.(\d+))?""")
 
         fun parseVersionCode(name: String): Long {
-            val m = VERSION_PATTERN.matcher(name.trim().removePrefix("v"))
+            var s = name.trim()
+            s = s.removePrefix("QuickGitNEXT").trim()
+            s = s.removePrefix("Desktop").trim().removePrefix("Android").trim()
+            s = s.removePrefix("v").removePrefix("V")
+            if (s.length >= 2 && (s[0] == 'A' || s[0] == 'D' || s[0] == 'a' || s[0] == 'd') && s[1].isDigit()) s = s.substring(1)
+            if (s.isNotEmpty() && (s.last() == 'A' || s.last() == 'D' || s.last() == 'a' || s.last() == 'd')) s = s.dropLast(1)
+            val m = VERSION_PATTERN.matcher(s)
             if (!m.find()) return 0L
             val major = m.group(1).toLongOrNull() ?: 0L
             val minor = m.group(2).toLongOrNull() ?: 0L

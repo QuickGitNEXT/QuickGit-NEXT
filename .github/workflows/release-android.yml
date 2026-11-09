@@ -1,15 +1,15 @@
 name: Build and Release Android
 
 # Single Android release workflow (phone / tablet / Chromebook + Wear).
-# Upgrades the legacy 2.4.8 (v2.4.8) channel onto A-prefixed releases:
-#   input 2.4.9 → tag A2.4.9 → title "QuickGitNEXT Android 2.4.9"
+# Upgrades the legacy 2.4.8 (v2.4.8) channel onto V*A releases:
+#   input 2.4.9 → tag V2.7.0A → title "QuickGitNEXT 2.7.0 Android"
 # In-app updater only considers A* / Android / phone-APK releases (not Desktop D*).
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Android version (e.g. 2.4.9). Tag A2.4.9; installs over 2.4.8+'
+        description: 'Android version (e.g. 2.4.9). Tag V2.7.0A; title QuickGitNEXT 2.7.0 Android'
         required: true
         type: string
       version_code:
@@ -50,6 +50,8 @@ jobs:
           RAW="${RAW#QuickGit }"
           RAW="${RAW#v}"
           RAW="${RAW#A}"
+          RAW="${RAW#V}"
+          RAW="$(echo "$RAW" | sed -E 's/[AaDd]$//')"
           VERSION_NAME="$(echo "$RAW" | tr -d '[:space:]')"
           if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.]+)?$ ]]; then
             echo "Invalid version '$VERSION_NAME'. Use x.y.z (e.g. 2.4.9)."
@@ -62,8 +64,8 @@ jobs:
             PAT="${PAT%%[^0-9]*}"
             VERSION_CODE=$(( MAJ * 1000000 + MIN * 1000 + PAT ))
           fi
-          TAG="A${VERSION_NAME}"
-          TITLE="QuickGitNEXT Android ${VERSION_NAME}"
+          TAG="V${VERSION_NAME}A"
+          TITLE="QuickGitNEXT ${VERSION_NAME} Android"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -76,7 +78,10 @@ jobs:
           set -euo pipefail
           TAG="${{ steps.version.outputs.tag }}"
           # Prefer previous A* tag; then legacy v2.4.8 (pre-split Android); then any v*
-          PREV="$(git tag -l 'A*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          PREV="$(git tag -l 'V*A' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          if [ -z "$PREV" ]; then
+            PREV="$(git tag -l 'A*' --sort=-v:refname | grep -v "^${TAG}$" | head -n1 || true)"
+          fi
           if [ -z "$PREV" ] && git rev-parse -q --verify "refs/tags/v2.4.8" >/dev/null 2>&1; then
             PREV="v2.4.8"
           fi
