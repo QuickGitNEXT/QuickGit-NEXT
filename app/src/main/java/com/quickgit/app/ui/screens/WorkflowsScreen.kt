@@ -58,6 +58,7 @@ import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.security.isChromebookDevice
 import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -361,50 +362,78 @@ private fun RunDetailContent(
 ) {
     val state by vm.state.collectAsState()
     val run = state.selectedRun ?: return
+    val context = LocalContext.current
+    val hardwareChromebook = context.isChromebookDevice()
+    val wideUiMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.wideUiMode.collectAsState()
+    val chromeShell =
+        hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
+                    // Chromebook shell: workflow name + run # centered, no brand logo
                     AppScreenTitle(
                         pageTitle = run.displayTitle.ifBlank { run.name },
                         subtitle = "Run #${run.runNumber}",
-                        showLogo = onBack != null
+                        showLogo = !chromeShell
                     )
                 },
                 navigationIcon = {
-                FloatingCircleIconButton(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    onClick = onBack
-                )
-            },
+                    if (!chromeShell) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    } else {
+                        // Flat back (not floating circle); keeps closing run detail under shell
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                },
                 actions = {
+                    // Restart / pause / cancel (and refresh) on the top-right of the title line
                     if (state.watching) {
                         IconButton(onClick = { vm.stopWatching() }) {
-                            Icon(Icons.Default.Pause, "Stop watching")
+                            Icon(Icons.Default.Pause, contentDescription = "Pause")
                         }
                     } else if (isLiveStatus(run.status)) {
                         IconButton(onClick = { vm.startWatching(run.id) }) {
-                            Icon(Icons.Default.PlayArrow, "Watch live")
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Watch live")
                         }
                     }
                     if (isLiveStatus(run.status)) {
                         IconButton(onClick = { vm.cancelRun(run.id) }, enabled = !state.busy) {
-                            Icon(Icons.Default.Cancel, "Cancel")
+                            Icon(Icons.Default.Cancel, contentDescription = "Cancel")
                         }
                     } else {
                         IconButton(onClick = { vm.rerun(run.id) }, enabled = !state.busy) {
-                            Icon(Icons.Default.Replay, "Re-run")
+                            Icon(Icons.Default.Replay, contentDescription = "Restart")
                         }
                     }
-                    FloatingCircleIconButton(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        onClick = { vm.openRun(run.id) },
-                        enabled = !state.detailLoading
-                    )
+                    if (chromeShell) {
+                        IconButton(
+                            onClick = { vm.openRun(run.id) },
+                            enabled = !state.detailLoading
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        }
+                    } else {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            onClick = { vm.openRun(run.id) },
+                            enabled = !state.detailLoading
+                        )
+                    }
                 }
             )
         }
