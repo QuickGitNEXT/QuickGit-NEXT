@@ -85,6 +85,37 @@ class ChromeOsRepoSectionController {
 val LocalChromeOsRepoSection = staticCompositionLocalOf { ChromeOsRepoSectionController() }
 
 /**
+ * Optional page header (workflow run, etc.) shown on the repo/branch title line
+ * under ChromeOS shell: centered title + trailing action slot.
+ */
+class ChromeOsPageHeaderController {
+    val active = mutableStateOf(false)
+    val title = mutableStateOf("")
+    val subtitle = mutableStateOf<String?>(null)
+    val endActions = mutableStateOf<(@Composable () -> Unit)?>(null)
+
+    fun show(
+        title: String,
+        subtitle: String? = null,
+        endActions: (@Composable () -> Unit)? = null
+    ) {
+        this.title.value = title
+        this.subtitle.value = subtitle
+        this.endActions.value = endActions
+        active.value = true
+    }
+
+    fun clear() {
+        active.value = false
+        title.value = ""
+        subtitle.value = null
+        endActions.value = null
+    }
+}
+
+val LocalChromeOsPageHeader = staticCompositionLocalOf { ChromeOsPageHeaderController() }
+
+/**
  * ChromeOS-style top chrome: app destinations + optional repo section strip + repo tabs.
  * No floating bottom bars — Chromebook / ARC desktop shells only.
  *

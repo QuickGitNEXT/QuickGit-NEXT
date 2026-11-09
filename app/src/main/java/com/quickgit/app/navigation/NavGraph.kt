@@ -57,10 +57,12 @@ import com.quickgit.app.ui.adaptive.isTabletOrWider
 import androidx.compose.runtime.CompositionLocalProvider
 import com.quickgit.app.ui.components.ChromeOsAppChrome
 import com.quickgit.app.ui.components.ChromeOsContentWithWatermark
+import com.quickgit.app.ui.components.ChromeOsPageHeaderController
 import com.quickgit.app.ui.components.ChromeOsRepoSectionController
 import com.quickgit.app.ui.components.ChromeOsRepoTab
 import com.quickgit.app.ui.components.FloatingNavItem
 import com.quickgit.app.ui.components.FloatingTabletNavBar
+import com.quickgit.app.ui.components.LocalChromeOsPageHeader
 import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import com.quickgit.app.ui.components.RepoDetailBottomBar
 import com.quickgit.app.ui.components.RepoDetailBottomTab
@@ -116,6 +118,7 @@ fun QuickGitNavGraph() {
     val isDesktopLayout = preferWideChrome || useChromeOsShell
     val chromeRepoTabs = remember { mutableStateListOf<ChromeOsRepoTab>() }
     val chromeRepoSection = remember { ChromeOsRepoSectionController() }
+    val chromePageHeader = remember { ChromeOsPageHeaderController() }
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -726,7 +729,10 @@ fun QuickGitNavGraph() {
         // Tablets get denser chrome (compactForTablet); hardware Chromebooks stay as designed.
         useChromeOsShell -> {
             val compactChromeForTablet = !isChromebook
-            CompositionLocalProvider(LocalChromeOsRepoSection provides chromeRepoSection) {
+            CompositionLocalProvider(
+                LocalChromeOsRepoSection provides chromeRepoSection,
+                LocalChromeOsPageHeader provides chromePageHeader
+            ) {
                 // Tablets in Chromebook mode still need top inset under the multi-window pill
                 // when the activity is edge-to-edge; real Chromebooks keep full-bleed chrome.
                 val chromeRootMod = Modifier.fillMaxSize().then(

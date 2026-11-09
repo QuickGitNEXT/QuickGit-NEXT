@@ -58,6 +58,7 @@ import com.quickgit.app.ui.components.FloatingCircleIconButton
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 import com.quickgit.app.ui.components.PullToRefreshBox
 import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
+import com.quickgit.app.ui.components.LocalChromeOsPageHeader
 import com.quickgit.app.ui.security.isChromebookDevice
 import androidx.compose.ui.platform.LocalContext
 
@@ -368,39 +369,24 @@ private fun RunDetailContent(
         .appPreferences.wideUiMode.collectAsState()
     val chromeShell =
         hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
+    val pageHeader = LocalChromeOsPageHeader.current
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHost) },
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    // Chromebook shell: workflow name + run # centered, no brand logo
-                    AppScreenTitle(
-                        pageTitle = run.displayTitle.ifBlank { run.name },
-                        subtitle = "Run #${run.runNumber}",
-                        showLogo = !chromeShell
-                    )
-                },
-                navigationIcon = {
-                    if (!chromeShell) {
-                        FloatingCircleIconButton(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            onClick = onBack
-                        )
-                    } else {
-                        // Flat back (not floating circle); keeps closing run detail under shell
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                },
-                actions = {
-                    // Restart / pause / cancel (and refresh) on the top-right of the title line
+    // Promote workflow title + run controls onto the parent repo/branch line (ChromeOS shell).
+    if (chromeShell) {
+        DisposableEffect(
+            run.id,
+            run.displayTitle,
+            run.name,
+            run.runNumber,
+            state.watching,
+            run.status,
+            state.busy,
+            state.detailLoading
+        ) {
+            pageHeader.show(
+                title = run.displayTitle.ifBlank { run.name },
+                subtitle = "Run #${run.runNumber}",
+                endActions = {
                     if (state.watching) {
                         IconButton(onClick = { vm.stopWatching() }) {
                             Icon(Icons.Default.Pause, contentDescription = "Pause")
@@ -419,14 +405,57 @@ private fun RunDetailContent(
                             Icon(Icons.Default.Replay, contentDescription = "Restart")
                         }
                     }
-                    if (chromeShell) {
-                        IconButton(
-                            onClick = { vm.openRun(run.id) },
-                            enabled = !state.detailLoading
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(
+                        onClick = { vm.openRun(run.id) },
+                        enabled = !state.detailLoading
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+            onDispose { pageHeader.clear() }
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            // ChromeOS shell: no second title/back row — header lives on the repo/branch line.
+            if (!chromeShell) {
+                CenterAlignedTopAppBar(
+                    title = {
+                        AppScreenTitle(
+                            pageTitle = run.displayTitle.ifBlank { run.name },
+                            subtitle = "Run #${run.runNumber}",
+                            showLogo = true
+                        )
+                    },
+                    navigationIcon = {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            onClick = onBack
+                        )
+                    },
+                    actions = {
+                        if (state.watching) {
+                            IconButton(onClick = { vm.stopWatching() }) {
+                                Icon(Icons.Default.Pause, contentDescription = "Pause")
+                            }
+                        } else if (isLiveStatus(run.status)) {
+                            IconButton(onClick = { vm.startWatching(run.id) }) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Watch live")
+                            }
                         }
-                    } else {
+                        if (isLiveStatus(run.status)) {
+                            IconButton(onClick = { vm.cancelRun(run.id) }, enabled = !state.busy) {
+                                Icon(Icons.Default.Cancel, contentDescription = "Cancel")
+                            }
+                        } else {
+                            IconButton(onClick = { vm.rerun(run.id) }, enabled = !state.busy) {
+                                Icon(Icons.Default.Replay, contentDescription = "Restart")
+                            }
+                        }
                         FloatingCircleIconButton(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
@@ -434,8 +463,8 @@ private fun RunDetailContent(
                             enabled = !state.detailLoading
                         )
                     }
-                }
-            )
+                )
+            }
         }
     ) { padding ->
         if (state.detailLoading && state.jobs.isEmpty()) {

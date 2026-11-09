@@ -13,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.security.isChromebookDevice
 import com.quickgit.app.ui.components.ChromeOsSectionItem
+import com.quickgit.app.ui.components.LocalChromeOsPageHeader
 import com.quickgit.app.ui.components.LocalChromeOsRepoSection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
@@ -163,6 +164,7 @@ fun RepoDetailScreenDesktop(
     // Tablet-only denser chrome — never applied on real Chromebook hardware.
     val tabletChromeCompact = useChromeShell && !hardwareChromebook
     val chromeSection = LocalChromeOsRepoSection.current
+    val chromePageHeader = LocalChromeOsPageHeader.current
     // Section selection lives in the top chrome under main destinations when shell is on.
     if (useChromeShell) {
         DisposableEffect(Unit) {
@@ -170,7 +172,10 @@ fun RepoDetailScreenDesktop(
                 tabs.map { (label, icon) -> ChromeOsSectionItem(icon, label) },
                 localTabIndex
             )
-            onDispose { chromeSection.deactivate() }
+            onDispose {
+                chromeSection.deactivate()
+                chromePageHeader.clear()
+            }
         }
     }
     val tabIndex = if (useChromeShell) chromeSection.selectedIndex.intValue else localTabIndex
@@ -248,8 +253,30 @@ fun RepoDetailScreenDesktop(
                         }
                     }
                 }
-                // Files tab (ChromeOS shell): current directory centered on the repo/branch line
-                if (useChromeShell && tabIndex == 1) {
+                // Files tab: current directory centered. Action/run detail: workflow title centered.
+                if (useChromeShell && chromePageHeader.active.value) {
+                    Column(
+                        Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 120.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            chromePageHeader.title.value,
+                            style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        chromePageHeader.subtitle.value?.let { sub ->
+                            Text(
+                                sub,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                } else if (useChromeShell && tabIndex == 1) {
                     Text(
                         if (filesState.currentDir.isBlank()) "/" else filesState.currentDir,
                         style = MaterialTheme.typography.titleSmall,
@@ -271,8 +298,12 @@ fun RepoDetailScreenDesktop(
                             strokeWidth = 2.dp
                         )
                     }
+                    // Workflow run (etc.) actions promoted onto the repo/branch line
+                    if (useChromeShell && chromePageHeader.active.value) {
+                        chromePageHeader.endActions.value?.invoke()
+                    }
                     // Chromebook shell: stage / discard / Git Actions sit left of History
-                    if (useChromeShell && tabIndex == 0) {
+                    if (useChromeShell && tabIndex == 0 && !chromePageHeader.active.value) {
                         TextButton(
                             onClick = { vm.stageAll() },
                             enabled = !state.busy
