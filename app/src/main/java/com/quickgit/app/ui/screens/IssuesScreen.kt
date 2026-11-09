@@ -23,8 +23,10 @@ import com.quickgit.app.data.models.PrComment
 import com.quickgit.app.ui.theme.GitGreen
 import com.quickgit.app.ui.theme.GitRed
 import com.quickgit.app.viewmodel.IssuesViewModel
+import androidx.compose.ui.platform.LocalContext
 import com.quickgit.app.ui.components.AppScreenTitle
 import com.quickgit.app.ui.components.FloatingCircleIconButton
+import com.quickgit.app.ui.components.isLargePhoneForFloatingNav
 import com.quickgit.app.ui.components.BrandLoadingPlaceholder
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +39,15 @@ fun IssuesScreen(
     val state by vm.state.collectAsState()
     val snackbarHost = remember { SnackbarHostState() }
     var showCreateDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val phoneNavMode by (context.applicationContext as com.quickgit.app.QuickGitApp)
+        .appPreferences.phoneNavMode.collectAsState()
+    val compactPhone = when (phoneNavMode) {
+        com.quickgit.app.data.PhoneNavMode.COMPACT -> true
+        com.quickgit.app.data.PhoneNavMode.LARGE -> false
+        com.quickgit.app.data.PhoneNavMode.AUTO ->
+            !context.isLargePhoneForFloatingNav()
+    }
 
     LaunchedEffect(state.errorMessage, state.statusMessage, state.authRequiredHost) {
         state.errorMessage?.let { snackbarHost.showSnackbar(it); vm.consumeMessages() }
@@ -92,15 +103,27 @@ fun IssuesScreen(
                             onClick = back
                         )
                     }
+                },
+                actions = {
+                    if (compactPhone) {
+                        FloatingCircleIconButton(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "New issue",
+                            onClick = { showCreateDialog = true }
+                        )
+                    }
                 }
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showCreateDialog = true },
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("New issue") }
-            )
+            // Large phones keep the bottom New issue FAB; compact uses top-right +.
+            if (!compactPhone) {
+                ExtendedFloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    icon = { Icon(Icons.Default.Add, null) },
+                    text = { Text("New issue") }
+                )
+            }
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
