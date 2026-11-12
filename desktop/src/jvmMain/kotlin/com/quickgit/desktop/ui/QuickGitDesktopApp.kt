@@ -1548,6 +1548,40 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         }
     }
 
+    fun doSoftReset(c: DesktopRepoManager.CommitInfo) {
+        scope.launch {
+            busy = true
+            val r = withContext(Dispatchers.IO) { repoManager.softReset(repoPath, c.id) }
+            busy = false
+            confirmReset = null
+            r.fold(
+                {
+                    logRef = null
+                    reload()
+                    onMessage("Soft reset to ${c.shortId} (HEAD moved, index & tree kept)")
+                },
+                { onMessage("Soft reset failed: ${it.message}") }
+            )
+        }
+    }
+
+    fun doMixedReset(c: DesktopRepoManager.CommitInfo) {
+        scope.launch {
+            busy = true
+            val r = withContext(Dispatchers.IO) { repoManager.mixedReset(repoPath, c.id) }
+            busy = false
+            confirmReset = null
+            r.fold(
+                {
+                    logRef = null
+                    reload()
+                    onMessage("Mixed reset to ${c.shortId} (HEAD & index updated)")
+                },
+                { onMessage("Mixed reset failed: ${it.message}") }
+            )
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         Text(
             "Pick any local or remote-tracking branch to browse commits, then cherry-pick one or more onto your current branch. " +
