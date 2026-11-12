@@ -17,6 +17,7 @@ import com.quickgit.desktop.data.DesktopAppUpdateManager
 import com.quickgit.desktop.data.DesktopCredentialStore
 import com.quickgit.desktop.data.DesktopRepoManager
 import com.quickgit.desktop.data.DesktopUpdateCheckResult
+import com.quickgit.desktop.ui.DesktopScreen
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ fun main() = application {
     }
 
     val windowState = rememberWindowState(width = 1280.dp, height = 840.dp)
+    var menuScreen by remember { mutableStateOf<DesktopScreen?>(null) }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -42,6 +44,28 @@ fun main() = application {
         MenuBar {
             Menu("File", mnemonic = 'F') {
                 Item("Quit", onClick = ::exitApplication, shortcut = KeyShortcut(Key.Q, ctrl = true))
+            }
+            Menu("Repositories", mnemonic = 'R') {
+                Item(
+                    "All repositories",
+                    onClick = { menuScreen = DesktopScreen.RepoList },
+                    shortcut = KeyShortcut(Key.One, ctrl = true)
+                )
+                Separator()
+                Item(
+                    "Clone…",
+                    onClick = { menuScreen = DesktopScreen.Clone },
+                    shortcut = KeyShortcut(Key.N, ctrl = true)
+                )
+                Item(
+                    "Browse…",
+                    onClick = { menuScreen = DesktopScreen.BrowseAccount }
+                )
+                Item(
+                    "Search…",
+                    onClick = { menuScreen = DesktopScreen.UserSearch },
+                    shortcut = KeyShortcut(Key.F, ctrl = true)
+                )
             }
             Menu("Help", mnemonic = 'H') {
                 Item(
@@ -86,7 +110,9 @@ fun main() = application {
                     QuickGitDesktopApp(
                         repoManager = repoManager,
                         credentialStore = credentialStore,
-                        updateManager = updateManager
+                        updateManager = updateManager,
+                        externalScreen = menuScreen,
+                        onScreenChanged = { menuScreen = it }
                     )
 
                     updatePrompt?.let { available ->

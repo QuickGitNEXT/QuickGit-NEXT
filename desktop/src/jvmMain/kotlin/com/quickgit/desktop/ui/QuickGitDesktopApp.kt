@@ -74,15 +74,25 @@ private fun statusColor(status: String, conclusion: String?): Color {
 
 @Composable
 fun QuickGitDesktopApp(
-
     repoManager: DesktopRepoManager,
     credentialStore: DesktopCredentialStore,
-    updateManager: DesktopAppUpdateManager = DesktopAppUpdateManager(credentialStore)
+    updateManager: DesktopAppUpdateManager = DesktopAppUpdateManager(credentialStore),
+    externalScreen: DesktopScreen? = null,
+    onScreenChanged: (DesktopScreen) -> Unit = {}
 ) {
     var currentScreen by remember { mutableStateOf(DesktopScreen.RepoList) }
     var selectedRepoPath by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(externalScreen) {
+        externalScreen?.let { currentScreen = it }
+    }
+
+    fun navigate(screen: DesktopScreen) {
+        currentScreen = screen
+        onScreenChanged(screen)
+    }
 
     fun showMessage(msg: String) {
         scope.launch { snackbarHostState.showSnackbar(msg) }
@@ -103,30 +113,26 @@ fun QuickGitDesktopApp(
                 modifier = Modifier.fillMaxHeight().width(88.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
-                NavRailItem(Icons.Default.Folder, "Repos", currentScreen == DesktopScreen.RepoList) {
-                    currentScreen = DesktopScreen.RepoList
-                }
-                NavRailItem(Icons.Default.CloudDownload, "Clone", currentScreen == DesktopScreen.Clone) {
-                    currentScreen = DesktopScreen.Clone
-                }
-                NavRailItem(Icons.Default.TravelExplore, "Browse", currentScreen == DesktopScreen.BrowseAccount) {
-                    currentScreen = DesktopScreen.BrowseAccount
+                // Clone / Browse / Search live under the window Repositories menu
+                NavRailItem(
+                    Icons.Default.Folder,
+                    "Repos",
+                    currentScreen == DesktopScreen.RepoList || currentScreen == DesktopScreen.RepoDetail
+                ) {
+                    navigate(DesktopScreen.RepoList)
                 }
                 NavRailItem(Icons.Default.Person, "Profile", currentScreen == DesktopScreen.Profile) {
-                    currentScreen = DesktopScreen.Profile
-                }
-                NavRailItem(Icons.Default.Search, "Users", currentScreen == DesktopScreen.UserSearch) {
-                    currentScreen = DesktopScreen.UserSearch
+                    navigate(DesktopScreen.Profile)
                 }
                 Spacer(Modifier.weight(1f))
                 NavRailItem(Icons.Default.Article, "Logs", currentScreen == DesktopScreen.Logs) {
-                    currentScreen = DesktopScreen.Logs
+                    navigate(DesktopScreen.Logs)
                 }
                 NavRailItem(Icons.Default.Key, "Credentials", currentScreen == DesktopScreen.Credentials) {
-                    currentScreen = DesktopScreen.Credentials
+                    navigate(DesktopScreen.Credentials)
                 }
                 NavRailItem(Icons.Default.Settings, "Settings", currentScreen == DesktopScreen.Settings) {
-                    currentScreen = DesktopScreen.Settings
+                    navigate(DesktopScreen.Settings)
                 }
             }
             VerticalDivider()
@@ -138,7 +144,7 @@ fun QuickGitDesktopApp(
                         githubApi = githubApi(),
                         onSelect = {
                             selectedRepoPath = it
-                            currentScreen = DesktopScreen.RepoDetail
+                            navigate(DesktopScreen.RepoDetail)
                         },
                         onMessage = ::showMessage
                     )
@@ -148,17 +154,17 @@ fun QuickGitDesktopApp(
                             repoManager = repoManager,
                             credentialStore = credentialStore,
                             githubApi = githubApi(),
-                            onBack = { currentScreen = DesktopScreen.RepoList },
+                            onBack = { navigate(DesktopScreen.RepoList) },
                             onMessage = ::showMessage
                         )
-                    } ?: run { currentScreen = DesktopScreen.RepoList }
+                    } ?: run { navigate(DesktopScreen.RepoList) }
                     DesktopScreen.Clone -> CloneScreen(
                         repoManager = repoManager,
                         credentialStore = credentialStore,
                         githubApi = githubApi(),
                         onCloned = {
                             selectedRepoPath = it
-                            currentScreen = DesktopScreen.RepoDetail
+                            navigate(DesktopScreen.RepoDetail)
                             showMessage("Cloned successfully")
                         },
                         onMessage = ::showMessage
@@ -169,7 +175,7 @@ fun QuickGitDesktopApp(
                         repoManager = repoManager,
                         onCloned = {
                             selectedRepoPath = it
-                            currentScreen = DesktopScreen.RepoDetail
+                            navigate(DesktopScreen.RepoDetail)
                             showMessage("Cloned successfully")
                         },
                         onMessage = ::showMessage
@@ -180,7 +186,7 @@ fun QuickGitDesktopApp(
                         repoManager = repoManager,
                         onCloned = {
                             selectedRepoPath = it
-                            currentScreen = DesktopScreen.RepoDetail
+                            navigate(DesktopScreen.RepoDetail)
                             showMessage("Cloned successfully")
                         },
                         onMessage = ::showMessage
@@ -190,7 +196,7 @@ fun QuickGitDesktopApp(
                         repoManager = repoManager,
                         onCloned = {
                             selectedRepoPath = it
-                            currentScreen = DesktopScreen.RepoDetail
+                            navigate(DesktopScreen.RepoDetail)
                             showMessage("Cloned successfully")
                         },
                         onMessage = ::showMessage
@@ -204,7 +210,7 @@ fun QuickGitDesktopApp(
                     )
                     DesktopScreen.Credentials -> CredentialsUnlockGate(
                         credentialStore = credentialStore,
-                        onCancel = { currentScreen = DesktopScreen.RepoList },
+                        onCancel = { navigate(DesktopScreen.RepoList) },
                         onMessage = ::showMessage
                     ) {
                         CredentialsScreen(
