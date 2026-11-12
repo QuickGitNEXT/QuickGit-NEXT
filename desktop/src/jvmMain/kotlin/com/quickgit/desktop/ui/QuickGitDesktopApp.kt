@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.quickgit.desktop.ui.theme.LinuxTheme
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.*
@@ -69,11 +70,11 @@ private fun formatBytes(n: Long): String {
 
 private fun statusColor(status: String, conclusion: String?): Color {
     return when {
-        conclusion == "success" -> Color(0xFF3FB950)
-        conclusion == "failure" || conclusion == "timed_out" -> Color(0xFFF85149)
-        conclusion == "cancelled" -> Color(0xFF8B949E)
-        status == "in_progress" || status == "queued" -> Color(0xFFD29922)
-        else -> Color(0xFF8B949E)
+        conclusion == "success" -> com.quickgit.desktop.ui.theme.UbuntuSuccess
+        conclusion == "failure" || conclusion == "timed_out" -> com.quickgit.desktop.ui.theme.UbuntuError
+        conclusion == "cancelled" -> com.quickgit.desktop.ui.theme.UbuntuWarmGrey
+        status == "in_progress" || status == "queued" -> com.quickgit.desktop.ui.theme.UbuntuWarning
+        else -> com.quickgit.desktop.ui.theme.UbuntuWarmGrey
     }
 }
 
@@ -303,11 +304,15 @@ private fun UbuntuPageHeader(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+    Surface(
+        color = LinuxTheme.colors.headerBar,
+        contentColor = LinuxTheme.colors.headerBarOn,
+        tonalElevation = 0.dp
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -1093,7 +1098,7 @@ fun RepoDetailScreen(
             )
         }
         // Ubuntu-style view switcher under the header
-        Surface(color = MaterialTheme.colorScheme.surface) {
+        Surface(color = LinuxTheme.colors.headerBar, contentColor = LinuxTheme.colors.headerBarOn) {
             ScrollableTabRow(
                 selectedTabIndex = tabIndex,
                 edgePadding = 12.dp,
@@ -2350,7 +2355,7 @@ private fun isProbablyTextFile(name: String): Boolean {
 private fun highlightSourceCode(source: String, fileName: String, dark: Boolean = true): AnnotatedString {
     val lang = SyntaxHighlight.languageFromPath(fileName)
     val palette = SyntaxHighlight.defaultPalette(
-        base = if (dark) Color(0xFFE1E2E8) else Color(0xFF191C20),
+        base = if (dark) LinuxTheme.colors.codeOn else LinuxTheme.colors.codeOn,
         dark = dark
     )
     return SyntaxHighlight.highlight(source, lang, palette)
@@ -2585,7 +2590,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
 
     Row(Modifier.fillMaxSize()) {
         // ---- Browser pane ----
-        Column(Modifier.width(300.dp).fillMaxHeight()) {
+        Column(Modifier.width(300.dp).fillMaxHeight().background(LinuxTheme.colors.sidebar)) {
             // Path bar + actions
             Row(
                 Modifier.fillMaxWidth().padding(8.dp),
@@ -2810,7 +2815,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
                     lineHeight = 20.sp,
-                    color = if (darkUi) Color(0xFFE1E2E8) else Color(0xFF191C20)
+                    color = if (darkUi) LinuxTheme.colors.codeOn else LinuxTheme.colors.codeOn
                 )
                 val highlightTransform = remember(name, darkUi) {
                     VisualTransformation { text ->
@@ -2947,7 +2952,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(if (darkUi) Color(0xFF111318) else Color(0xFFF8F9FF))
+                            .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
                             .horizontalScroll(rememberScrollState())
                             .verticalScroll(rememberScrollState())
                             .padding(12.dp)
@@ -2972,7 +2977,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                                 content = newValue.text
                             },
                             textStyle = codeStyle,
-                            cursorBrush = SolidColor(Color(0xFF7EE787)),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             visualTransformation = highlightTransform,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -2983,7 +2988,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .background(if (darkUi) Color(0xFF111318) else Color(0xFFF8F9FF))
+                                .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
                                 .horizontalScroll(rememberScrollState())
                                 .verticalScroll(rememberScrollState())
                                 .padding(12.dp)
@@ -5734,7 +5739,7 @@ fun RemoteCodeReaderDialog(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .background(if (darkUi) Color(0xFF111318) else Color(0xFFF8F9FF))
+                            .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
                     ) {
                         Box(
                             Modifier

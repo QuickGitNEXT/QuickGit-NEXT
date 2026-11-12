@@ -116,7 +116,10 @@ fun main() = application {
         val updateManager = remember { DesktopAppUpdateManager(credentialStore) }
 
         QuickGitTheme {
-            Surface(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                 var updatePrompt by remember { mutableStateOf<DesktopUpdateCheckResult.Available?>(null) }
 
                 LaunchedEffect(Unit) {
