@@ -1,8 +1,11 @@
 package com.quickgit.desktop.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -316,32 +319,25 @@ fun RepoListScreen(
     }
     LaunchedEffect(Unit) { reload() }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        UbuntuPageHeader(
+            title = "Local repositories",
+            subtitle = "Root: ${repoManager.getReposRoot().absolutePath}"
         ) {
-            Text("Local repositories", style = MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = { showCreate = true }, enabled = !busy) {
-                    Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("New repository")
-                }
-                TextButton(onClick = { reload() }) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Refresh")
-                }
+            Button(onClick = { showCreate = true }, enabled = !busy) {
+                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("New repository")
+            }
+            OutlinedButton(onClick = { reload() }) {
+                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Refresh")
             }
         }
-        Text(
-            "Root: ${repoManager.getReposRoot().absolutePath}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(12.dp))
+        HorizontalDivider()
+        UbuntuContentCard(Modifier = Modifier.weight(1f)) {
+            Column(Modifier.fillMaxSize()) {
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (repos.isEmpty()) {
@@ -671,10 +667,87 @@ fun RepoListScreen(
             }
         )
     }
+            } // list Column inside card
+        } // UbuntuContentCard
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+
+/** Ubuntu-style page header strip (title + optional actions). */
 @Composable
+private fun UbuntuPageHeader(
+    title: String,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (onBack != null) {
+                TextButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Repositories")
+                }
+                VerticalDivider(Modifier = Modifier.height(24.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions
+            )
+        }
+    }
+}
+
+/** Card-like content area used by repo detail tabs (Yaru / libadwaita density). */
+@Composable
+private fun UbuntuContentCard(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Box(Modifier.fillMaxSize().padding(12.dp), content = content)
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun RepoDetailScreen(
     repoPath: String,
     repoManager: DesktopRepoManager,
@@ -746,15 +819,14 @@ fun RepoDetailScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back to repositories") }
-            Column(Modifier.weight(1f)) {
-                Text(repoPath.substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(repoPath, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        UbuntuPageHeader(
+            title = repoPath.substringAfterLast('/'),
+            subtitle = repoPath,
+            onBack = onBack
+        ) {
             Box {
-                Button(onClick = { pullMenuExpanded = true }, enabled = !busy) { Text("Pull ▾") }
+                OutlinedButton(onClick = { pullMenuExpanded = true }, enabled = !busy) { Text("Pull ▾") }
                 DropdownMenu(expanded = pullMenuExpanded, onDismissRequest = { pullMenuExpanded = false }) {
                     DropdownMenuItem(text = { Text("Git pull") }, onClick = {
                         pullMenuExpanded = false
@@ -799,7 +871,7 @@ fun RepoDetailScreen(
             }
             Spacer(Modifier.width(8.dp))
             Box {
-                Button(onClick = { pushMenuExpanded = true }, enabled = !busy) { Text("Push ▾") }
+                OutlinedButton(onClick = { pushMenuExpanded = true }, enabled = !busy) { Text("Push ▾") }
                 DropdownMenu(
                     expanded = pushMenuExpanded,
                     onDismissRequest = { pushMenuExpanded = false }
@@ -902,8 +974,11 @@ fun RepoDetailScreen(
                     // LFS pull / push live under the Pull and Push menus
                 }
             }
-            if (busy) { Spacer(Modifier.width(8.dp)); CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
-        }
+            if (busy) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+            }
+        } // UbuntuPageHeader actions
+        HorizontalDivider()
         if (showLfsTrack) {
             AlertDialog(
                 onDismissRequest = { showLfsTrack = false },
@@ -1007,18 +1082,50 @@ fun RepoDetailScreen(
                 }
             )
         }
-        TabRow(selectedTabIndex = tabIndex) {
-            tabs.forEachIndexed { i, title -> Tab(selected = tabIndex == i, onClick = { tabIndex = i }, text = { Text(title) }) }
+        // Ubuntu-style view switcher under the header
+        Surface(color = MaterialTheme.colorScheme.surface) {
+            ScrollableTabRow(
+                selectedTabIndex = tabIndex,
+                edgePadding = 12.dp,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                divider = {},
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
+                        height = 3.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            ) {
+                tabs.forEachIndexed { i, title ->
+                    Tab(
+                        selected = tabIndex == i,
+                        onClick = { tabIndex = i },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
+                            Text(
+                                title,
+                                fontWeight = if (tabIndex == i) FontWeight.SemiBold else FontWeight.Medium
+                            )
+                        }
+                    )
+                }
+            }
         }
-        when (tabIndex) {
-            0 -> ChangesTab(repoPath, repoManager, onMessage)
-            1 -> FilesEditorTab(repoPath, repoManager, onMessage)
-            2 -> BranchesTab(repoPath, repoManager, onMessage)
-            3 -> IssuesTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
-            4 -> PullRequestsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
-            5 -> WorkflowsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
-            6 -> ReleasesTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
-            7 -> HistoryTab(repoPath, repoManager, onMessage)
+        HorizontalDivider()
+        UbuntuContentCard(Modifier = Modifier.weight(1f)) {
+            when (tabIndex) {
+                0 -> ChangesTab(repoPath, repoManager, onMessage)
+                1 -> FilesEditorTab(repoPath, repoManager, onMessage)
+                2 -> BranchesTab(repoPath, repoManager, onMessage)
+                3 -> IssuesTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
+                4 -> PullRequestsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
+                5 -> WorkflowsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
+                6 -> ReleasesTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
+                7 -> HistoryTab(repoPath, repoManager, onMessage)
+            }
         }
     }
 }
