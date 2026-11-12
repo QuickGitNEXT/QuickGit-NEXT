@@ -1348,23 +1348,25 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         Surface(
             shape = MaterialTheme.shapes.medium,
             tonalElevation = 1.dp,
+            color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Text("Stash", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = stashMessage,
-                        onValueChange = { stashMessage = it },
-                        label = { Text("Stash message (optional)") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedButton(onClick = {
+                OutlinedTextField(
+                    value = stashMessage,
+                    onValueChange = { stashMessage = it },
+                    label = { Text("Stash message (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = {
                         scope.launch {
                             val r = withContext(Dispatchers.IO) {
                                 repoManager.stashSave(repoPath, stashMessage.ifBlank { null })
@@ -1374,8 +1376,9 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                                 { onMessage("Stash failed: ${it.message}") }
                             )
                         }
-                    }) { Text("Stash changes") }
-                }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Stash changes") }
                 if (stashes.isEmpty()) {
                     Text(
                         "No stashes on this repository.",
@@ -2203,6 +2206,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
     var currentDir by remember(repoPath) { mutableStateOf("") }
     var entries by remember { mutableStateOf<List<FsEntry>>(emptyList()) }
     var selectedFile by remember { mutableStateOf<String?>(null) }
+    var openInEdit by remember { mutableStateOf(false) }
     var content by remember { mutableStateOf("") }
     var original by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -2214,6 +2218,10 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
     var entryToMove by remember { mutableStateOf<FsEntry?>(null) }
     var moveDestDir by remember { mutableStateOf("") }
     var entryToDelete by remember { mutableStateOf<FsEntry?>(null) }
+    var showNewFolder by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+    var showNewFile by remember { mutableStateOf(false) }
+    var newFileName by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val root = remember(repoPath) { java.io.File(repoPath) }
 
@@ -2224,7 +2232,8 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 val dir = if (rel.isBlank()) root else java.io.File(root, rel)
                 if (!dir.isDirectory) return@withContext emptyList()
                 dir.listFiles()
-                    ?.filter { it.name != ".git" && !it.name.startsWith(".git") }
+                    // Show hidden/dotfiles; only hide the .git directory itself
+                    ?.filter { it.name != ".git" }
                     ?.map { f ->
                         val childRel = if (rel.isBlank()) f.name else "$rel/${f.name}".replace('\\', '/')
                         FsEntry(
@@ -2256,8 +2265,9 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
             .substringBeforeLast('/', missingDelimiterValue = "")
     }
 
-    fun openFile(rel: String) {
+    fun openFile(rel: String, edit: Boolean = true) {
         selectedFile = rel
+        openInEdit = edit && isProbablyTextFile(rel.substringAfterLast('/'))
         scope.launch {
             loading = true
             val text = withContext(Dispatchers.IO) {
@@ -2265,9 +2275,14 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 if (!f.isFile) return@withContext ""
                 if (!isProbablyTextFile(f.name)) return@withContext "(binary file — ${f.length()} bytes)"
                 try {
-                    f.readText()
-                } catch (_: Exception) {
-                    "(unable to read as text)"
+                    // Limit huge files so the UI stays responsive
+                    if (f.length() > 2_000_000L) {
+                        f.bufferedReader().use { it.readText().take(2_000_000) + "\n\n… (truncated)" }
+                    } else {
+                        f.readText()
+                    }
+                } catch (e: Exception) {
+                    "(unable to read as text: ${e.message})"
                 }
             }
             content = text
@@ -2432,6 +2447,28 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                     Spacer(Modifier.width(4.dp))
                     Text("Upload")
                 }
+                OutlinedButton(
+                    onClick = {
+                        newFolderName = ""
+                        showNewFolder = true
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.CreateNewFolder, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Folder")
+                }
+                OutlinedButton(
+                    onClick = {
+                        newFileName = ""
+                        showNewFile = true
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.NoteAdd, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("File")
+                }
             }
             Spacer(Modifier.height(4.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
@@ -2569,7 +2606,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 }
             } else {
                 val name = selectedFile!!.substringAfterLast('/')
-                var editing by remember(selectedFile) { mutableStateOf(false) }
+                var editing by remember(selectedFile) { mutableStateOf(openInEdit) }
                 var findOpen by remember(selectedFile) { mutableStateOf(false) }
                 var findQuery by remember(selectedFile) { mutableStateOf("") }
                 var matchIndex by remember(selectedFile) { mutableIntStateOf(0) }
@@ -2782,6 +2819,106 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
         }
     }
 
+
+    if (showNewFolder) {
+        AlertDialog(
+            onDismissRequest = { showNewFolder = false },
+            title = { Text("New folder") },
+            text = {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it.filter { c -> c != '/' && c != '\\' } },
+                    label = { Text("Folder name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = newFolderName.trim()
+                        if (name.isEmpty() || name == "." || name == "..") return@Button
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                val parent = if (currentDir.isBlank()) root else java.io.File(root, currentDir)
+                                val dir = java.io.File(parent, name)
+                                if (dir.exists()) {
+                                    Result.failure(IllegalStateException("Already exists: $name"))
+                                } else {
+                                    if (dir.mkdirs()) Result.success(Unit)
+                                    else Result.failure(IllegalStateException("Could not create folder"))
+                                }
+                            }
+                            result.fold(
+                                {
+                                    showNewFolder = false
+                                    listDir(currentDir)
+                                    onMessage("Created folder $name")
+                                },
+                                { onMessage("New folder failed: ${it.message}") }
+                            )
+                        }
+                    },
+                    enabled = newFolderName.trim().isNotEmpty()
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewFolder = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showNewFile) {
+        AlertDialog(
+            onDismissRequest = { showNewFile = false },
+            title = { Text("New file") },
+            text = {
+                OutlinedTextField(
+                    value = newFileName,
+                    onValueChange = { newFileName = it.filter { c -> c != '/' && c != '\\' } },
+                    label = { Text("File name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = newFileName.trim()
+                        if (name.isEmpty()) return@Button
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                val parent = if (currentDir.isBlank()) root else java.io.File(root, currentDir)
+                                val file = java.io.File(parent, name)
+                                if (file.exists()) {
+                                    Result.failure(IllegalStateException("Already exists: $name"))
+                                } else {
+                                    file.parentFile?.mkdirs()
+                                    file.writeText("")
+                                    val rel = if (currentDir.isBlank()) name else "$currentDir/$name"
+                                    Result.success(rel.replace('\\', '/'))
+                                }
+                            }
+                            result.fold(
+                                { rel ->
+                                    showNewFile = false
+                                    listDir(currentDir)
+                                    openFile(rel, edit = true)
+                                    onMessage("Created $name")
+                                },
+                                { onMessage("New file failed: ${it.message}") }
+                            )
+                        }
+                    },
+                    enabled = newFileName.trim().isNotEmpty()
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewFile = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     // Overwrite confirmation (supports multi-select conflicts)
     if (pendingUploadConflicts.isNotEmpty()) {
         val conflicts = pendingUploadConflicts
@@ -2836,6 +2973,8 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                                 copyUpload(src, dest, overwrite = true)
                             }
                             pendingUploadConflicts = emptyList()
+                            listDir(currentDir)
+                            onMessage("Replaced ${conflicts.size} item(s)")
                         }
                     ) {
                         Text(
