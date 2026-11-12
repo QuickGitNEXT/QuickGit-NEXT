@@ -142,7 +142,10 @@ jobs:
             find desktop/build -type f 2>/dev/null | head -80 || true
             exit 1
           fi
-          OUT="dist/quickgitnext-${{ needs.version.outputs.name }}-linux-amd64.deb"
+          VER="${{ needs.version.outputs.name }}"
+          # Debian version with revision so upgrades sort correctly (2.5.2-1 > 2.5.1-1)
+          DEB_VER="${VER}-1"
+          OUT="dist/quickgitnext-${VER}-linux-amd64.deb"
           WORK="$(mktemp -d)"
           dpkg-deb -R "$DEB" "$WORK/pkg"
           CTRL="$WORK/pkg/DEBIAN/control"
@@ -150,18 +153,43 @@ jobs:
           TMP_CTRL="$(mktemp)"
           {
             echo "Package: quickgitnext"
-            echo "Version: ${{ needs.version.outputs.name }}"
-            # Keep other fields from jpackage, skip blanks and keys we manage
-            grep -viE '^(Package|Version|Replaces|Conflicts|Provides):' "$CTRL" | sed '/^[[:space:]]*$/d'
+            echo "Version: ${DEB_VER}"
+            echo "Section: devel"
+            echo "Priority: optional"
+            echo "Architecture: amd64"
+            echo "Maintainer: QuickGitNEXT <quickgitnext@users.noreply.github.com>"
+            # Keep Depends / Description / Installed-Size from jpackage
+            grep -iE '^(Depends|Installed-Size|Description|Homepage):' "$CTRL" || true
+            # Multi-line description body (lines starting with space) if present
+            awk '/^Description:/{flag=1; next} flag && /^[A-Z][a-zA-Z-]+:/{flag=0} flag{print}' "$CTRL" || true
             echo "Replaces: quickgitnext-desktop, quickgit-next"
             echo "Conflicts: quickgitnext-desktop, quickgit-next"
+            echo "Breaks: quickgitnext-desktop, quickgit-next"
           } > "$TMP_CTRL"
-          mv "$TMP_CTRL" "$CTRL"
+          # Drop any blank lines to keep a single control stanza
+          sed '/^[[:space:]]*$/d' "$TMP_CTRL" > "$CTRL"
           echo "----- DEBIAN/control -----"
           cat "$CTRL"
           dpkg-deb -b "$WORK/pkg" "$OUT"
           rm -rf "$WORK"
           dpkg-deb -I "$OUT" || true
+          # Ubuntu App Center does not reliably upgrade local .debs — document apt path
+          cat > dist/INSTALL-ubuntu.txt << EOF
+          QuickGitNEXT ${VER} — Ubuntu install / upgrade
+          =============================================
+          Ubuntu App Center often only shows "Installed" for a local .deb when
+          the same package name is already present. Use apt instead:
+
+            sudo apt install ./quickgitnext-${VER}-linux-amd64.deb
+
+          That upgrades in place when Version is newer (this package is ${DEB_VER}).
+
+          Check what is installed:
+            dpkg -l quickgitnext
+            apt-cache policy quickgitnext
+          EOF
+          # strip leading spaces from heredoc content for readability
+          sed -i 's/^          //' dist/INSTALL-ubuntu.txt
           ls -la dist/
 
       - name: Upload Deb artifact
