@@ -2351,13 +2351,15 @@ private fun isProbablyTextFile(name: String): Boolean {
     return ext !in binary
 }
 
-/** Syntax highlight using the same palette/logic as the Android tablet app. */
-private fun highlightSourceCode(source: String, fileName: String, dark: Boolean = true): AnnotatedString {
+/** Syntax highlight for the Linux desktop editor (pass theme colors from a @Composable caller). */
+private fun highlightSourceCode(
+    source: String,
+    fileName: String,
+    dark: Boolean = true,
+    baseColor: Color = Color(0xFF2C2C2C)
+): AnnotatedString {
     val lang = SyntaxHighlight.languageFromPath(fileName)
-    val palette = SyntaxHighlight.defaultPalette(
-        base = if (dark) LinuxTheme.colors.codeOn else LinuxTheme.colors.codeOn,
-        dark = dark
-    )
+    val palette = SyntaxHighlight.defaultPalette(base = baseColor, dark = dark)
     return SyntaxHighlight.highlight(source, lang, palette)
 }
 
@@ -2820,7 +2822,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 val highlightTransform = remember(name, darkUi) {
                     VisualTransformation { text ->
                         TransformedText(
-                            highlightSourceCode(text.text, name, dark = darkUi),
+                            highlightSourceCode(text.text, name, dark = darkUi, baseColor = LinuxTheme.colors.codeOn),
                             OffsetMapping.Identity
                         )
                     }
@@ -2983,7 +2985,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                         )
                     }
                 } else {
-                    val highlighted = remember(content, name, darkUi) { highlightSourceCode(content, name, dark = darkUi) }
+                    val highlighted = remember(content, name, darkUi) { highlightSourceCode(content, name, dark = darkUi, baseColor = LinuxTheme.colors.codeOn) }
                     SelectionContainer(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
@@ -5733,7 +5735,7 @@ fun RemoteCodeReaderDialog(
                 } else if (fileContent != null && fileName != null) {
                     val darkUi = androidx.compose.foundation.isSystemInDarkTheme()
                     val highlighted = remember(fileContent, fileName, darkUi) {
-                        highlightSourceCode(fileContent!!, fileName!!, dark = darkUi)
+                        highlightSourceCode(fileContent!!, fileName!!, dark = darkUi, baseColor = LinuxTheme.colors.codeOn)
                     }
                     SelectionContainer(
                         Modifier
