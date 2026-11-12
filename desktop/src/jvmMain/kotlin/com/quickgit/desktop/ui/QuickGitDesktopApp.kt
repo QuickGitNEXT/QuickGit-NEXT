@@ -2407,9 +2407,12 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
     }
 
     LaunchedEffect(repoPath, currentDir) {
+        // Only clear the editor when the directory actually changes
         selectedFile = null
+        openInEdit = false
         content = ""
         original = ""
+        loading = false
         listDir(currentDir)
     }
 
@@ -2422,28 +2425,45 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
     }
 
     fun openFile(rel: String, edit: Boolean = true) {
-        selectedFile = rel
-        openInEdit = edit && isProbablyTextFile(rel.substringAfterLast('/'))
+        val normalized = rel.replace('\\', '/')
+        selectedFile = normalized
+        openInEdit = edit && isProbablyTextFile(normalized.substringAfterLast('/'))
         scope.launch {
             loading = true
             val text = withContext(Dispatchers.IO) {
-                val f = java.io.File(root, rel)
-                if (!f.isFile) return@withContext ""
-                if (!isProbablyTextFile(f.name)) return@withContext "(binary file — ${f.length()} bytes)"
-                try {
-                    // Limit huge files so the UI stays responsive
-                    if (f.length() > 2_000_000L) {
-                        f.bufferedReader().use { it.readText().take(2_000_000) + "\n\n… (truncated)" }
-                    } else {
-                        f.readText()
+                val f = java.io.File(root, normalized)
+                when {
+                    !f.exists() -> "(file not found: $normalized)"
+                    !f.isFile -> "(not a file: $normalized)"
+                    !isProbablyTextFile(f.name) -> "(binary file — ${f.length()} bytes)"
+                    else -> try {
+                        if (f.length() > 2_000_000L) {
+                            f.bufferedReader().use { br ->
+                                buildString {
+                                    var n = 0
+                                    while (n < 2_000_000) {
+                                        val ch = br.read()
+                                        if (ch < 0) break
+                                        append(ch.toChar())
+                                        n++
+                                    }
+                                    if (br.read() >= 0) append("\n\n… (truncated)")
+                                }
+                            }
+                        } else {
+                            f.readText()
+                        }
+                    } catch (e: Exception) {
+                        "(unable to read as text: ${e.message})"
                     }
-                } catch (e: Exception) {
-                    "(unable to read as text: ${e.message})"
                 }
             }
-            content = text
-            original = text
-            loading = false
+            // Keep selection if user already moved on
+            if (selectedFile == normalized) {
+                content = text
+                original = text
+                loading = false
+            }
         }
     }
 
@@ -2748,10 +2768,16 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
             }
         }
 
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        // Vertical split — fillMaxWidth here would steal the editor's space in a Row
+        Box(
+            Modifier
+                .width(1.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.outlineVariant)
+        )
 
         // ---- Editor / code reader pane ----
-        Column(Modifier.weight(1f).padding(12.dp)) {
+        Column(Modifier.weight(1f).fillMaxHeight().padding(12.dp)) {
             if (selectedFile == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
