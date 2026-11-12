@@ -2813,16 +2813,18 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 var coalesceJob by remember { mutableStateOf<Job?>(null) }
                 var pendingUndoSnapshot by remember { mutableStateOf<String?>(null) }
                 val darkUi = androidx.compose.foundation.isSystemInDarkTheme()
+                val codeOn = LinuxTheme.colors.codeOn
+                val codeBg = LinuxTheme.colors.codeBackground
                 val codeStyle = TextStyle(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
                     lineHeight = 20.sp,
-                    color = if (darkUi) LinuxTheme.colors.codeOn else LinuxTheme.colors.codeOn
+                    color = codeOn
                 )
-                val highlightTransform = remember(name, darkUi) {
+                val highlightTransform = remember(name, darkUi, codeOn) {
                     VisualTransformation { text ->
                         TransformedText(
-                            highlightSourceCode(text.text, name, dark = darkUi, baseColor = LinuxTheme.colors.codeOn),
+                            highlightSourceCode(text.text, name, dark = darkUi, baseColor = codeOn),
                             OffsetMapping.Identity
                         )
                     }
@@ -2954,7 +2956,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
+                            .background(codeBg)
                             .horizontalScroll(rememberScrollState())
                             .verticalScroll(rememberScrollState())
                             .padding(12.dp)
@@ -2985,12 +2987,14 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                         )
                     }
                 } else {
-                    val highlighted = remember(content, name, darkUi) { highlightSourceCode(content, name, dark = darkUi, baseColor = LinuxTheme.colors.codeOn) }
+                    val highlighted = remember(content, name, darkUi, codeOn) {
+                        highlightSourceCode(content, name, dark = darkUi, baseColor = codeOn)
+                    }
                     SelectionContainer(Modifier.fillMaxSize()) {
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
+                                .background(codeBg)
                                 .horizontalScroll(rememberScrollState())
                                 .verticalScroll(rememberScrollState())
                                 .padding(12.dp)
@@ -5734,14 +5738,16 @@ fun RemoteCodeReaderDialog(
                     }
                 } else if (fileContent != null && fileName != null) {
                     val darkUi = androidx.compose.foundation.isSystemInDarkTheme()
-                    val highlighted = remember(fileContent, fileName, darkUi) {
-                        highlightSourceCode(fileContent!!, fileName!!, dark = darkUi, baseColor = LinuxTheme.colors.codeOn)
+                    val codeOn = LinuxTheme.colors.codeOn
+                    val codeBg = LinuxTheme.colors.codeBackground
+                    val highlighted = remember(fileContent, fileName, darkUi, codeOn) {
+                        highlightSourceCode(fileContent!!, fileName!!, dark = darkUi, baseColor = codeOn)
                     }
                     SelectionContainer(
                         Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .background(if (darkUi) LinuxTheme.colors.codeBackground else LinuxTheme.colors.codeBackground)
+                            .background(codeBg)
                     ) {
                         Box(
                             Modifier
