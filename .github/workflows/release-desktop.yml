@@ -146,17 +146,17 @@ jobs:
           WORK="$(mktemp -d)"
           dpkg-deb -R "$DEB" "$WORK/pkg"
           CTRL="$WORK/pkg/DEBIAN/control"
-          sed -i 's/^Package:.*/Package: quickgitnext/' "$CTRL"
-          sed -i "s/^Version:.*/Version: ${{ needs.version.outputs.name }}/" "$CTRL"
-          if ! grep -qi '^Replaces:' "$CTRL"; then
-            echo "Replaces: quickgitnext, quickgitnext-desktop, quickgit-next" >> "$CTRL"
-          fi
-          if ! grep -qi '^Conflicts:' "$CTRL"; then
-            echo "Conflicts: quickgitnext-desktop, quickgit-next" >> "$CTRL"
-          fi
-          if ! grep -qi '^Provides:' "$CTRL"; then
-            echo "Provides: quickgitnext" >> "$CTRL"
-          fi
+          # One stanza only: blank lines terminate the package paragraph in Debian control.
+          TMP_CTRL="$(mktemp)"
+          {
+            echo "Package: quickgitnext"
+            echo "Version: ${{ needs.version.outputs.name }}"
+            # Keep other fields from jpackage, skip blanks and keys we manage
+            grep -viE '^(Package|Version|Replaces|Conflicts|Provides):' "$CTRL" | sed '/^[[:space:]]*$/d'
+            echo "Replaces: quickgitnext-desktop, quickgit-next"
+            echo "Conflicts: quickgitnext-desktop, quickgit-next"
+          } > "$TMP_CTRL"
+          mv "$TMP_CTRL" "$CTRL"
           echo "----- DEBIAN/control -----"
           cat "$CTRL"
           dpkg-deb -b "$WORK/pkg" "$OUT"
@@ -312,9 +312,9 @@ jobs:
 
           if ! find desktop/build -type f -name '*.AppImage' 2>/dev/null | grep -q .; then
             echo "Compose did not emit .AppImage — building one with appimagetool"
-            APP_DIR=$(find desktop/build/compose/binaries -type d -path '*/app/QuickGitNEXT' 2>/dev/null | head -n 1 || true)
+            APP_DIR=$(find desktop/build/compose/binaries -type d \( -path '*/app/QuickGitNEXT' -o -path '*/app/quickgitnext' \) 2>/dev/null | head -n 1 || true)
             if [ -z "$APP_DIR" ]; then
-              APP_DIR=$(find desktop/build/compose/binaries -type d -name 'QuickGitNEXT' 2>/dev/null | head -n 1 || true)
+              APP_DIR=$(find desktop/build/compose/binaries -type d \( -name 'QuickGitNEXT' -o -name 'quickgitnext' \) 2>/dev/null | head -n 1 || true)
             fi
             if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
               echo "ERROR: could not locate packaged app dir under desktop/build/compose/binaries" >&2
@@ -326,12 +326,12 @@ jobs:
             rm -rf "$STAGE"
             mkdir -p "$STAGE"
             cp -a "$APP_DIR" "$STAGE/QuickGitNEXT.AppDir"
-            BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f -path '*/bin/QuickGitNEXT' | head -n 1 || true)
+            BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f \( -path '*/bin/QuickGitNEXT' -o -path '*/bin/quickgitnext' \) | head -n 1 || true)
             if [ -z "$BIN" ]; then
-              BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f -executable -name 'QuickGitNEXT' | head -n 1 || true)
+              BIN=$(find "$STAGE/QuickGitNEXT.AppDir" -type f -executable \( -name 'QuickGitNEXT' -o -name 'quickgitnext' \) | head -n 1 || true)
             fi
             if [ -z "$BIN" ]; then
-              echo "ERROR: QuickGitNEXT launcher not found in $APP_DIR" >&2
+              echo "ERROR: launcher not found in $APP_DIR" >&2
               find "$STAGE/QuickGitNEXT.AppDir" -maxdepth 4 -type f 2>/dev/null | head -40
               exit 1
             fi
