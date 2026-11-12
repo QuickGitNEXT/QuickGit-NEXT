@@ -67,6 +67,16 @@ fun main() = application {
                     shortcut = KeyShortcut(Key.F, ctrl = true)
                 )
             }
+            Menu("Identity", mnemonic = 'I') {
+                Item(
+                    "Profiles",
+                    onClick = { menuScreen = DesktopScreen.Profile }
+                )
+                Item(
+                    "Credentials…",
+                    onClick = { menuScreen = DesktopScreen.Credentials }
+                )
+            }
             Menu("Help", mnemonic = 'H') {
                 Item(
                     "GitHub repository",

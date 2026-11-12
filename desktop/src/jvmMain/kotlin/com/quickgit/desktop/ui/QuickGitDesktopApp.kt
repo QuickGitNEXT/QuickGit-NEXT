@@ -113,7 +113,8 @@ fun QuickGitDesktopApp(
                 modifier = Modifier.fillMaxHeight().width(88.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
-                // Clone / Browse / Search live under the window Repositories menu
+                // Clone / Browse / Search → Repositories menu
+                // Profiles / Credentials → Identity menu
                 NavRailItem(
                     Icons.Default.Folder,
                     "Repos",
@@ -121,15 +122,9 @@ fun QuickGitDesktopApp(
                 ) {
                     navigate(DesktopScreen.RepoList)
                 }
-                NavRailItem(Icons.Default.Person, "Profile", currentScreen == DesktopScreen.Profile) {
-                    navigate(DesktopScreen.Profile)
-                }
                 Spacer(Modifier.weight(1f))
                 NavRailItem(Icons.Default.Article, "Logs", currentScreen == DesktopScreen.Logs) {
                     navigate(DesktopScreen.Logs)
-                }
-                NavRailItem(Icons.Default.Key, "Credentials", currentScreen == DesktopScreen.Credentials) {
-                    navigate(DesktopScreen.Credentials)
                 }
                 NavRailItem(Icons.Default.Settings, "Settings", currentScreen == DesktopScreen.Settings) {
                     navigate(DesktopScreen.Settings)
