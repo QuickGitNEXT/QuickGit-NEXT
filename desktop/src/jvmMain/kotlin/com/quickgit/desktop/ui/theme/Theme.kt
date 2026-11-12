@@ -15,66 +15,81 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val GitBlue = Color(0xFF0969DA)
-val GitGreen = Color(0xFF2DA44E)
-val GitRed = Color(0xFFCF222E)
-val GitAmber = Color(0xFFBF8700)
+/**
+ * Ubuntu / Yaru-inspired palette for the Linux .deb desktop client.
+ * Semantic git status colors stay available for diffs and CI badges.
+ */
+val UbuntuOrange = Color(0xFFE95420)
+val UbuntuAubergine = Color(0xFF77216F)
+val UbuntuWarmGrey = Color(0xFFAEA79F)
+
+// Kept for git status / CI (not the chrome primary)
+val GitBlue = Color(0xFF0E8420) // reuse slot for positive actions where blue was used
+val GitGreen = Color(0xFF0E8420) // Yaru-ish success green
+val GitRed = Color(0xFFC7162B)
+val GitAmber = Color(0xFFE95420)
 
 private val LightColors = lightColorScheme(
-    primary = GitBlue,
+    primary = UbuntuOrange,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD6E3FF),
-    onPrimaryContainer = Color(0xFF001B3D),
-    secondary = GitGreen,
+    primaryContainer = Color(0xFFFFDBD0),
+    onPrimaryContainer = Color(0xFF3B0A00),
+    secondary = UbuntuAubergine,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFB8F1C5),
-    onSecondaryContainer = Color(0xFF00210F),
-    tertiary = Color(0xFF7B5800),
+    secondaryContainer = Color(0xFFF5D9F0),
+    onSecondaryContainer = Color(0xFF2D0A2A),
+    tertiary = Color(0xFF0E8420),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFDF9A),
-    onTertiaryContainer = Color(0xFF261A00),
+    tertiaryContainer = Color(0xFFB6F2C0),
+    onTertiaryContainer = Color(0xFF00210A),
     error = GitRed,
     onError = Color.White,
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF410002),
-    background = Color(0xFFF6F7F9),
-    onBackground = Color(0xFF1B1F24),
+    background = Color(0xFFFAFAFA),
+    onBackground = Color(0xFF2C2C2C),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF1B1F24),
-    surfaceVariant = Color(0xFFE8EAED),
-    onSurfaceVariant = Color(0xFF44474E),
-    surfaceContainerLow = Color(0xFFEEF0F3),
-    outline = Color(0xFF74777F)
+    onSurface = Color(0xFF2C2C2C),
+    surfaceVariant = Color(0xFFF2F2F2),
+    onSurfaceVariant = Color(0xFF5C5C5C),
+    surfaceContainerLow = Color(0xFFF5F5F5),
+    surfaceContainerHighest = Color(0xFFEBEBEB),
+    outline = UbuntuWarmGrey,
+    outlineVariant = Color(0xFFD9D9D9)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF6FA8FF),
-    onPrimary = Color(0xFF003063),
-    primaryContainer = Color(0xFF00468C),
-    onPrimaryContainer = Color(0xFFD6E3FF),
-    secondary = Color(0xFF56D364),
-    onSecondary = Color(0xFF003919),
-    secondaryContainer = Color(0xFF005227),
-    onSecondaryContainer = Color(0xFFB8F1C5),
-    tertiary = Color(0xFFF5BE48),
-    onTertiary = Color(0xFF402D00),
-    tertiaryContainer = Color(0xFF5C4300),
-    onTertiaryContainer = Color(0xFFFFDF9A),
-    error = Color(0xFFFF7B72),
+    primary = Color(0xFFFF7B5A),
+    onPrimary = Color(0xFF3B0A00),
+    primaryContainer = Color(0xFFB33A14),
+    onPrimaryContainer = Color(0xFFFFDBD0),
+    secondary = Color(0xFFE0A8D8),
+    onSecondary = Color(0xFF3B0A36),
+    secondaryContainer = Color(0xFF5A184F),
+    onSecondaryContainer = Color(0xFFF5D9F0),
+    tertiary = Color(0xFF5BDD75),
+    onTertiary = Color(0xFF003912),
+    tertiaryContainer = Color(0xFF0B6B1C),
+    onTertiaryContainer = Color(0xFFB6F2C0),
+    error = Color(0xFFFFB4AB),
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF1C1E22),
-    onBackground = Color(0xFFE6E8EC),
-    surface = Color(0xFF23262B),
-    onSurface = Color(0xFFE6E8EC),
-    surfaceVariant = Color(0xFF3A3F46),
-    onSurfaceVariant = Color(0xFFC5C8D0),
-    surfaceContainerLow = Color(0xFF181A1E),
-    outline = Color(0xFF8D9199)
+    // Yaru dark chrome
+    background = Color(0xFF1E1E1E),
+    onBackground = Color(0xFFF2F2F2),
+    surface = Color(0xFF2C2C2C),
+    onSurface = Color(0xFFF2F2F2),
+    surfaceVariant = Color(0xFF3D3D3D),
+    onSurfaceVariant = Color(0xFFC8C8C8),
+    surfaceContainerLow = Color(0xFF252525),
+    surfaceContainerHighest = Color(0xFF3D3D3D),
+    outline = Color(0xFF8C8C8C),
+    outlineVariant = Color(0xFF4A4A4A)
 )
 
-private val DesktopShapes = Shapes(
+/** Modest radii in the spirit of Yaru / libadwaita desktop widgets. */
+private val UbuntuShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),
     small = RoundedCornerShape(6.dp),
     medium = RoundedCornerShape(8.dp),
@@ -82,7 +97,7 @@ private val DesktopShapes = Shapes(
     extraLarge = RoundedCornerShape(12.dp)
 )
 
-private val DesktopTypography = Typography(
+private val UbuntuTypography = Typography(
     displayLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Normal, fontSize = 40.sp, lineHeight = 48.sp),
     headlineSmall = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 28.sp),
     titleLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 26.sp),
@@ -102,8 +117,8 @@ fun QuickGitTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = DesktopTypography,
-        shapes = DesktopShapes,
+        typography = UbuntuTypography,
+        shapes = UbuntuShapes,
         content = content
     )
 }
