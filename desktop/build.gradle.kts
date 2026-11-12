@@ -55,8 +55,6 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
-            // Stable lowercase Debian/RPM package id so upgrades replace the same package.
-            // Ubuntu App Center opens "Uninstall" when Package: names differ between versions.
             packageName = "quickgitnext"
             packageVersion = appVer
             description = "A GitHub Desktop-style git client for Linux, Windows and macOS"
@@ -89,8 +87,6 @@ compose.desktop {
                 debMaintainer = "quickgitnext@users.noreply.github.com"
                 menuGroup = "Development"
                 appCategory = "Development"
-                // Keep the Debian package name identical across releases for apt/dpkg upgrades.
-                // (Compose maps this from packageName; document the stable id here explicitly.)
             }
 
             windows {

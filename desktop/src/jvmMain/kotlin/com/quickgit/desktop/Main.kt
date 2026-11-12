@@ -3,9 +3,11 @@ package com.quickgit.desktop
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyShortcut
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -18,27 +20,51 @@ import com.quickgit.desktop.data.DesktopUpdateCheckResult
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.awt.Desktop
 import java.awt.Dimension
+import java.net.URI
 
 fun main() = application {
-    // Allow CI-stamped version via -Dquickgitnext.version=1.0.N
     System.getProperty("quickgitnext.version")?.let {
         DesktopAppUpdateConfig.currentVersionName = it
     }
 
-    val windowState = rememberWindowState(width = 1200.dp, height = 800.dp)
+    val windowState = rememberWindowState(width = 1280.dp, height = 840.dp)
 
     Window(
         onCloseRequest = ::exitApplication,
         title = "QuickGitNEXT",
         state = windowState
     ) {
-        window.minimumSize = Dimension(800, 600)
+        window.minimumSize = Dimension(900, 640)
+
+        MenuBar {
+            Menu("File", mnemonic = 'F') {
+                Item("Quit", onClick = ::exitApplication, shortcut = KeyShortcut(Key.Q, ctrl = true))
+            }
+            Menu("Help", mnemonic = 'H') {
+                Item(
+                    "GitHub repository",
+                    onClick = {
+                        runCatching {
+                            Desktop.getDesktop().browse(URI("https://github.com/QuickGitNEXT/QuickGit-NEXT"))
+                        }
+                    }
+                )
+                Item(
+                    "Report an issue",
+                    onClick = {
+                        runCatching {
+                            Desktop.getDesktop().browse(URI("https://github.com/QuickGitNEXT/QuickGit-NEXT/issues"))
+                        }
+                    }
+                )
+            }
+        }
 
         LaunchedEffect(Unit) {
-            AppLog.i("Main", "QuickGitNEXT desktop started (v${DesktopAppUpdateConfig.currentVersionName})")
+            AppLog.i("Main", "QuickGitNEXT desktop started (v" + DesktopAppUpdateConfig.currentVersionName + ")")
         }
         val credentialStore = remember { DesktopCredentialStore() }
         val repoManager = remember { DesktopRepoManager(credentialStore) }
@@ -47,9 +73,7 @@ fun main() = application {
         QuickGitTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 var updatePrompt by remember { mutableStateOf<DesktopUpdateCheckResult.Available?>(null) }
-                val scope = rememberCoroutineScope()
 
-                // Auto-check once on launch (unless snoozed)
                 LaunchedEffect(Unit) {
                     if (updateManager.isAutoPromptSuppressed()) return@LaunchedEffect
                     val result = withContext(Dispatchers.IO) { updateManager.checkForUpdate() }
@@ -86,16 +110,15 @@ private fun UpdateAvailableDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New release available") },
+        title = { Text("Update available") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "QuickGitNEXT ${available.latest.versionName} is on GitHub Releases " +
-                        "(you have ${available.current.versionName})."
+                    "QuickGitNEXT " + available.latest.versionName + " is on GitHub Releases " +
+                        "(you have " + available.current.versionName + ")."
                 )
                 Text(
-                    "Open the Releases page to download the package for your platform. " +
-                        "In-app install is not used.",
+                    "Open the Releases page to download the package for your platform.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

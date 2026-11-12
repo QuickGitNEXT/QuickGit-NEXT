@@ -99,7 +99,10 @@ fun QuickGitDesktopApp(
     ) { padding ->
         Row(Modifier.padding(padding).fillMaxSize()) {
             // Navigation rail
-            NavigationRail(modifier = Modifier.fillMaxHeight()) {
+            NavigationRail(
+                modifier = Modifier.fillMaxHeight().width(88.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
                 NavRailItem(Icons.Default.Folder, "Repos", currentScreen == DesktopScreen.RepoList) {
                     currentScreen = DesktopScreen.RepoList
                 }
@@ -119,7 +122,7 @@ fun QuickGitDesktopApp(
                 NavRailItem(Icons.Default.Article, "Logs", currentScreen == DesktopScreen.Logs) {
                     currentScreen = DesktopScreen.Logs
                 }
-                NavRailItem(Icons.Default.Key, "Creds", currentScreen == DesktopScreen.Credentials) {
+                NavRailItem(Icons.Default.Key, "Credentials", currentScreen == DesktopScreen.Credentials) {
                     currentScreen = DesktopScreen.Credentials
                 }
                 NavRailItem(Icons.Default.Settings, "Settings", currentScreen == DesktopScreen.Settings) {
@@ -682,8 +685,11 @@ fun RepoDetailScreen(
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back") }
-            Text(repoPath.substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Back to repositories") }
+            Column(Modifier.weight(1f)) {
+                Text(repoPath.substringAfterLast('/'), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(repoPath, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Box {
                 Button(onClick = { pullMenuExpanded = true }, enabled = !busy) { Text("Pull ▾") }
                 DropdownMenu(expanded = pullMenuExpanded, onDismissRequest = { pullMenuExpanded = false }) {
