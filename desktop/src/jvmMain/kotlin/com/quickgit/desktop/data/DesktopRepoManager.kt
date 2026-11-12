@@ -386,22 +386,189 @@ class DesktopRepoManager(
 
     // ---------- Commit ----------
 
-    fun commit(repoPath: String, message: String): Result<String> {
+    /**
+     * Create a commit (Android parity: amend, sign-off, co-authors, optional GPG).
+     */
+    fun commit(
+        repoPath: String,
+        message: String,
+        amend: Boolean = false,
+        signOff: Boolean = false,
+        coAuthors: List<String> = emptyList()
+    ): Result<String> {
         return try {
             open(File(repoPath)).use { git ->
-                val author = PersonIdent(getCommitAuthorName(), getCommitAuthorEmail())
-                val commit = git.commit()
-                    .setMessage(message)
+                if (amend) {
+                    val head = git.repository.resolve("HEAD")
+                        ?: return Result.failure(IllegalStateException("Nothing to amend — no commits yet"))
+                }
+                val name = getCommitAuthorName()
+                val email = getCommitAuthorEmail()
+                val author = PersonIdent(name, email)
+                var fullMessage = if (signOff) appendSignOff(message, name, email) else message
+                fullMessage = appendCoAuthors(fullMessage, coAuthors)
+
+                val shouldSign = isGpgSigningEnabled() &&
+                    !credentialStore.getGpgSecretKey().isNullOrBlank()
+
+                val cmd = git.commit()
+                    .setMessage(fullMessage)
                     .setAuthor(author)
                     .setCommitter(author)
-                    .call()
-                AppLog.i(TAG, "commit ${commit.name.take(7)} in $repoPath: ${message.take(80)}")
+                    .setAmend(amend)
+                if (shouldSign) {
+                    // Prefer JGit BC signer when a secret key is stored; otherwise leave unsigned.
+                    cmd.setSign(true)
+                } else {
+                    cmd.setSign(false)
+                }
+                val commit = cmd.call()
+                AppLog.i(
+                    TAG,
+                    "commit ${commit.name.take(7)} in $repoPath: ${message.take(80)}" +
+                        (if (amend) " (amended)" else "") +
+                        (if (signOff) " (signed-off)" else "") +
+                        (if (shouldSign) " (gpg)" else "")
+                )
                 Result.success(commit.name)
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "commit failed in $repoPath", e)
             Result.failure(e)
         }
+    }
+
+    private fun appendSignOff(message: String, name: String, email: String): String {
+        val trailer = "Signed-off-by: $name <$email>"
+        val trimmed = message.trimEnd()
+        if (trimmed.lines().any { it.trim().equals(trailer, ignoreCase = true) }) return trimmed
+        return if (trimmed.isEmpty()) trailer else "$trimmed\n\n$trailer"
+    }
+
+    private fun appendCoAuthors(message: String, coAuthors: List<String>): String {
+        if (coAuthors.isEmpty()) return message
+        var result = message.trimEnd()
+        for (raw in coAuthors) {
+            val trailer = formatCoAuthorTrailer(raw) ?: continue
+            if (result.lines().any { it.trim().equals(trailer, ignoreCase = true) }) continue
+            result = if (result.isEmpty()) trailer else "$result\n\n$trailer"
+        }
+        return result
+    }
+
+    private fun formatCoAuthorTrailer(raw: String): String? {
+        val s = raw.trim()
+        if (s.isEmpty()) return null
+        val angle = Regex("""^(.+?)\s*<([^>]+)>\s*$""").matchEntire(s)
+        if (angle != null) {
+            val n = angle.groupValues[1].trim()
+            val e = angle.groupValues[2].trim()
+            if (n.isEmpty() || e.isEmpty()) return null
+            return "Co-authored-by: $n <$e>"
+        }
+        if ("@" in s && " " !in s) {
+            val n = s.substringBefore("@").ifBlank { s }
+            return "Co-authored-by: $n <$s>"
+        }
+        return null
+    }
+
+    /** Suggest a short commit message from current status (Android parity). */
+    fun suggestCommitMessage(repoPath: String): String {
+        return try {
+            val changes = getStatus(repoPath)
+            val staged = changes.filter { it.status == ChangeStatus.STAGED }
+            val pool = staged.ifEmpty { changes.filter { it.status != ChangeStatus.CONFLICT } }
+            if (pool.isEmpty()) return ""
+            fun label(c: FileChange): String = when (c.status) {
+                ChangeStatus.STAGED -> "Update"
+                ChangeStatus.UNTRACKED -> "Add"
+                ChangeStatus.UNSTAGED -> "Update"
+                ChangeStatus.CONFLICT -> "Resolve"
+            }
+            if (pool.size == 1) {
+                val c = pool.first()
+                return "${label(c)} ${c.path.substringAfterLast('/')}"
+            }
+            "Update ${pool.size} files"
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    // ---------- Stash (Android-parity git stash) ----------
+
+    data class StashEntry(val index: Int, val message: String, val ref: String)
+
+    fun listStashes(repoPath: String): List<StashEntry> = try {
+        open(File(repoPath)).use { git ->
+            git.stashList().call().mapIndexed { i, c ->
+                StashEntry(i, c.fullMessage?.trim()?.lineSequence()?.firstOrNull() ?: c.shortMessage, c.name)
+            }
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    fun stashSave(repoPath: String, message: String? = null, includeUntracked: Boolean = true): Result<String> = try {
+        open(File(repoPath)).use { git ->
+            val cmd = git.stashCreate()
+            if (!message.isNullOrBlank()) cmd.setIndexMessage(message).setWorkingDirectoryMessage(message)
+            // JGit 5.x: includeUntracked via setIncludeUntracked if available
+            try {
+                val m = cmd.javaClass.methods.firstOrNull { it.name == "setIncludeUntracked" && it.parameterCount == 1 }
+                m?.invoke(cmd, includeUntracked)
+            } catch (_: Exception) { }
+            val id = cmd.call()
+                ?: return Result.failure(IllegalStateException("Nothing to stash"))
+            AppLog.i(TAG, "stash save ${id.name.take(7)} in $repoPath")
+            Result.success(id.name)
+        }
+    } catch (e: Exception) {
+        AppLog.e(TAG, "stash save failed", e)
+        Result.failure(e)
+    }
+
+    fun stashApply(repoPath: String, index: Int = 0): Result<Unit> = try {
+        open(File(repoPath)).use { git ->
+            val list = git.stashList().call().toList()
+            if (index !in list.indices) return Result.failure(IllegalArgumentException("No stash@{$index}"))
+            git.stashApply().setStashRef(list[index].name).call()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun stashDrop(repoPath: String, index: Int = 0): Result<Unit> = try {
+        open(File(repoPath)).use { git ->
+            git.stashDrop().setStashRef(index).call()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun softReset(repoPath: String, commitHash: String): Result<Unit> = try {
+        open(File(repoPath)).use { git ->
+            val obj = git.repository.resolve(commitHash)
+                ?: return Result.failure(IllegalArgumentException("Unknown commit $commitHash"))
+            git.reset().setMode(org.eclipse.jgit.api.ResetCommand.ResetType.SOFT).setRef(obj.name).call()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun mixedReset(repoPath: String, commitHash: String): Result<Unit> = try {
+        open(File(repoPath)).use { git ->
+            val obj = git.repository.resolve(commitHash)
+                ?: return Result.failure(IllegalArgumentException("Unknown commit $commitHash"))
+            git.reset().setMode(org.eclipse.jgit.api.ResetCommand.ResetType.MIXED).setRef(obj.name).call()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     // ---------- Push / Pull ----------
