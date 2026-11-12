@@ -295,6 +295,81 @@ fun QuickGitDesktopApp(
     }
 }
 
+/** Ubuntu-style page header strip (title + optional actions). */
+@Composable
+private fun UbuntuPageHeader(
+    title: String,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (onBack != null) {
+                TextButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Repositories")
+                }
+                VerticalDivider(Modifier = Modifier.height(24.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions
+            )
+        }
+    }
+}
+
+/** Card-like content area used by repo detail tabs (Yaru / libadwaita density). */
+@Composable
+private fun UbuntuContentCard(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            content = content
+        )
+    }
+}
+
+
 @Composable
 fun RepoListScreen(
     repoManager: DesktopRepoManager,
@@ -322,7 +397,7 @@ fun RepoListScreen(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         UbuntuPageHeader(
             title = "Local repositories",
-            subtitle = "Root: ${repoManager.getReposRoot().absolutePath}"
+            subtitle = "Root: " + repoManager.getReposRoot().absolutePath
         ) {
             Button(onClick = { showCreate = true }, enabled = !busy) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
@@ -336,8 +411,16 @@ fun RepoListScreen(
             }
         }
         HorizontalDivider()
-        UbuntuContentCard(Modifier = Modifier.weight(1f)) {
-            Column(Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp
+        ) {
+            Box(Modifier.fillMaxSize().padding(12.dp)) {
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (repos.isEmpty()) {
@@ -421,6 +504,10 @@ fun RepoListScreen(
             }
         }
     }
+
+
+            }
+        }
 
     repoToDelete?.let { repo ->
         val external = remember(repo.path) {
@@ -665,82 +752,6 @@ fun RepoListScreen(
             dismissButton = {
                 TextButton(onClick = { showCreate = false }, enabled = !busy) { Text("Cancel") }
             }
-        )
-    }
-        } // UbuntuContentCard
-    } // outer page Column
-}
-
-/** Ubuntu-style page header strip (title + optional actions). */
-@Composable
-private fun UbuntuPageHeader(
-    title: String,
-    subtitle: String? = null,
-    onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
-) {
-    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (onBack != null) {
-                TextButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Repositories")
-                }
-                VerticalDivider(Modifier = Modifier.height(24.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!subtitle.isNullOrBlank()) {
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions
-            )
-        }
-    }
-}
-
-/** Card-like content area used by repo detail tabs (Yaru / libadwaita density). */
-@Composable
-private fun UbuntuContentCard(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
-    ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            content = content
         )
     }
 }
