@@ -317,7 +317,7 @@ private fun UbuntuPageHeader(
                     Spacer(Modifier.width(4.dp))
                     Text("Repositories")
                 }
-                Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)).width(1.dp))
+                Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant).width(1.dp).height(24.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(
@@ -1750,7 +1750,7 @@ fun BranchesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (S
             ) { Text("Fetch origin") }
         }
 
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
 
         // ---- Branches ----
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
