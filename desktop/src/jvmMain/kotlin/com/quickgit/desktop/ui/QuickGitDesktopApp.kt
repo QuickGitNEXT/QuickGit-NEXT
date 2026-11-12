@@ -222,7 +222,7 @@ fun QuickGitDesktopApp(
                                     Icon(Icons.Default.Close, contentDescription = "Close")
                                 }
                             }
-                            HorizontalDivider()
+                            Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                             Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
                                 when (screen) {
                                     DesktopScreen.Clone -> CloneScreen(
@@ -317,7 +317,7 @@ private fun UbuntuPageHeader(
                     Spacer(Modifier.width(4.dp))
                     Text("Repositories")
                 }
-                VerticalDivider(Modifier = Modifier.height(24.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)).width(1.dp))
             }
             Column(Modifier.weight(1f)) {
                 Text(
@@ -410,7 +410,7 @@ fun RepoListScreen(
                 Text("Refresh")
             }
         }
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Surface(
             modifier = Modifier
                 .weight(1f)
@@ -928,7 +928,7 @@ fun RepoDetailScreen(
                             doPush(withLfs = true)
                         }
                     )
-                    HorizontalDivider()
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                     DropdownMenuItem(
                         text = { Text("Force with lease…", color = gitRed) },
                         onClick = {
@@ -988,7 +988,7 @@ fun RepoDetailScreen(
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             }
         } // UbuntuPageHeader actions
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         if (showLfsTrack) {
             AlertDialog(
                 onDismissRequest = { showLfsTrack = false },
@@ -1098,22 +1098,12 @@ fun RepoDetailScreen(
                 selectedTabIndex = tabIndex,
                 edgePadding = 12.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                divider = {},
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[tabIndex]),
-                        height = 3.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 tabs.forEachIndexed { i, title ->
                     Tab(
                         selected = tabIndex == i,
                         onClick = { tabIndex = i },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         text = {
                             Text(
                                 title,
@@ -1124,8 +1114,8 @@ fun RepoDetailScreen(
                 }
             }
         }
-        HorizontalDivider()
-        UbuntuContentCard(Modifier = Modifier.weight(1f)) {
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        UbuntuContentCard(modifier = Modifier.weight(1f)) {
             when (tabIndex) {
                 0 -> ChangesTab(repoPath, repoManager, onMessage)
                 1 -> FilesEditorTab(repoPath, repoManager, onMessage)
@@ -1760,7 +1750,7 @@ fun BranchesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (S
             ) { Text("Fetch origin") }
         }
 
-        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)))
 
         // ---- Branches ----
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2257,7 +2247,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 }
             }
             Spacer(Modifier.height(4.dp))
-            HorizontalDivider()
+            Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
             if (listing) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -2378,7 +2368,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
             }
         }
 
-        VerticalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
 
         // ---- Editor / code reader pane ----
         Column(Modifier.weight(1f).padding(12.dp)) {
@@ -3093,7 +3083,7 @@ fun IssuesTab(
                     if (!issue.body.isNullOrBlank()) {
                         Text(issue.body!!, style = MaterialTheme.typography.bodyMedium)
                     }
-                    HorizontalDivider()
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                     Text("Comments", fontWeight = FontWeight.SemiBold)
                     if (comments.isEmpty()) {
                         Text("No comments yet", style = MaterialTheme.typography.bodySmall)
@@ -3492,7 +3482,7 @@ fun PullRequestsTab(
                             enabled = !busy
                         ) { Text("Merge PR") }
                     }
-                    HorizontalDivider()
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                     Text("Comments", fontWeight = FontWeight.SemiBold)
                     if (comments.isEmpty()) {
                         Text("No comments yet", style = MaterialTheme.typography.bodySmall)
@@ -6010,7 +6000,7 @@ fun SettingsScreen(
         OutlinedTextField(value = reposRoot, onValueChange = { reposRoot = it }, label = { Text("Path") }, modifier = Modifier.fillMaxWidth())
         Button(onClick = { repoManager.setReposRoot(reposRoot); onMessage("Root updated") }) { Text("Save root") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Updates", style = MaterialTheme.typography.titleMedium)
         Text("Current version: ${DesktopAppUpdateConfig.currentVersionName}")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -6036,7 +6026,7 @@ fun SettingsScreen(
         }
         updateStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Appearance", style = MaterialTheme.typography.titleMedium)
         Text("Dark mode is always on for the desktop app.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -6199,7 +6189,7 @@ fun CredentialsScreen(
             onMessage("Author saved")
         }) { Text("Save author") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Signing", style = MaterialTheme.typography.titleMedium)
         Text(
             "GPG commit signing uses the secret key and passphrase stored here. " +
@@ -6238,7 +6228,7 @@ fun CredentialsScreen(
             onMessage("GPG signing settings saved")
         }) { Text("Save GPG signing") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Connected accounts", style = MaterialTheme.typography.titleMedium)
         Text(
             "Keep multiple GitHub, GitLab, and Gerrit accounts. Switch the active one per provider — that account is used for API calls and HTTPS git.",
@@ -6295,7 +6285,7 @@ fun CredentialsScreen(
             }
         }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Add GitHub account", style = MaterialTheme.typography.titleMedium)
         Text(
             "Each successful add is kept in the list above. You do not need to remove an existing account first.",
@@ -6324,7 +6314,7 @@ fun CredentialsScreen(
             enabled = githubToken.isNotBlank() && githubUsername.isNotBlank()
         ) { Text("Add GitHub account") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Add GitLab account", style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(value = gitlabHost, onValueChange = { gitlabHost = it }, label = { Text("Host") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(value = gitlabUsername, onValueChange = { gitlabUsername = it }, label = { Text("Username") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -6352,7 +6342,7 @@ fun CredentialsScreen(
             enabled = gitlabToken.isNotBlank()
         ) { Text("Add GitLab account") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Add Gerrit account", style = MaterialTheme.typography.titleMedium)
         Text(
             "Use your Gerrit username and HTTP password (Settings → HTTP Credentials on the Gerrit web UI).",
@@ -6413,7 +6403,7 @@ fun CredentialsScreen(
                 gerritPass.isNotBlank() && !gerritBusy
         ) { Text(if (gerritBusy) "Connecting…" else "Add Gerrit account") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("SSH private key", style = MaterialTheme.typography.titleMedium)
         OutlinedTextField(value = sshKey, onValueChange = { sshKey = it }, label = { Text("Private key") }, modifier = Modifier.fillMaxWidth().height(140.dp), maxLines = 8)
         OutlinedTextField(value = sshPass, onValueChange = { sshPass = it }, label = { Text("Passphrase") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -6423,7 +6413,7 @@ fun CredentialsScreen(
             onMessage("SSH key saved")
         }) { Text("Save SSH key") }
 
-        HorizontalDivider()
+        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         TextButton(onClick = {
             credentialStore.clearAll()
             githubToken = ""; githubUsername = ""
