@@ -667,11 +667,9 @@ fun RepoListScreen(
             }
         )
     }
-            } // list Column inside card
         } // UbuntuContentCard
+    } // outer page Column
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 
 /** Ubuntu-style page header strip (title + optional actions). */
 @Composable
@@ -736,13 +734,14 @@ private fun UbuntuContentCard(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-        )
+        tonalElevation = 1.dp
     ) {
-        Box(Modifier.fillMaxSize().padding(12.dp), content = content)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            content = content
+        )
     }
 }
 
