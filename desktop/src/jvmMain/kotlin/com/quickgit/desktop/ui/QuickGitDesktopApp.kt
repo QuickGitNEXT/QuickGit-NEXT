@@ -1587,18 +1587,17 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
 
     Column(Modifier.fillMaxSize()) {
         Text(
-            "Pick any local or remote-tracking branch to browse commits, then cherry-pick one or more onto your current branch. " +
-                "Add forks under Branches → Add remote, Fetch, then select origin/… or fork/… here.",
+            "Branch log · cherry-pick, revert, or reset onto the current branch",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
         // Branch / remote-tracking ref picker
         Row(
             Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1646,17 +1645,25 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 }
             }
         }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        } else if (commits.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "No commits on this ref.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
             LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(commits, key = { it.id }) { c ->
                     val multiSelected = c.id in cherrySelection
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Checkbox(
                                     checked = multiSelected,
@@ -1704,7 +1711,7 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                                 OutlinedButton(
                                     onClick = { confirmReset = c },
                                     enabled = !busy
-                                ) { Text("Reset --hard") }
+                                ) { Text("Reset") }
                             }
                         }
                     }
@@ -1712,6 +1719,7 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 item { Spacer(Modifier.height(24.dp)) }
             }
         }
+        } // list Box weight
     }
 
     confirmCherry?.let { c ->
