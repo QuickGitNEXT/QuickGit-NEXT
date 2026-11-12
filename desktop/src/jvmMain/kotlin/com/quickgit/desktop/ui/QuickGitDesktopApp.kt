@@ -11,6 +11,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
@@ -80,18 +82,56 @@ fun QuickGitDesktopApp(
     externalScreen: DesktopScreen? = null,
     onScreenChanged: (DesktopScreen) -> Unit = {}
 ) {
-    var currentScreen by remember { mutableStateOf(DesktopScreen.RepoList) }
+    // Home is always the repository workspace (list or open repo detail).
+    // Every other destination opens as an in-app popup window with a Close button.
+    var homeIsDetail by remember { mutableStateOf(false) }
     var selectedRepoPath by remember { mutableStateOf<String?>(null) }
+    var popupScreen by remember { mutableStateOf<DesktopScreen?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(externalScreen) {
-        externalScreen?.let { currentScreen = it }
+    fun homeScreen(): DesktopScreen =
+        if (homeIsDetail && selectedRepoPath != null) DesktopScreen.RepoDetail else DesktopScreen.RepoList
+
+    fun closePopup() {
+        popupScreen = null
+        onScreenChanged(homeScreen())
+    }
+
+    fun openHomeList() {
+        popupScreen = null
+        homeIsDetail = false
+        onScreenChanged(DesktopScreen.RepoList)
+    }
+
+    fun openHomeDetail(path: String) {
+        selectedRepoPath = path
+        homeIsDetail = true
+        popupScreen = null
+        onScreenChanged(DesktopScreen.RepoDetail)
     }
 
     fun navigate(screen: DesktopScreen) {
-        currentScreen = screen
-        onScreenChanged(screen)
+        when (screen) {
+            DesktopScreen.RepoList -> openHomeList()
+            DesktopScreen.RepoDetail -> {
+                if (selectedRepoPath != null) {
+                    homeIsDetail = true
+                    popupScreen = null
+                    onScreenChanged(DesktopScreen.RepoDetail)
+                } else {
+                    openHomeList()
+                }
+            }
+            else -> {
+                popupScreen = screen
+                onScreenChanged(screen)
+            }
+        }
+    }
+
+    LaunchedEffect(externalScreen) {
+        externalScreen?.let { navigate(it) }
     }
 
     fun showMessage(msg: String) {
@@ -104,130 +144,152 @@ fun QuickGitDesktopApp(
         return GitHubApi(token)
     }
 
+    fun popupTitle(screen: DesktopScreen): String = when (screen) {
+        DesktopScreen.Clone -> "Clone repository"
+        DesktopScreen.BrowseAccount -> "Browse remote"
+        DesktopScreen.Profile -> "Profiles"
+        DesktopScreen.UserSearch -> "Search"
+        DesktopScreen.Logs -> "Logs"
+        DesktopScreen.Settings -> "Settings"
+        DesktopScreen.Credentials -> "Credentials"
+        else -> "QuickGitNEXT"
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Row(Modifier.padding(padding).fillMaxSize()) {
-            // Navigation rail
-            NavigationRail(
-                modifier = Modifier.fillMaxHeight().width(88.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-            ) {
-                // Clone / Browse / Search → Repositories menu
-                // Profiles / Credentials → Identity menu
-                NavRailItem(
-                    Icons.Default.Folder,
-                    "Repos",
-                    currentScreen == DesktopScreen.RepoList || currentScreen == DesktopScreen.RepoDetail
-                ) {
-                    navigate(DesktopScreen.RepoList)
-                }
-                Spacer(Modifier.weight(1f))
-                NavRailItem(Icons.Default.Article, "Logs", currentScreen == DesktopScreen.Logs) {
-                    navigate(DesktopScreen.Logs)
-                }
-                NavRailItem(Icons.Default.Settings, "Settings", currentScreen == DesktopScreen.Settings) {
-                    navigate(DesktopScreen.Settings)
-                }
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            // ── Home page: repository list or open repository ───────────────
+            if (homeIsDetail && selectedRepoPath != null) {
+                RepoDetailScreen(
+                    repoPath = selectedRepoPath!!,
+                    repoManager = repoManager,
+                    credentialStore = credentialStore,
+                    githubApi = githubApi(),
+                    onBack = { openHomeList() },
+                    onMessage = ::showMessage
+                )
+            } else {
+                RepoListScreen(
+                    repoManager = repoManager,
+                    credentialStore = credentialStore,
+                    githubApi = githubApi(),
+                    onSelect = { openHomeDetail(it) },
+                    onMessage = ::showMessage
+                )
             }
-            VerticalDivider()
-            Box(Modifier.weight(1f).fillMaxHeight()) {
-                when (currentScreen) {
-                    DesktopScreen.RepoList -> RepoListScreen(
-                        repoManager = repoManager,
-                        credentialStore = credentialStore,
-                        githubApi = githubApi(),
-                        onSelect = {
-                            selectedRepoPath = it
-                            navigate(DesktopScreen.RepoDetail)
-                        },
-                        onMessage = ::showMessage
+
+            // ── In-app popup windows for menu destinations ──────────────────
+            popupScreen?.let { screen ->
+                Dialog(
+                    onDismissRequest = { closePopup() },
+                    properties = DialogProperties(
+                        dismissOnBackPress = true,
+                        dismissOnClickOutside = false,
+                        usePlatformDefaultWidth = false
                     )
-                    DesktopScreen.RepoDetail -> selectedRepoPath?.let { path ->
-                        RepoDetailScreen(
-                            repoPath = path,
-                            repoManager = repoManager,
-                            credentialStore = credentialStore,
-                            githubApi = githubApi(),
-                            onBack = { navigate(DesktopScreen.RepoList) },
-                            onMessage = ::showMessage
-                        )
-                    } ?: run { navigate(DesktopScreen.RepoList) }
-                    DesktopScreen.Clone -> CloneScreen(
-                        repoManager = repoManager,
-                        credentialStore = credentialStore,
-                        githubApi = githubApi(),
-                        onCloned = {
-                            selectedRepoPath = it
-                            navigate(DesktopScreen.RepoDetail)
-                            showMessage("Cloned successfully")
-                        },
-                        onMessage = ::showMessage
-                    )
-                    DesktopScreen.BrowseAccount -> BrowseAccountScreen(
-                        credentialStore = credentialStore,
-                        githubApi = githubApi(),
-                        repoManager = repoManager,
-                        onCloned = {
-                            selectedRepoPath = it
-                            navigate(DesktopScreen.RepoDetail)
-                            showMessage("Cloned successfully")
-                        },
-                        onMessage = ::showMessage
-                    )
-                    DesktopScreen.Profile -> ProfileScreen(
-                        credentialStore = credentialStore,
-                        githubApi = githubApi(),
-                        repoManager = repoManager,
-                        onCloned = {
-                            selectedRepoPath = it
-                            navigate(DesktopScreen.RepoDetail)
-                            showMessage("Cloned successfully")
-                        },
-                        onMessage = ::showMessage
-                    )
-                    DesktopScreen.UserSearch -> UserSearchScreen(
-                        githubApi = githubApi(),
-                        repoManager = repoManager,
-                        onCloned = {
-                            selectedRepoPath = it
-                            navigate(DesktopScreen.RepoDetail)
-                            showMessage("Cloned successfully")
-                        },
-                        onMessage = ::showMessage
-                    )
-                    DesktopScreen.Logs -> LogsScreen(onMessage = ::showMessage)
-                    DesktopScreen.Settings -> SettingsScreen(
-                        repoManager = repoManager,
-                        credentialStore = credentialStore,
-                        updateManager = updateManager,
-                        onMessage = ::showMessage
-                    )
-                    DesktopScreen.Credentials -> CredentialsUnlockGate(
-                        credentialStore = credentialStore,
-                        onCancel = { navigate(DesktopScreen.RepoList) },
-                        onMessage = ::showMessage
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp,
+                        modifier = Modifier
+                            .widthIn(min = 480.dp, max = 960.dp)
+                            .heightIn(min = 360.dp, max = 720.dp)
+                            .fillMaxWidth(0.92f)
+                            .fillMaxHeight(0.88f)
                     ) {
-                        CredentialsScreen(
-                            repoManager = repoManager,
-                            credentialStore = credentialStore,
-                            onMessage = ::showMessage
-                        )
+                        Column(Modifier.fillMaxSize()) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    popupTitle(screen),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                IconButton(onClick = { closePopup() }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close")
+                                }
+                            }
+                            HorizontalDivider()
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(12.dp)) {
+                                when (screen) {
+                                    DesktopScreen.Clone -> CloneScreen(
+                                        repoManager = repoManager,
+                                        credentialStore = credentialStore,
+                                        githubApi = githubApi(),
+                                        onCloned = {
+                                            openHomeDetail(it)
+                                            showMessage("Cloned successfully")
+                                        },
+                                        onMessage = ::showMessage
+                                    )
+                                    DesktopScreen.BrowseAccount -> BrowseAccountScreen(
+                                        credentialStore = credentialStore,
+                                        githubApi = githubApi(),
+                                        repoManager = repoManager,
+                                        onCloned = {
+                                            openHomeDetail(it)
+                                            showMessage("Cloned successfully")
+                                        },
+                                        onMessage = ::showMessage
+                                    )
+                                    DesktopScreen.Profile -> ProfileScreen(
+                                        credentialStore = credentialStore,
+                                        githubApi = githubApi(),
+                                        repoManager = repoManager,
+                                        onCloned = {
+                                            openHomeDetail(it)
+                                            showMessage("Cloned successfully")
+                                        },
+                                        onMessage = ::showMessage
+                                    )
+                                    DesktopScreen.UserSearch -> UserSearchScreen(
+                                        githubApi = githubApi(),
+                                        repoManager = repoManager,
+                                        onCloned = {
+                                            openHomeDetail(it)
+                                            showMessage("Cloned successfully")
+                                        },
+                                        onMessage = ::showMessage
+                                    )
+                                    DesktopScreen.Logs -> LogsScreen(onMessage = ::showMessage)
+                                    DesktopScreen.Settings -> SettingsScreen(
+                                        repoManager = repoManager,
+                                        credentialStore = credentialStore,
+                                        updateManager = updateManager,
+                                        onMessage = ::showMessage
+                                    )
+                                    DesktopScreen.Credentials -> CredentialsUnlockGate(
+                                        credentialStore = credentialStore,
+                                        onCancel = { closePopup() },
+                                        onMessage = ::showMessage
+                                    ) {
+                                        CredentialsScreen(
+                                            repoManager = repoManager,
+                                            credentialStore = credentialStore,
+                                            onMessage = ::showMessage
+                                        )
+                                    }
+                                    else -> {
+                                        Text("Close this window to return home.")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
-
-@Composable
-private fun NavRailItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    NavigationRailItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) }
-    )
 }
 
 @Composable

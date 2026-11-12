@@ -77,6 +77,17 @@ fun main() = application {
                     onClick = { menuScreen = DesktopScreen.Credentials }
                 )
             }
+            Menu("Options", mnemonic = 'O') {
+                Item(
+                    "Settings…",
+                    onClick = { menuScreen = DesktopScreen.Settings },
+                    shortcut = KeyShortcut(Key.Comma, ctrl = true)
+                )
+                Item(
+                    "Logs",
+                    onClick = { menuScreen = DesktopScreen.Logs }
+                )
+            }
             Menu("Help", mnemonic = 'H') {
                 Item(
                     "GitHub repository",
