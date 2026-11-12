@@ -55,7 +55,9 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
-            packageName = "QuickGitNEXT"
+            // Stable lowercase Debian/RPM package id so upgrades replace the same package.
+            // Ubuntu App Center opens "Uninstall" when Package: names differ between versions.
+            packageName = "quickgitnext"
             packageVersion = appVer
             description = "A GitHub Desktop-style git client for Linux, Windows and macOS"
             copyright = "© 2025 QuickGitNEXT"
@@ -84,9 +86,11 @@ compose.desktop {
 
             linux {
                 iconFile.set(project.file("src/jvmMain/resources/icon.png"))
-                debMaintainer = "quickgitnext@example.com"
+                debMaintainer = "quickgitnext@users.noreply.github.com"
                 menuGroup = "Development"
                 appCategory = "Development"
+                // Keep the Debian package name identical across releases for apt/dpkg upgrades.
+                // (Compose maps this from packageName; document the stable id here explicitly.)
             }
 
             windows {
