@@ -6267,7 +6267,10 @@ fun UserSearchScreen(
     onMessage: (String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    /** 0 = users, 1 = repositories, 2 = organizations */
+    var searchMode by remember { mutableStateOf(0) }
     var results by remember { mutableStateOf<List<GitHubApi.GitHubUserSummary>>(emptyList()) }
+    var repoResults by remember { mutableStateOf<List<GitHubRemoteRepo>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var selectedLogin by remember { mutableStateOf<String?>(null) }
