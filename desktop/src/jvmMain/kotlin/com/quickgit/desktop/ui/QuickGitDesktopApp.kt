@@ -5879,7 +5879,29 @@ fun ProfileScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var browseRepo by remember { mutableStateOf<GitHubRemoteRepo?>(null) }
+    var peopleTitle by remember { mutableStateOf<String?>(null) }
+    var peopleList by remember { mutableStateOf<List<GitHubApi.GitHubUserSummary>>(emptyList()) }
+    var peopleLoading by remember { mutableStateOf(false) }
+    var peopleError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    fun openPeople(login: String, kind: String) {
+        peopleTitle = if (kind == "followers") "Followers of @$login" else "Following @$login"
+        peopleList = emptyList()
+        peopleError = null
+        peopleLoading = true
+        scope.launch {
+            val r = withContext(Dispatchers.IO) {
+                if (kind == "followers") githubApi.listFollowers(login, perPage = 50)
+                else githubApi.listFollowing(login, perPage = 50)
+            }
+            peopleLoading = false
+            r.fold(
+                onSuccess = { peopleList = it },
+                onFailure = { peopleError = it.message ?: "Failed to load $kind" }
+            )
+        }
+    }
     val pageSize = 100
 
     fun loadGitHub(reset: Boolean = true) {
@@ -6096,16 +6118,30 @@ fun ProfileScreen(
                 Text(u.name ?: u.login, style = MaterialTheme.typography.headlineSmall)
                 Text("@${u.login}", color = MaterialTheme.colorScheme.primary)
                 u.bio?.let { Text(it) }
-                Text(
-                    when (selectedTab) {
-                        ProfileProviderTab.GITHUB ->
-                            "Repos: ${u.publicRepos} public · Followers: ${u.followers} · Following: ${u.following}"
-                        ProfileProviderTab.GITLAB ->
-                            "Projects loaded: ${repos.size}" + if (u.webUrl.isNotBlank()) " · ${u.webUrl}" else ""
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (selectedTab == ProfileProviderTab.GITLAB) {
+                    Text(
+                        "Projects loaded: ${repos.size}" + if (u.webUrl.isNotBlank()) " · ${u.webUrl}" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "${u.publicRepos} public repos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = { openPeople(u.login, "followers") }) {
+                            Text("${u.followers} followers")
+                        }
+                        TextButton(onClick = { openPeople(u.login, "following") }) {
+                            Text("${u.following} following")
+                        }
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
                 Text(
                     when (selectedTab) {
@@ -6167,6 +6203,48 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (peopleTitle != null) {
+        AlertDialog(
+            onDismissRequest = { peopleTitle = null },
+            title = { Text(peopleTitle!!) },
+            text = {
+                when {
+                    peopleLoading -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                    peopleError != null -> Text(peopleError!!, color = MaterialTheme.colorScheme.error)
+                    peopleList.isEmpty() -> Text("No users found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> LazyColumn(Modifier.heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(peopleList, key = { it.login }) { person ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "@${person.login}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    person.type,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { peopleTitle = null }) { Text("Close") }
+            }
+        )
     }
 
     browseRepo?.let { repo ->
@@ -6306,8 +6384,42 @@ fun UserSearchScreen(
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
+
         if (selectedLogin == null) {
-            Text("Search GitHub users", style = MaterialTheme.typography.titleLarge)
+            Text("Search GitHub", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = searchMode == 0,
+                    onClick = {
+                        searchMode = 0
+                        results = emptyList()
+                        repoResults = emptyList()
+                        searchError = null
+                    },
+                    label = { Text("Users") }
+                )
+                FilterChip(
+                    selected = searchMode == 1,
+                    onClick = {
+                        searchMode = 1
+                        results = emptyList()
+                        repoResults = emptyList()
+                        searchError = null
+                    },
+                    label = { Text("Repositories") }
+                )
+                FilterChip(
+                    selected = searchMode == 2,
+                    onClick = {
+                        searchMode = 2
+                        results = emptyList()
+                        repoResults = emptyList()
+                        searchError = null
+                    },
+                    label = { Text("Organizations") }
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -6316,7 +6428,15 @@ fun UserSearchScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    label = { Text("Username or name") },
+                    label = {
+                        Text(
+                            when (searchMode) {
+                                1 -> "Repository name or keywords"
+                                2 -> "Organization name"
+                                else -> "Username or name"
+                            }
+                        )
+                    },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     enabled = !loading
@@ -6325,38 +6445,58 @@ fun UserSearchScreen(
                     onClick = {
                         val q = query.trim()
                         if (q.isBlank()) return@Button
-                        // Exact login: open profile directly
-                        if (!q.contains(' ') && !q.contains(',')) {
-                            // Still run search, but also allow Enter-style direct open via View
-                        }
                         scope.launch {
                             loading = true
                             searchError = null
                             results = emptyList()
-                            val r = withContext(Dispatchers.IO) { githubApi.searchUsers(q) }
-                            r.fold(
-                                onSuccess = {
-                                    results = it
-                                    if (it.isEmpty()) searchError = "No users found for \"$q\""
-                                },
-                                onFailure = {
-                                    searchError = it.message ?: "Search failed"
-                                    onMessage("Search failed: ${it.message}")
+                            repoResults = emptyList()
+                            when (searchMode) {
+                                1 -> {
+                                    val r = withContext(Dispatchers.IO) { githubApi.searchRepositories(q) }
+                                    r.fold(
+                                        onSuccess = {
+                                            repoResults = it
+                                            if (it.isEmpty()) searchError = "No repositories found for \"$q\""
+                                        },
+                                        onFailure = { searchError = it.message ?: "Search failed" }
+                                    )
                                 }
-                            )
+                                2 -> {
+                                    val r = withContext(Dispatchers.IO) { githubApi.searchOrganizations(q) }
+                                    r.fold(
+                                        onSuccess = {
+                                            results = it
+                                            if (it.isEmpty()) searchError = "No organizations found for \"$q\""
+                                        },
+                                        onFailure = { searchError = it.message ?: "Search failed" }
+                                    )
+                                }
+                                else -> {
+                                    val r = withContext(Dispatchers.IO) { githubApi.searchUsers(q) }
+                                    r.fold(
+                                        onSuccess = {
+                                            results = it
+                                            if (it.isEmpty()) searchError = "No users found for \"$q\""
+                                        },
+                                        onFailure = { searchError = it.message ?: "Search failed" }
+                                    )
+                                }
+                            }
                             loading = false
+
                         }
                     },
                     enabled = query.isNotBlank() && !loading
-                ) { Text(if (loading) "…" else "Search") }
-                // Open exact username without waiting for search results
-                OutlinedButton(
-                    onClick = {
-                        val q = query.trim().trimStart('@')
-                        if (q.isNotBlank()) openUser(q)
-                    },
-                    enabled = query.isNotBlank() && !loading
-                ) { Text("Open") }
+                ) { Text("Search") }
+                if (searchMode == 0) {
+                    OutlinedButton(
+                        onClick = {
+                            val q = query.trim().trimStart('@')
+                            if (q.isNotBlank()) openUser(q)
+                        },
+                        enabled = query.isNotBlank() && !loading
+                    ) { Text("Open") }
+                }
             }
             Spacer(Modifier.height(12.dp))
             if (loading) {
@@ -6368,44 +6508,67 @@ fun UserSearchScreen(
                     Text(it, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(8.dp))
                 }
-                if (results.isEmpty() && searchError == null) {
-                    Text(
-                        "Search for a user, or type an exact username and press Open.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                LazyColumn(
-                    Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(results, key = { it.login }) { u ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(u.login, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        u.type,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                // Explicit button — more reliable on desktop than Card click alone
-                                Button(onClick = { openUser(u.login) }) {
-                                    Text("View profile")
+                when (searchMode) {
+                    1 -> {
+                        if (repoResults.isEmpty() && searchError == null) {
+                            Text(
+                                "Search public repositories by name or keywords.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(repoResults, key = { it.id }) { repo ->
+                                RemoteRepoCard(
+                                    repo = repo,
+                                    busy = busy,
+                                    onClone = { doClone(repo) },
+                                    onFork = { doFork(repo) },
+                                    onBrowse = { browseRepo = repo }
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        if (results.isEmpty() && searchError == null) {
+                            Text(
+                                if (searchMode == 2) "Search organizations by name."
+                                else "Search for a user, or type an exact username and press Open.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(results, key = { it.login }) { u ->
+                                Card(Modifier.fillMaxWidth()) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            if (searchMode == 2) Icons.Default.Group else Icons.Default.Person,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text(u.login, fontWeight = FontWeight.SemiBold)
+                                            Text(
+                                                u.type,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Button(onClick = { openUser(u.login) }) {
+                                            Text(if (searchMode == 2) "View org" else "View profile")
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        } else {
+        }
+ else {
             // ---- User profile detail ----
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {

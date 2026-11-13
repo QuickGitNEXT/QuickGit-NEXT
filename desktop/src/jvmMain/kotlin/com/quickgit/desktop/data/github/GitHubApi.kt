@@ -113,6 +113,54 @@ class GitHubApi(private val token: String?) {
         (0 until arr.length()).map { i -> arr.getJSONObject(i).toRemoteRepo() }
     }
 
+    /** Search organizations (GitHub Search API, type:org). */
+    fun searchOrganizations(query: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        val q = query.trim()
+        if (q.isEmpty()) return@runCatching emptyList()
+        val full = if ("type:org" in q.lowercase()) q else "$q type:org"
+        val encoded = java.net.URLEncoder.encode(full, "UTF-8")
+        val arr = (request("GET", "/search/users?q=$encoded&per_page=$perPage&page=$page") as JSONObject)
+            .getJSONArray("items")
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            GitHubUserSummary(
+                login = o.getString("login"),
+                avatarUrl = o.optString("avatar_url").takeIf { it.isNotBlank() },
+                htmlUrl = o.optString("html_url", ""),
+                type = o.optString("type", "Organization")
+            )
+        }
+    }
+
+    /** Followers of [login]. */
+    fun listFollowers(login: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        listUserRelation(login, "followers", perPage, page)
+    }
+
+    /** Users that [login] follows. */
+    fun listFollowing(login: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        listUserRelation(login, "following", perPage, page)
+    }
+
+    private fun listUserRelation(
+        login: String,
+        relation: String,
+        perPage: Int,
+        page: Int
+    ): List<GitHubUserSummary> {
+        val path = "/users/${login.trim()}/$relation?per_page=$perPage&page=$page"
+        val arr = request("GET", path) as JSONArray
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            GitHubUserSummary(
+                login = o.getString("login"),
+                avatarUrl = o.optString("avatar_url").takeIf { it.isNotBlank() },
+                htmlUrl = o.optString("html_url", ""),
+                type = o.optString("type", "User")
+            )
+        }
+    }
+
     /** Public repos for a user (or the authenticated user when login matches). */
     fun listPublicRepos(login: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubRemoteRepo>> = runCatching {
         val path = "/users/${login.trim()}/repos?sort=updated&direction=desc&per_page=$perPage&page=$page&type=owner"
