@@ -1237,88 +1237,12 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             }
         }
 
-        // Four panels: Commit | Changed files | Stash options | Stash list
+        // Four panels: Changed files | Commit | Stashed commits | Stash (left → right)
         Row(
             Modifier.weight(1f).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // ── 1. Commit options ───────────────────────────────────────────
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                tonalElevation = 1.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1.1f).fillMaxHeight()
-            ) {
-                Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Commit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    OutlinedTextField(
-                        value = commitMessage,
-                        onValueChange = { commitMessage = it },
-                        label = { Text("Message") },
-                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-                        minLines = 4,
-                        maxLines = 8
-                    )
-                    OutlinedTextField(
-                        value = coAuthorsText,
-                        onValueChange = { coAuthorsText = it },
-                        label = { Text("Co-authors") },
-                        placeholder = { Text("Name <email>") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 1,
-                        maxLines = 2
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = amend, onCheckedChange = { amend = it })
-                        Text("Amend", style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.width(8.dp))
-                        Checkbox(checked = signOff, onCheckedChange = { signOff = it })
-                        Text("Sign-off", style = MaterialTheme.typography.bodySmall)
-                    }
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                val s = withContext(Dispatchers.IO) { repoManager.suggestCommitMessage(repoPath) }
-                                if (s.isNotBlank()) commitMessage = s
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.Start)
-                    ) { Text("Suggest message") }
-                    Button(
-                        onClick = {
-                            if (commitMessage.isNotBlank() || amend) scope.launch {
-                                val authors = coAuthorsText.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                                val r = withContext(Dispatchers.IO) {
-                                    repoManager.commit(
-                                        repoPath = repoPath,
-                                        message = commitMessage.ifBlank { "Amend" },
-                                        amend = amend,
-                                        signOff = signOff,
-                                        coAuthors = authors
-                                    )
-                                }
-                                r.fold(
-                                    {
-                                        commitMessage = ""
-                                        amend = false
-                                        coAuthorsText = ""
-                                        reload()
-                                        onMessage("Committed ${it.take(7)}")
-                                    },
-                                    { onMessage("Commit failed: ${it.message}") }
-                                )
-                            }
-                        },
-                        enabled = commitMessage.isNotBlank() || amend,
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text(if (amend) "Amend commit" else "Commit") }
-                }
-            }
-
-            // ── 2. Changed files ────────────────────────────────────────────
+            // ── 1. Changed files ────────────────────────────────────────────
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
@@ -1440,53 +1364,83 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 }
             }
 
-            // ── 3. Stash options ────────────────────────────────────────────
+            // ── 2. Commit options ───────────────────────────────────────────
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(0.9f).fillMaxHeight()
+                modifier = Modifier.weight(1.1f).fillMaxHeight()
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Stash", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Save local changes temporarily and re-apply later.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Text("Commit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = commitMessage,
+                        onValueChange = { commitMessage = it },
+                        label = { Text("Message") },
+                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                        minLines = 4,
+                        maxLines = 8
                     )
                     OutlinedTextField(
-                        value = stashMessage,
-                        onValueChange = { stashMessage = it },
-                        label = { Text("Message (optional)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        value = coAuthorsText,
+                        onValueChange = { coAuthorsText = it },
+                        label = { Text("Co-authors") },
+                        placeholder = { Text("Name <email>") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 1,
+                        maxLines = 2
                     )
-                    Button(
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = amend, onCheckedChange = { amend = it })
+                        Text("Amend", style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.width(8.dp))
+                        Checkbox(checked = signOff, onCheckedChange = { signOff = it })
+                        Text("Sign-off", style = MaterialTheme.typography.bodySmall)
+                    }
+                    TextButton(
                         onClick = {
                             scope.launch {
+                                val s = withContext(Dispatchers.IO) { repoManager.suggestCommitMessage(repoPath) }
+                                if (s.isNotBlank()) commitMessage = s
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.Start)
+                    ) { Text("Suggest message") }
+                    Button(
+                        onClick = {
+                            if (commitMessage.isNotBlank() || amend) scope.launch {
+                                val authors = coAuthorsText.lines().map { it.trim() }.filter { it.isNotEmpty() }
                                 val r = withContext(Dispatchers.IO) {
-                                    repoManager.stashSave(repoPath, stashMessage.ifBlank { null })
+                                    repoManager.commit(
+                                        repoPath = repoPath,
+                                        message = commitMessage.ifBlank { "Amend" },
+                                        amend = amend,
+                                        signOff = signOff,
+                                        coAuthors = authors
+                                    )
                                 }
                                 r.fold(
                                     {
-                                        stashMessage = ""
+                                        commitMessage = ""
+                                        amend = false
+                                        coAuthorsText = ""
                                         reload()
-                                        onMessage("Stashed ${it.take(7)}")
+                                        onMessage("Committed ${it.take(7)}")
                                     },
-                                    { onMessage("Stash failed: ${it.message}") }
+                                    { onMessage("Commit failed: ${it.message}") }
                                 )
                             }
                         },
+                        enabled = commitMessage.isNotBlank() || amend,
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Stash changes") }
-                    Spacer(Modifier.weight(1f))
+                    ) { Text(if (amend) "Amend commit" else "Commit") }
                 }
             }
 
-            // ── 4. Stash list ───────────────────────────────────────────────
+            // ── 3. Stashed commits list ───────────────────────────────────────────────
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
@@ -1568,6 +1522,54 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                     }
                 }
             }
+
+            // ── 4. Stash options ────────────────────────────────────────────
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                tonalElevation = 1.dp,
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.weight(0.9f).fillMaxHeight()
+            ) {
+                Column(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Stash", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Save local changes temporarily and re-apply later.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = stashMessage,
+                        onValueChange = { stashMessage = it },
+                        label = { Text("Message (optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val r = withContext(Dispatchers.IO) {
+                                    repoManager.stashSave(repoPath, stashMessage.ifBlank { null })
+                                }
+                                r.fold(
+                                    {
+                                        stashMessage = ""
+                                        reload()
+                                        onMessage("Stashed ${it.take(7)}")
+                                    },
+                                    { onMessage("Stash failed: ${it.message}") }
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Stash changes") }
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+
+
         }
     }
 
