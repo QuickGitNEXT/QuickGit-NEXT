@@ -2594,7 +2594,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
 
     Row(Modifier.fillMaxSize()) {
         // ---- Browser pane ----
-        Column(Modifier.width(300.dp).fillMaxHeight().background(LinuxTheme.colors.sidebar)) {
+        Column(Modifier.width(340.dp).fillMaxHeight().background(LinuxTheme.colors.sidebar)) {
             // Path bar + actions
             Row(
                 Modifier.fillMaxWidth().padding(8.dp),
@@ -2621,38 +2621,45 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                 }
             }
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                val compactPad = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 OutlinedButton(
                     onClick = { pickAndUpload() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    contentPadding = compactPad
                 ) {
-                    Icon(Icons.Default.Upload, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Upload")
+                    Icon(Icons.Default.Upload, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text("Upload", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
                         newFolderName = ""
                         showNewFolder = true
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    contentPadding = compactPad
                 ) {
-                    Icon(Icons.Default.CreateNewFolder, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Folder")
+                    Icon(Icons.Default.CreateNewFolder, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text("Folder", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
                 OutlinedButton(
                     onClick = {
                         newFileName = ""
                         showNewFile = true
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    contentPadding = compactPad
                 ) {
-                    Icon(Icons.Default.NoteAdd, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("File")
+                    Icon(Icons.Default.NoteAdd, null, Modifier.size(14.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text("File", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                 }
             }
             Spacer(Modifier.height(4.dp))
