@@ -791,117 +791,152 @@ fun detectSystemDarkTheme(): Boolean {
         "0", "false", "light", "no" -> return false
     }
     val os = System.getProperty("os.name").orEmpty().lowercase()
-    if (os.contains("linux")) {
-        // Cinnamon
-        readProcessOutput("gsettings", "get", "org.cinnamon.desktop.interface", "gtk-theme")
-            ?.lowercase()
-            ?.let { out ->
-                if ("dark" in out) return true
-                if ("mint-y" in out && "dark" !in out) return false
-            }
-        // MATE
-        readProcessOutput("gsettings", "get", "org.mate.interface", "gtk-theme")
-            ?.lowercase()
-            ?.let { out ->
-                if ("dark" in out || "black" in out) return true
-            }
-        readProcessOutput("gsettings", "get", "org.mate.Marco.general", "theme")
-            ?.lowercase()
-            ?.let { out ->
-                if ("dark" in out || "black" in out) return true
-            }
-        // GNOME 42+: color-scheme
-        readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
-            ?.lowercase()
-            ?.let { out ->
-                if ("prefer-dark" in out) return true
-                if ("prefer-light" in out) return false
-            }
-        // GTK theme name (GNOME / shared)
-        readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme")
-            ?.lowercase()
-            ?.let { out ->
-                if ("dark" in out) return true
-            }
-        // KDE Plasma — read real window background (Breeze / BreezeDark)
-        run {
-            fun rgbLum(r: Int, g: Int, b: Int) = 0.299 * r + 0.587 * g + 0.114 * b
-            fun parseRgb(raw: String): Triple<Int, Int, Int>? {
-                val parts = raw.trim().removePrefix("'").removeSuffix("'")
-                    .split(',', ' ').mapNotNull { it.trim().toIntOrNull() }
-                return if (parts.size >= 3) Triple(parts[0], parts[1], parts[2]) else null
-            }
-            var kdeDark: Boolean? = null
-            for (tool in listOf("kreadconfig6", "kreadconfig5")) {
-                parseRgb(
-                    readProcessOutput(
-                        tool, "--file", "kdeglobals", "--group", "Colors:Window", "--key", "BackgroundNormal"
-                    ).orEmpty()
-                )?.let { (r, g, b) -> kdeDark = rgbLum(r, g, b) < 128.0 }
-                if (kdeDark != null) break
-                val scheme = readProcessOutput(
-                    tool, "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"
-                ).orEmpty()
-                when {
-                    scheme.contains("dark", ignoreCase = true) -> { kdeDark = true; break }
-                    scheme.contains("light", ignoreCase = true) -> { kdeDark = false; break }
-                }
-            }
-            if (kdeDark == null) {
-                val home = System.getProperty("user.home")
-                if (home != null) {
-                    val globals = File(home, ".config/kdeglobals")
-                    if (globals.isFile) {
-                        val text = globals.readText()
-                        val winSection = Regex("""(?is)\[Colors:Window\](.*?)(\n\[|\z)""")
-                            .find(text)?.groupValues?.getOrNull(1).orEmpty()
-                        Regex("""(?im)^BackgroundNormal\s*=\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)""")
-                            .find(winSection)
-                            ?.groupValues
-                            ?.let { gv ->
-                                kdeDark = rgbLum(gv[1].toInt(), gv[2].toInt(), gv[3].toInt()) < 128.0
-                            }
-                        if (kdeDark == null) {
-                            val scheme = Regex("""(?im)^ColorScheme\s*=\s*(.+)$""")
-                                .find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-                            when {
-                                scheme.contains("dark", ignoreCase = true) -> kdeDark = true
-                                scheme.contains("light", ignoreCase = true) -> kdeDark = false
-                            }
-                        }
-                        if (kdeDark == null) {
-                            val look = Regex("""(?im)^LookAndFeelPackage\s*=\s*(.+)$""")
-                                .find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-                            if (look.contains("dark", ignoreCase = true)) kdeDark = true
-                        }
-                    }
-                }
-            }
-            if (kdeDark != null) return kdeDark!!
+    if (!os.contains("linux")) {
+        return swingPanelIsDark()
+    }
+
+    // 1) Freedesktop Settings portal (GNOME, KDE Plasma 5/6, etc.)
+    //    color-scheme: 0 = no preference, 1 = prefer dark, 2 = prefer light
+    readPortalColorScheme()?.let { return it == 1 }
+
+    // 2) KDE: real window background luminance (most reliable for Breeze / BreezeDark)
+    readKdeWindowBackgroundDark()?.let { return it }
+
+    // 3) Cinnamon
+    readProcessOutput("gsettings", "get", "org.cinnamon.desktop.interface", "gtk-theme")
+        ?.lowercase()
+        ?.let { out ->
+            if ("dark" in out) return true
+            if ("mint-y" in out && "dark" !in out) return false
         }
 
-        // Freedesktop color-scheme portal style env (some sessions)
-        System.getenv("GTK_THEME")?.lowercase()?.let {
-            if ("dark" in it) return true
+    // 4) MATE
+    readProcessOutput("gsettings", "get", "org.mate.interface", "gtk-theme")
+        ?.lowercase()
+        ?.let { out ->
+            if ("dark" in out || "black" in out) return true
         }
-        // Prefer dark if COLORFGBG suggests light-on-dark terminals (weak signal)
-        System.getenv("COLORFGBG")?.let { cfg ->
-            val parts = cfg.split(';')
-            val bg = parts.lastOrNull()?.toIntOrNull()
-            if (bg != null && bg <= 8) return true
+    readProcessOutput("gsettings", "get", "org.mate.Marco.general", "theme")
+        ?.lowercase()
+        ?.let { out ->
+            if ("dark" in out || "black" in out) return true
         }
+
+    // 5) GNOME
+    readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
+        ?.lowercase()
+        ?.let { out ->
+            if ("prefer-dark" in out) return true
+            if ("prefer-light" in out) return false
+        }
+    readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme")
+        ?.lowercase()
+        ?.let { out ->
+            if ("dark" in out) return true
+        }
+
+    System.getenv("GTK_THEME")?.lowercase()?.let {
+        if ("dark" in it) return true
     }
-    // Swing / Compose global when available (non-composable path)
-    return runCatching {
-        val info = javax.swing.UIManager.getLookAndFeel()?.defaults
-        val bg = info?.getColor("Panel.background")
-        if (bg != null) {
-            val luminance = (0.299 * bg.red + 0.587 * bg.green + 0.114 * bg.blue)
-            return@runCatching luminance < 128
-        }
-        false
-    }.getOrDefault(false)
+    System.getenv("GTK_APPLICATION_PREFER_DARK_THEME")?.let {
+        if (it == "1" || it.equals("true", ignoreCase = true)) return true
+    }
+
+    return swingPanelIsDark()
 }
+
+/** Portal color-scheme: 1 dark, 2 light, null unknown. */
+private fun readPortalColorScheme(): Int? {
+    // gdbus: (<<uint32 1>>,)
+    val out = readProcessOutput(
+        "gdbus", "call", "--session",
+        "--dest", "org.freedesktop.portal.Desktop",
+        "--object-path", "/org/freedesktop/portal/desktop",
+        "--method", "org.freedesktop.portal.Settings.Read",
+        "org.freedesktop.appearance", "color-scheme"
+    ) ?: return null
+    val m = Regex("""uint32\s+(\d+)""").find(out)
+    return m?.groupValues?.getOrNull(1)?.toIntOrNull()
+}
+
+/**
+ * true = dark, false = light, null = could not determine.
+ * Reads Colors:Window BackgroundNormal from live KDE config.
+ */
+private fun readKdeWindowBackgroundDark(): Boolean? {
+    fun rgbLum(r: Int, g: Int, b: Int) = 0.299 * r + 0.587 * g + 0.114 * b
+    fun parseRgb(raw: String): Triple<Int, Int, Int>? {
+        val parts = raw.trim()
+            .removePrefix("'").removeSuffix("'")
+            .removePrefix("\"").removeSuffix("\"")
+            .split(Regex("""[,\s]+"""))
+            .mapNotNull { it.trim().toIntOrNull() }
+        return if (parts.size >= 3) Triple(parts[0], parts[1], parts[2]) else null
+    }
+    fun schemeNameIsDark(name: String): Boolean? {
+        val n = name.lowercase()
+        if (n.isBlank()) return null
+        if ("dark" in n || n == "breezedark" || "breeze-dark" in n) return true
+        if ("light" in n) return false
+        return null
+    }
+
+    for (tool in listOf("kreadconfig6", "kreadconfig5")) {
+        parseRgb(
+            readProcessOutput(
+                tool, "--file", "kdeglobals", "--group", "Colors:Window", "--key", "BackgroundNormal"
+            ).orEmpty()
+        )?.let { (r, g, b) -> return rgbLum(r, g, b) < 140.0 }
+
+        schemeNameIsDark(
+            readProcessOutput(
+                tool, "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"
+            ).orEmpty()
+        )?.let { return it }
+    }
+
+    val home = System.getProperty("user.home") ?: return null
+    // Plasma 6 may also write defaults under kdedefaults
+    for (rel in listOf(".config/kdeglobals", ".config/kdedefaults/kdeglobals")) {
+        val globals = File(home, rel)
+        if (!globals.isFile) continue
+        val text = runCatching { globals.readText() }.getOrNull() ?: continue
+
+        val winSection = Regex("""(?is)\[Colors:Window\](.*?)(\n\[|\z)""")
+            .find(text)?.groupValues?.getOrNull(1).orEmpty()
+        Regex("""(?im)^BackgroundNormal\s*=\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)""")
+            .find(winSection)
+            ?.groupValues
+            ?.let { gv ->
+                return rgbLum(gv[1].toInt(), gv[2].toInt(), gv[3].toInt()) < 140.0
+            }
+
+        // Sometimes only View background is populated
+        val viewSection = Regex("""(?is)\[Colors:View\](.*?)(\n\[|\z)""")
+            .find(text)?.groupValues?.getOrNull(1).orEmpty()
+        Regex("""(?im)^BackgroundNormal\s*=\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)""")
+            .find(viewSection)
+            ?.groupValues
+            ?.let { gv ->
+                return rgbLum(gv[1].toInt(), gv[2].toInt(), gv[3].toInt()) < 140.0
+            }
+
+        schemeNameIsDark(
+            Regex("""(?im)^ColorScheme\s*=\s*(.+)$""").find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+        )?.let { return it }
+
+        val look = Regex("""(?im)^LookAndFeelPackage\s*=\s*(.+)$""")
+            .find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+        if (look.contains("dark", ignoreCase = true)) return true
+    }
+    return null
+}
+
+private fun swingPanelIsDark(): Boolean = runCatching {
+    val bg = javax.swing.UIManager.getLookAndFeel()?.defaults?.getColor("Panel.background")
+        ?: return@runCatching false
+    (0.299 * bg.red + 0.587 * bg.green + 0.114 * bg.blue) < 128
+}.getOrDefault(false)
 
 private fun readProcessOutput(vararg cmd: String): String? = runCatching {
     val p = ProcessBuilder(*cmd)

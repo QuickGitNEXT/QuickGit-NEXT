@@ -159,9 +159,12 @@ fun bootstrap(args: Array<String> = emptyArray()) {
 
         // Re-check OS light/dark periodically (GNOME/KDE theme switches)
         var darkTheme by remember { mutableStateOf(detectSystemDarkTheme()) }
+        SideEffect {
+            System.setProperty("quickgitnext.runtime.dark", darkTheme.toString())
+        }
         LaunchedEffect(Unit) {
             while (true) {
-                kotlinx.coroutines.delay(1500)
+                kotlinx.coroutines.delay(800)
                 val next = detectSystemDarkTheme()
                 if (next != darkTheme) darkTheme = next
             }
