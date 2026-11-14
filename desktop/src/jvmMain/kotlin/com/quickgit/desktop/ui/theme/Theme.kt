@@ -173,7 +173,7 @@ private val UbuntuLightChrome = PlatformChromeColors(
 )
 
 private val UbuntuDarkChrome = PlatformChromeColors(
-    headerBar = Color(0xFF2C2C2C),
+    headerBar = Color(0xFF1E1E1E),
     headerBarOn = Color(0xFFF2F2F2),
     sidebar = Color(0xFF252525),
     sidebarOn = Color(0xFFF2F2F2),

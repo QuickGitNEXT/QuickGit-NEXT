@@ -305,9 +305,11 @@ private fun UbuntuPageHeader(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
-        color = LinuxTheme.colors.headerBar,
-        contentColor = LinuxTheme.colors.headerBarOn,
-        tonalElevation = 0.dp
+        // Prefer Material scheme (tracks dark/light) over chrome tokens that can lag
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Row(
             Modifier
@@ -362,8 +364,9 @@ private fun UbuntuContentCard(
             .fillMaxSize()
             .padding(horizontal = 12.dp, vertical = 10.dp),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
         Box(
             Modifier
@@ -404,12 +407,25 @@ fun RepoListScreen(
             title = "Local repositories",
             subtitle = "Root: " + repoManager.getReposRoot().absolutePath
         ) {
-            Button(onClick = { showCreate = true }, enabled = !busy) {
+            Button(
+                onClick = { showCreate = true },
+                enabled = !busy,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
                 Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("New repository")
             }
-            OutlinedButton(onClick = { reload() }) {
+            OutlinedButton(
+                onClick = { reload() },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            ) {
                 Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text("Refresh")
@@ -422,8 +438,9 @@ fun RepoListScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp
+            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
         ) {
             Box(Modifier.fillMaxSize().padding(12.dp)) {
         if (loading) {
@@ -454,7 +471,11 @@ fun RepoListScreen(
                 items(repos, key = { it.path }) { repo ->
                     Card(
                         Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(2.dp)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Row(
                             Modifier
@@ -463,7 +484,20 @@ fun RepoListScreen(
                                 .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
@@ -489,7 +523,7 @@ fun RepoListScreen(
                                 Box(
                                     Modifier
                                         .size(10.dp)
-                                        .background(Color(0xFFFF9800), shape = MaterialTheme.shapes.small)
+                                        .background(MaterialTheme.colorScheme.primary, shape = MaterialTheme.shapes.small)
                                 )
                                 Spacer(Modifier.width(4.dp))
                             }
@@ -1098,7 +1132,7 @@ fun RepoDetailScreen(
             )
         }
         // Ubuntu-style view switcher under the header
-        Surface(color = LinuxTheme.colors.headerBar, contentColor = LinuxTheme.colors.headerBarOn) {
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface) {
             ScrollableTabRow(
                 selectedTabIndex = tabIndex,
                 edgePadding = 12.dp,
@@ -2594,7 +2628,7 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
 
     Row(Modifier.fillMaxSize()) {
         // ---- Browser pane ----
-        Column(Modifier.width(340.dp).fillMaxHeight().background(LinuxTheme.colors.sidebar)) {
+        Column(Modifier.width(340.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
             // Path bar + actions
             Row(
                 Modifier.fillMaxWidth().padding(8.dp),
