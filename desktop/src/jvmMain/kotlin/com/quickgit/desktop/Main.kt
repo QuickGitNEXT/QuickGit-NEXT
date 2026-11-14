@@ -11,6 +11,7 @@ import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.ui.res.painterResource
 import com.quickgit.desktop.data.AppLog
 import com.quickgit.desktop.data.DesktopAppUpdateConfig
 import com.quickgit.desktop.data.DesktopAppUpdateManager
@@ -43,13 +44,42 @@ fun bootstrap(args: Array<String> = emptyArray()) {
 
     val windowState = rememberWindowState(width = 1280.dp, height = 840.dp)
     var menuScreen by remember { mutableStateOf<DesktopScreen?>(null) }
+    // Title-bar + taskbar icon (jpackage .ico alone does not always apply at runtime)
+    val appIcon = painterResource("icon.png")
 
     Window(
         onCloseRequest = ::exitApplication,
         title = "QuickGitNEXT",
-        state = windowState
+        state = windowState,
+        icon = appIcon
     ) {
         window.minimumSize = Dimension(900, 640)
+        // Windows taskbar / Alt-Tab use AWT iconImages (Compose icon covers title bar)
+        LaunchedEffect(Unit) {
+            runCatching {
+                val stream = object {}.javaClass.getResourceAsStream("/icon.png")
+                    ?: Thread.currentThread().contextClassLoader.getResourceAsStream("icon.png")
+                if (stream != null) {
+                    stream.use { input ->
+                        val base = javax.imageio.ImageIO.read(input)
+                        if (base != null) {
+                            val sizes = listOf(16, 24, 32, 48, 64, 128, 256)
+                            window.iconImages = sizes.map { s ->
+                                val scaled = java.awt.image.BufferedImage(s, s, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+                                val g = scaled.createGraphics()
+                                g.setRenderingHint(
+                                    java.awt.RenderingHints.KEY_INTERPOLATION,
+                                    java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR
+                                )
+                                g.drawImage(base, 0, 0, s, s, null)
+                                g.dispose()
+                                scaled
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         MenuBar {
             Menu("File", mnemonic = 'F') {
