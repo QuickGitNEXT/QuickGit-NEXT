@@ -417,14 +417,14 @@ private val PlasmaLightChrome = PlatformChromeColors(
 )
 
 private val PlasmaDarkChrome = PlatformChromeColors(
-    headerBar = Color(0xFF31363B),
+    headerBar = Color(0xFF2A2E32),
     headerBarOn = Color(0xFFEFF0F1),
-    sidebar = Color(0xFF2A2E32),
+    sidebar = Color(0xFF1B1E20),
     sidebarOn = Color(0xFFEFF0F1),
     cardBorder = Color(0xFF4D4D4D),
-    codeBackground = Color(0xFF232629),
+    codeBackground = Color(0xFF121517),
     codeOn = Color(0xFFEFF0F1),
-    codeGutter = Color(0xFF2A2E32),
+    codeGutter = Color(0xFF1B1E20),
     success = Color(0xFF2ECC71),
     warning = Color(0xFFF39C12),
     info = PlasmaAccent,
@@ -489,15 +489,15 @@ private val PlasmaDarkColors: ColorScheme = darkColorScheme(
     onError = Color(0xFF5B1A20),
     errorContainer = Color(0xFF922B34),
     onErrorContainer = Color(0xFFFADBD8),
-    background = Color(0xFF2A2E32),
+    background = Color(0xFF1B1E20),
     onBackground = Color(0xFFEFF0F1),
-    surface = Color(0xFF31363B),
+    surface = Color(0xFF2A2E32),
     onSurface = Color(0xFFEFF0F1),
-    surfaceVariant = Color(0xFF3B4045),
+    surfaceVariant = Color(0xFF31363B),
     onSurfaceVariant = Color(0xFFB0B3B5),
-    surfaceContainerLowest = Color(0xFF232629),
-    surfaceContainerLow = Color(0xFF2A2E32),
-    surfaceContainer = Color(0xFF31363B),
+    surfaceContainerLowest = Color(0xFF121517),
+    surfaceContainerLow = Color(0xFF1B1E20),
+    surfaceContainer = Color(0xFF2A2E32),
     surfaceContainerHigh = Color(0xFF3B4045),
     surfaceContainerHighest = Color(0xFF454A4F),
     inverseSurface = Color(0xFFEFF0F1),
@@ -823,32 +823,63 @@ fun detectSystemDarkTheme(): Boolean {
             ?.let { out ->
                 if ("dark" in out) return true
             }
-        // KDE Plasma: kdeglobals ColorScheme / LookAndFeel
-        runCatching {
-            val home = System.getProperty("user.home") ?: return@runCatching
-            val globals = File(home, ".config/kdeglobals")
-            if (globals.isFile) {
-                val text = globals.readText()
-                val scheme = Regex("""(?im)^ColorScheme\s*=\s*(.+)$""")
-                    .find(text)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.trim()
-                    .orEmpty()
-                if (scheme.contains("dark", ignoreCase = true)) return true
-                if (scheme.contains("light", ignoreCase = true) || scheme.contains("breeze", ignoreCase = true) && !scheme.contains("dark", ignoreCase = true)) {
-                    // Breeze (light) default — only force light when explicitly light-like
-                    if (scheme.contains("light", ignoreCase = true)) return false
+        // KDE Plasma — read real window background (Breeze / BreezeDark)
+        run {
+            fun rgbLum(r: Int, g: Int, b: Int) = 0.299 * r + 0.587 * g + 0.114 * b
+            fun parseRgb(raw: String): Triple<Int, Int, Int>? {
+                val parts = raw.trim().removePrefix("'").removeSuffix("'")
+                    .split(',', ' ').mapNotNull { it.trim().toIntOrNull() }
+                return if (parts.size >= 3) Triple(parts[0], parts[1], parts[2]) else null
+            }
+            var kdeDark: Boolean? = null
+            for (tool in listOf("kreadconfig6", "kreadconfig5")) {
+                parseRgb(
+                    readProcessOutput(
+                        tool, "--file", "kdeglobals", "--group", "Colors:Window", "--key", "BackgroundNormal"
+                    ).orEmpty()
+                )?.let { (r, g, b) -> kdeDark = rgbLum(r, g, b) < 128.0 }
+                if (kdeDark != null) break
+                val scheme = readProcessOutput(
+                    tool, "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"
+                ).orEmpty()
+                when {
+                    scheme.contains("dark", ignoreCase = true) -> { kdeDark = true; break }
+                    scheme.contains("light", ignoreCase = true) -> { kdeDark = false; break }
                 }
-                if (Regex("""(?im)^LookAndFeelPackage\s*=.*dark""").containsMatchIn(text)) return true
             }
-            // kreadconfig5 fallback
-            readProcessOutput(
-                "kreadconfig5", "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"
-            )?.let { v ->
-                if (v.contains("dark", ignoreCase = true)) return true
+            if (kdeDark == null) {
+                val home = System.getProperty("user.home")
+                if (home != null) {
+                    val globals = File(home, ".config/kdeglobals")
+                    if (globals.isFile) {
+                        val text = globals.readText()
+                        val winSection = Regex("""(?is)\[Colors:Window\](.*?)(\n\[|\z)""")
+                            .find(text)?.groupValues?.getOrNull(1).orEmpty()
+                        Regex("""(?im)^BackgroundNormal\s*=\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)""")
+                            .find(winSection)
+                            ?.groupValues
+                            ?.let { gv ->
+                                kdeDark = rgbLum(gv[1].toInt(), gv[2].toInt(), gv[3].toInt()) < 128.0
+                            }
+                        if (kdeDark == null) {
+                            val scheme = Regex("""(?im)^ColorScheme\s*=\s*(.+)$""")
+                                .find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+                            when {
+                                scheme.contains("dark", ignoreCase = true) -> kdeDark = true
+                                scheme.contains("light", ignoreCase = true) -> kdeDark = false
+                            }
+                        }
+                        if (kdeDark == null) {
+                            val look = Regex("""(?im)^LookAndFeelPackage\s*=\s*(.+)$""")
+                                .find(text)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+                            if (look.contains("dark", ignoreCase = true)) kdeDark = true
+                        }
+                    }
+                }
             }
+            if (kdeDark != null) return kdeDark!!
         }
+
         // Freedesktop color-scheme portal style env (some sessions)
         System.getenv("GTK_THEME")?.lowercase()?.let {
             if ("dark" in it) return true
