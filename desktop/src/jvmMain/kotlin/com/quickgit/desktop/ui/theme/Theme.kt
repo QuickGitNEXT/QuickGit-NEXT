@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.sp
 
 /**
  * Platform-native desktop theming:
- * - Linux (.deb): Ubuntu Yaru / GNOME density
- * - Windows (.msi): Fluent Design–inspired (WinUI accent, Mica-like surfaces)
- * - Other (macOS, etc.): Yaru-style defaults
+ * - Linux + GNOME/Ubuntu (.deb): Yaru
+ * - Linux + KDE Plasma (.rpm and Plasma sessions): Breeze
+ * - Windows (.msi): Fluent Design–inspired (WinUI accent)
+ * Override with -Dquickgitnext.theme=ubuntu|plasma|windows
  */
 
 // ── Semantic aliases used across the app ───────────────────────────────────
@@ -49,14 +50,42 @@ val GitGreen = UbuntuSuccess
 val GitRed = UbuntuError
 val GitAmber = UbuntuOrange
 
+/** Breeze / Plasma accent (KDE system blue). */
+val PlasmaAccent = Color(0xFF3DAEE9)
+val PlasmaAccentDark = Color(0xFF2980B9)
+val PlasmaSuccess = Color(0xFF27AE60)
+val PlasmaWarning = Color(0xFFF67400)
+val PlasmaError = Color(0xFFDA4453)
+val PlasmaInfo = Color(0xFF3DAEE9)
+
 enum class DesktopPlatformStyle {
     Ubuntu,
+    Plasma,
     Windows
 }
 
 fun detectDesktopPlatformStyle(): DesktopPlatformStyle {
+    val forced = System.getProperty("quickgitnext.theme")
+        ?.trim()
+        ?.lowercase()
+        .orEmpty()
+    when (forced) {
+        "ubuntu", "yaru", "gnome" -> return DesktopPlatformStyle.Ubuntu
+        "plasma", "kde", "breeze" -> return DesktopPlatformStyle.Plasma
+        "windows", "fluent", "win" -> return DesktopPlatformStyle.Windows
+    }
     val os = System.getProperty("os.name").orEmpty().lowercase()
-    return if (os.contains("win")) DesktopPlatformStyle.Windows else DesktopPlatformStyle.Ubuntu
+    if (os.contains("win")) return DesktopPlatformStyle.Windows
+    // KDE Plasma session (common for Fedora/openSUSE RPM desktops)
+    val desktop = (
+        System.getenv("XDG_CURRENT_DESKTOP").orEmpty() + ":" +
+            System.getenv("DESKTOP_SESSION").orEmpty() + ":" +
+            System.getenv("XDG_SESSION_DESKTOP").orEmpty()
+        ).lowercase()
+    if (desktop.contains("kde") || desktop.contains("plasma")) {
+        return DesktopPlatformStyle.Plasma
+    }
+    return DesktopPlatformStyle.Ubuntu
 }
 
 @Immutable
@@ -342,6 +371,128 @@ private val WindowsShapes = Shapes(
     extraLarge = RoundedCornerShape(10.dp)
 )
 
+
+// ── KDE Plasma / Breeze ────────────────────────────────────────────────────
+
+private val PlasmaLightChrome = PlatformChromeColors(
+    headerBar = Color(0xFFEFF0F1),
+    headerBarOn = Color(0xFF232629),
+    sidebar = Color(0xFFE8E8E9),
+    sidebarOn = Color(0xFF232629),
+    cardBorder = Color(0xFFBDC3C7),
+    codeBackground = Color(0xFFFCFCFC),
+    codeOn = Color(0xFF232629),
+    codeGutter = Color(0xFFEFF0F1),
+    success = PlasmaSuccess,
+    warning = PlasmaWarning,
+    info = PlasmaInfo,
+    selection = Color(0x333DAEE9),
+    hover = Color(0x14000000),
+    inactive = Color(0xFF7F8C8D)
+)
+
+private val PlasmaDarkChrome = PlatformChromeColors(
+    headerBar = Color(0xFF31363B),
+    headerBarOn = Color(0xFFEFF0F1),
+    sidebar = Color(0xFF2A2E32),
+    sidebarOn = Color(0xFFEFF0F1),
+    cardBorder = Color(0xFF4D4D4D),
+    codeBackground = Color(0xFF232629),
+    codeOn = Color(0xFFEFF0F1),
+    codeGutter = Color(0xFF2A2E32),
+    success = Color(0xFF2ECC71),
+    warning = Color(0xFFF39C12),
+    info = PlasmaAccent,
+    selection = Color(0x443DAEE9),
+    hover = Color(0x14FFFFFF),
+    inactive = Color(0xFF7F8C8D)
+)
+
+/** Breeze light — soft grey chrome, Plasma blue accent. */
+private val PlasmaLightColors: ColorScheme = lightColorScheme(
+    primary = PlasmaAccent,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6EFFF),
+    onPrimaryContainer = Color(0xFF00344D),
+    secondary = Color(0xFF7F8C8D),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8E8E9),
+    onSecondaryContainer = Color(0xFF232629),
+    tertiary = PlasmaSuccess,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD5F5E3),
+    onTertiaryContainer = Color(0xFF0E3D24),
+    error = PlasmaError,
+    onError = Color.White,
+    errorContainer = Color(0xFFFADBD8),
+    onErrorContainer = Color(0xFF5B1A20),
+    background = Color(0xFFEFF0F1),
+    onBackground = Color(0xFF232629),
+    surface = Color(0xFFFCFCFC),
+    onSurface = Color(0xFF232629),
+    surfaceVariant = Color(0xFFE8E8E9),
+    onSurfaceVariant = Color(0xFF4D4D4D),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7F7F8),
+    surfaceContainer = Color(0xFFEFF0F1),
+    surfaceContainerHigh = Color(0xFFE8E8E9),
+    surfaceContainerHighest = Color(0xFFDEDEDF),
+    inverseSurface = Color(0xFF31363B),
+    inverseOnSurface = Color(0xFFEFF0F1),
+    inversePrimary = Color(0xFF7FD4F7),
+    outline = Color(0xFFBDC3C7),
+    outlineVariant = Color(0xFFD5D6D7),
+    scrim = Color(0x99000000),
+    surfaceTint = PlasmaAccent
+)
+
+/** Breeze dark — #31363B surfaces, bright Plasma blue. */
+private val PlasmaDarkColors: ColorScheme = darkColorScheme(
+    primary = PlasmaAccent,
+    onPrimary = Color(0xFF00344D),
+    primaryContainer = Color(0xFF1A6A8A),
+    onPrimaryContainer = Color(0xFFD6EFFF),
+    secondary = Color(0xFFB0B3B5),
+    onSecondary = Color(0xFF2A2E32),
+    secondaryContainer = Color(0xFF3B4045),
+    onSecondaryContainer = Color(0xFFEFF0F1),
+    tertiary = Color(0xFF2ECC71),
+    onTertiary = Color(0xFF0E3D24),
+    tertiaryContainer = Color(0xFF1E8449),
+    onTertiaryContainer = Color(0xFFD5F5E3),
+    error = Color(0xFFF5B7B1),
+    onError = Color(0xFF5B1A20),
+    errorContainer = Color(0xFF922B34),
+    onErrorContainer = Color(0xFFFADBD8),
+    background = Color(0xFF2A2E32),
+    onBackground = Color(0xFFEFF0F1),
+    surface = Color(0xFF31363B),
+    onSurface = Color(0xFFEFF0F1),
+    surfaceVariant = Color(0xFF3B4045),
+    onSurfaceVariant = Color(0xFFB0B3B5),
+    surfaceContainerLowest = Color(0xFF232629),
+    surfaceContainerLow = Color(0xFF2A2E32),
+    surfaceContainer = Color(0xFF31363B),
+    surfaceContainerHigh = Color(0xFF3B4045),
+    surfaceContainerHighest = Color(0xFF454A4F),
+    inverseSurface = Color(0xFFEFF0F1),
+    inverseOnSurface = Color(0xFF2A2E32),
+    inversePrimary = PlasmaAccentDark,
+    outline = Color(0xFF5A5F64),
+    outlineVariant = Color(0xFF3B4045),
+    scrim = Color(0xCC000000),
+    surfaceTint = PlasmaAccent
+)
+
+/** Breeze-like control radii (slightly softer than Fluent, tighter than Material). */
+private val PlasmaShapes = Shapes(
+    extraSmall = RoundedCornerShape(3.dp),
+    small = RoundedCornerShape(4.dp),
+    medium = RoundedCornerShape(6.dp),
+    large = RoundedCornerShape(8.dp),
+    extraLarge = RoundedCornerShape(10.dp)
+)
+
 // ── Typography (platform UI font mapping via SansSerif) ────────────────────
 
 private fun desktopTypography(compact: Boolean): Typography {
@@ -384,6 +535,12 @@ fun QuickGitTheme(
             shapes = WindowsShapes
             typography = desktopTypography(compact = true)
         }
+        DesktopPlatformStyle.Plasma -> {
+            colors = if (darkTheme) PlasmaDarkColors else PlasmaLightColors
+            chrome = if (darkTheme) PlasmaDarkChrome else PlasmaLightChrome
+            shapes = PlasmaShapes
+            typography = desktopTypography(compact = true)
+        }
         DesktopPlatformStyle.Ubuntu -> {
             colors = if (darkTheme) UbuntuDarkColors else UbuntuLightColors
             chrome = if (darkTheme) UbuntuDarkChrome else UbuntuLightChrome
@@ -401,7 +558,7 @@ fun QuickGitTheme(
     }
 }
 
-/** Chrome tokens (header, sidebar, code editor) — Ubuntu or Fluent depending on OS. */
+/** Chrome tokens (header, sidebar, code editor) — Yaru, Breeze, or Fluent. */
 object LinuxTheme {
     val colors: PlatformChromeColors
         @Composable get() = LocalLinuxColors.current
