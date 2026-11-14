@@ -22,10 +22,12 @@ import java.io.File
 
 /**
  * Platform-native desktop theming:
- * - Linux + GNOME/Ubuntu (.deb): Yaru
- * - Linux + KDE Plasma (.rpm and Plasma sessions): Breeze
- * - Windows (.msi): Fluent Design–inspired (WinUI accent)
- * Override with -Dquickgitnext.theme=ubuntu|plasma|windows
+ * - GNOME/Ubuntu: Yaru
+ * - KDE Plasma: Breeze
+ * - Cinnamon (Mint): Mint-Y inspired
+ * - MATE: traditional MATE palette
+ * - Windows: Fluent
+ * Override with -Dquickgitnext.theme=ubuntu|plasma|cinnamon|mate|windows
  */
 
 // ── Semantic aliases used across the app ───────────────────────────────────
@@ -59,9 +61,27 @@ val PlasmaWarning = Color(0xFFF67400)
 val PlasmaError = Color(0xFFDA4453)
 val PlasmaInfo = Color(0xFF3DAEE9)
 
+/** Linux Mint Cinnamon / Mint-Y green. */
+val CinnamonAccent = Color(0xFF35A854)
+val CinnamonAccentDark = Color(0xFF2E7D32)
+val CinnamonSuccess = Color(0xFF35A854)
+val CinnamonWarning = Color(0xFFE5A50A)
+val CinnamonError = Color(0xFFC7162B)
+val CinnamonInfo = Color(0xFF2A7B9B)
+
+/** MATE desktop traditional blue-green. */
+val MateAccent = Color(0xFF5483B3)
+val MateAccentDark = Color(0xFF3465A4)
+val MateSuccess = Color(0xFF4E9A06)
+val MateWarning = Color(0xFFC4A000)
+val MateError = Color(0xFFCC0000)
+val MateInfo = Color(0xFF3465A4)
+
 enum class DesktopPlatformStyle {
     Ubuntu,
     Plasma,
+    Cinnamon,
+    Mate,
     Windows
 }
 
@@ -73,20 +93,24 @@ fun detectDesktopPlatformStyle(): DesktopPlatformStyle {
     when (forced) {
         "ubuntu", "yaru", "gnome" -> return DesktopPlatformStyle.Ubuntu
         "plasma", "kde", "breeze" -> return DesktopPlatformStyle.Plasma
+        "cinnamon", "mint", "mint-y" -> return DesktopPlatformStyle.Cinnamon
+        "mate" -> return DesktopPlatformStyle.Mate
         "windows", "fluent", "win" -> return DesktopPlatformStyle.Windows
     }
     val os = System.getProperty("os.name").orEmpty().lowercase()
     if (os.contains("win")) return DesktopPlatformStyle.Windows
-    // KDE Plasma session (common for Fedora/openSUSE RPM desktops)
     val desktop = (
         System.getenv("XDG_CURRENT_DESKTOP").orEmpty() + ":" +
             System.getenv("DESKTOP_SESSION").orEmpty() + ":" +
-            System.getenv("XDG_SESSION_DESKTOP").orEmpty()
+            System.getenv("XDG_SESSION_DESKTOP").orEmpty() + ":" +
+            System.getenv("GDMSESSION").orEmpty()
         ).lowercase()
-    if (desktop.contains("kde") || desktop.contains("plasma")) {
-        return DesktopPlatformStyle.Plasma
+    when {
+        "cinnamon" in desktop || "x-cinnamon" in desktop -> return DesktopPlatformStyle.Cinnamon
+        "mate" in desktop -> return DesktopPlatformStyle.Mate
+        "kde" in desktop || "plasma" in desktop -> return DesktopPlatformStyle.Plasma
+        else -> return DesktopPlatformStyle.Ubuntu
     }
-    return DesktopPlatformStyle.Ubuntu
 }
 
 @Immutable
@@ -494,6 +518,243 @@ private val PlasmaShapes = Shapes(
     extraLarge = RoundedCornerShape(10.dp)
 )
 
+
+// ── Cinnamon / Mint-Y ──────────────────────────────────────────────────────
+
+private val CinnamonLightChrome = PlatformChromeColors(
+    headerBar = Color(0xFFF6F6F6),
+    headerBarOn = Color(0xFF2E3436),
+    sidebar = Color(0xFFEEEEEE),
+    sidebarOn = Color(0xFF2E3436),
+    cardBorder = Color(0xFFD5D5D5),
+    codeBackground = Color(0xFFFFFFFF),
+    codeOn = Color(0xFF2E3436),
+    codeGutter = Color(0xFFF6F6F6),
+    success = CinnamonSuccess,
+    warning = CinnamonWarning,
+    info = CinnamonInfo,
+    selection = Color(0x3335A854),
+    hover = Color(0x14000000),
+    inactive = Color(0xFF888888)
+)
+
+private val CinnamonDarkChrome = PlatformChromeColors(
+    headerBar = Color(0xFF2E3436),
+    headerBarOn = Color(0xFFEEEEEE),
+    sidebar = Color(0xFF25292B),
+    sidebarOn = Color(0xFFEEEEEE),
+    cardBorder = Color(0xFF4A4A4A),
+    codeBackground = Color(0xFF1E1E1E),
+    codeOn = Color(0xFFEEEEEE),
+    codeGutter = Color(0xFF25292B),
+    success = Color(0xFF56C26A),
+    warning = Color(0xFFE5A50A),
+    info = Color(0xFF4CB0D4),
+    selection = Color(0x4435A854),
+    hover = Color(0x14FFFFFF),
+    inactive = Color(0xFF9A9A9A)
+)
+
+private val CinnamonLightColors: ColorScheme = lightColorScheme(
+    primary = CinnamonAccent,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6F0DD),
+    onPrimaryContainer = Color(0xFF0D3B1A),
+    secondary = Color(0xFF6B6B6B),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8E8E8),
+    onSecondaryContainer = Color(0xFF2E3436),
+    tertiary = CinnamonInfo,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD0EAF2),
+    onTertiaryContainer = Color(0xFF0A3444),
+    error = CinnamonError,
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    background = Color(0xFFF6F6F6),
+    onBackground = Color(0xFF2E3436),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF2E3436),
+    surfaceVariant = Color(0xFFEEEEEE),
+    onSurfaceVariant = Color(0xFF5C5C5C),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF9F9F9),
+    surfaceContainer = Color(0xFFF0F0F0),
+    surfaceContainerHigh = Color(0xFFEAEAEA),
+    surfaceContainerHighest = Color(0xFFE4E4E4),
+    inverseSurface = Color(0xFF2E3436),
+    inverseOnSurface = Color(0xFFF6F6F6),
+    inversePrimary = Color(0xFF8AD49A),
+    outline = Color(0xFFC8C8C8),
+    outlineVariant = Color(0xFFDCDCDC),
+    scrim = Color(0x99000000),
+    surfaceTint = CinnamonAccent
+)
+
+private val CinnamonDarkColors: ColorScheme = darkColorScheme(
+    primary = Color(0xFF56C26A),
+    onPrimary = Color(0xFF0D3B1A),
+    primaryContainer = Color(0xFF1B5E20),
+    onPrimaryContainer = Color(0xFFD6F0DD),
+    secondary = Color(0xFFBDBDBD),
+    onSecondary = Color(0xFF2E3436),
+    secondaryContainer = Color(0xFF3D4345),
+    onSecondaryContainer = Color(0xFFEEEEEE),
+    tertiary = Color(0xFF4CB0D4),
+    onTertiary = Color(0xFF0A3444),
+    tertiaryContainer = Color(0xFF1A5368),
+    onTertiaryContainer = Color(0xFFD0EAF2),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF25292B),
+    onBackground = Color(0xFFEEEEEE),
+    surface = Color(0xFF2E3436),
+    onSurface = Color(0xFFEEEEEE),
+    surfaceVariant = Color(0xFF3D4345),
+    onSurfaceVariant = Color(0xFFBDBDBD),
+    surfaceContainerLowest = Color(0xFF1A1D1E),
+    surfaceContainerLow = Color(0xFF25292B),
+    surfaceContainer = Color(0xFF2E3436),
+    surfaceContainerHigh = Color(0xFF383E40),
+    surfaceContainerHighest = Color(0xFF43484A),
+    inverseSurface = Color(0xFFEEEEEE),
+    inverseOnSurface = Color(0xFF2E3436),
+    inversePrimary = CinnamonAccentDark,
+    outline = Color(0xFF5A5A5A),
+    outlineVariant = Color(0xFF3D4345),
+    scrim = Color(0xCC000000),
+    surfaceTint = Color(0xFF56C26A)
+)
+
+private val CinnamonShapes = Shapes(
+    extraSmall = RoundedCornerShape(3.dp),
+    small = RoundedCornerShape(5.dp),
+    medium = RoundedCornerShape(7.dp),
+    large = RoundedCornerShape(9.dp),
+    extraLarge = RoundedCornerShape(12.dp)
+)
+
+// ── MATE ───────────────────────────────────────────────────────────────────
+
+private val MateLightChrome = PlatformChromeColors(
+    headerBar = Color(0xFFECECEC),
+    headerBarOn = Color(0xFF2E3436),
+    sidebar = Color(0xFFE0E0E0),
+    sidebarOn = Color(0xFF2E3436),
+    cardBorder = Color(0xFFC0C0C0),
+    codeBackground = Color(0xFFFFFFFF),
+    codeOn = Color(0xFF2E3436),
+    codeGutter = Color(0xFFECECEC),
+    success = MateSuccess,
+    warning = MateWarning,
+    info = MateInfo,
+    selection = Color(0x335483B3),
+    hover = Color(0x14000000),
+    inactive = Color(0xFF888A85)
+)
+
+private val MateDarkChrome = PlatformChromeColors(
+    headerBar = Color(0xFF2E3436),
+    headerBarOn = Color(0xFFEEEEEC),
+    sidebar = Color(0xFF242729),
+    sidebarOn = Color(0xFFEEEEEC),
+    cardBorder = Color(0xFF555753),
+    codeBackground = Color(0xFF1E1E1E),
+    codeOn = Color(0xFFEEEEEC),
+    codeGutter = Color(0xFF242729),
+    success = Color(0xFF8AE234),
+    warning = Color(0xFFFCE94F),
+    info = Color(0xFF729FCF),
+    selection = Color(0x445483B3),
+    hover = Color(0x14FFFFFF),
+    inactive = Color(0xFF888A85)
+)
+
+private val MateLightColors: ColorScheme = lightColorScheme(
+    primary = MateAccent,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD4E3F4),
+    onPrimaryContainer = Color(0xFF0D2B4A),
+    secondary = Color(0xFF888A85),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8E8E6),
+    onSecondaryContainer = Color(0xFF2E3436),
+    tertiary = MateSuccess,
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD8F0C0),
+    onTertiaryContainer = Color(0xFF1E3A00),
+    error = MateError,
+    onError = Color.White,
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
+    background = Color(0xFFECECEC),
+    onBackground = Color(0xFF2E3436),
+    surface = Color(0xFFFAFAFA),
+    onSurface = Color(0xFF2E3436),
+    surfaceVariant = Color(0xFFE0E0E0),
+    onSurfaceVariant = Color(0xFF555753),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF5F5F5),
+    surfaceContainer = Color(0xFFECECEC),
+    surfaceContainerHigh = Color(0xFFE4E4E4),
+    surfaceContainerHighest = Color(0xFFDCDCDC),
+    inverseSurface = Color(0xFF2E3436),
+    inverseOnSurface = Color(0xFFECECEC),
+    inversePrimary = Color(0xFF9AB8D9),
+    outline = Color(0xFFB0B0B0),
+    outlineVariant = Color(0xFFD0D0D0),
+    scrim = Color(0x99000000),
+    surfaceTint = MateAccent
+)
+
+private val MateDarkColors: ColorScheme = darkColorScheme(
+    primary = Color(0xFF729FCF),
+    onPrimary = Color(0xFF0D2B4A),
+    primaryContainer = Color(0xFF3465A4),
+    onPrimaryContainer = Color(0xFFD4E3F4),
+    secondary = Color(0xFFB8B8B4),
+    onSecondary = Color(0xFF2E3436),
+    secondaryContainer = Color(0xFF3D4240),
+    onSecondaryContainer = Color(0xFFEEEEEC),
+    tertiary = Color(0xFF8AE234),
+    onTertiary = Color(0xFF1E3A00),
+    tertiaryContainer = Color(0xFF4E9A06),
+    onTertiaryContainer = Color(0xFFD8F0C0),
+    error = Color(0xFFEF2929),
+    onError = Color.White,
+    errorContainer = Color(0xFF8A0000),
+    onErrorContainer = Color(0xFFFFDAD6),
+    background = Color(0xFF242729),
+    onBackground = Color(0xFFEEEEEC),
+    surface = Color(0xFF2E3436),
+    onSurface = Color(0xFFEEEEEC),
+    surfaceVariant = Color(0xFF3D4240),
+    onSurfaceVariant = Color(0xFFB8B8B4),
+    surfaceContainerLowest = Color(0xFF1A1C1D),
+    surfaceContainerLow = Color(0xFF242729),
+    surfaceContainer = Color(0xFF2E3436),
+    surfaceContainerHigh = Color(0xFF383C3E),
+    surfaceContainerHighest = Color(0xFF43474A),
+    inverseSurface = Color(0xFFEEEEEC),
+    inverseOnSurface = Color(0xFF2E3436),
+    inversePrimary = MateAccentDark,
+    outline = Color(0xFF555753),
+    outlineVariant = Color(0xFF3D4240),
+    scrim = Color(0xCC000000),
+    surfaceTint = Color(0xFF729FCF)
+)
+
+private val MateShapes = Shapes(
+    extraSmall = RoundedCornerShape(2.dp),
+    small = RoundedCornerShape(3.dp),
+    medium = RoundedCornerShape(4.dp),
+    large = RoundedCornerShape(6.dp),
+    extraLarge = RoundedCornerShape(8.dp)
+)
+
 // ── Typography (platform UI font mapping via SansSerif) ────────────────────
 
 private fun desktopTypography(compact: Boolean): Typography {
@@ -531,6 +792,24 @@ fun detectSystemDarkTheme(): Boolean {
     }
     val os = System.getProperty("os.name").orEmpty().lowercase()
     if (os.contains("linux")) {
+        // Cinnamon
+        readProcessOutput("gsettings", "get", "org.cinnamon.desktop.interface", "gtk-theme")
+            ?.lowercase()
+            ?.let { out ->
+                if ("dark" in out) return true
+                if ("mint-y" in out && "dark" !in out) return false
+            }
+        // MATE
+        readProcessOutput("gsettings", "get", "org.mate.interface", "gtk-theme")
+            ?.lowercase()
+            ?.let { out ->
+                if ("dark" in out || "black" in out) return true
+            }
+        readProcessOutput("gsettings", "get", "org.mate.Marco.general", "theme")
+            ?.lowercase()
+            ?.let { out ->
+                if ("dark" in out || "black" in out) return true
+            }
         // GNOME 42+: color-scheme
         readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
             ?.lowercase()
@@ -538,7 +817,7 @@ fun detectSystemDarkTheme(): Boolean {
                 if ("prefer-dark" in out) return true
                 if ("prefer-light" in out) return false
             }
-        // GTK theme name
+        // GTK theme name (GNOME / shared)
         readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme")
             ?.lowercase()
             ?.let { out ->
@@ -631,6 +910,18 @@ fun QuickGitTheme(
             chrome = if (darkTheme) PlasmaDarkChrome else PlasmaLightChrome
             shapes = PlasmaShapes
             typography = desktopTypography(compact = true)
+        }
+        DesktopPlatformStyle.Cinnamon -> {
+            colors = if (darkTheme) CinnamonDarkColors else CinnamonLightColors
+            chrome = if (darkTheme) CinnamonDarkChrome else CinnamonLightChrome
+            shapes = CinnamonShapes
+            typography = desktopTypography(compact = false)
+        }
+        DesktopPlatformStyle.Mate -> {
+            colors = if (darkTheme) MateDarkColors else MateLightColors
+            chrome = if (darkTheme) MateDarkChrome else MateLightChrome
+            shapes = MateShapes
+            typography = desktopTypography(compact = false)
         }
         DesktopPlatformStyle.Ubuntu -> {
             colors = if (darkTheme) UbuntuDarkColors else UbuntuLightColors
