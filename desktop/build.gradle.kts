@@ -96,8 +96,8 @@ compose.desktop {
                 shortcut = true
                 dirChooser = true
                 perUserInstall = false
-                // Same icon as Linux when present
-                iconFile.set(project.file("src/jvmMain/resources/icon.png"))
+                // Windows installer / taskbar require .ico (PNG falls back to the Java penguin)
+                iconFile.set(project.file("src/jvmMain/resources/icon.ico"))
             }
 
             macOS {

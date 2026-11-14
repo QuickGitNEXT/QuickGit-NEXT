@@ -148,6 +148,24 @@ jobs:
           OUT="dist/quickgitnext-${VER}-linux-amd64.deb"
           WORK="$(mktemp -d)"
           dpkg-deb -R "$DEB" "$WORK/pkg"
+          # Friendly launcher name + WM class (avoid com-quickgit-desktop-MainKt)
+          find "$WORK/pkg" -name '*.desktop' -print0 2>/dev/null | while IFS= read -r -d '' desk; do
+            echo "Patching desktop entry: $desk"
+            sed -i \
+              -e 's/^Name=.*/Name=QuickGitNEXT/' \
+              -e 's/^GenericName=.*/GenericName=Git client/' \
+              -e 's/^Comment=.*/Comment=Git client for GitHub and GitLab/' \
+              "$desk" || true
+            if grep -q '^StartupWMClass=' "$desk" 2>/dev/null; then
+              sed -i 's/^StartupWMClass=.*/StartupWMClass=QuickGitNEXT/' "$desk" || true
+            else
+              echo 'StartupWMClass=QuickGitNEXT' >> "$desk" || true
+            fi
+            if ! grep -q '^StartupNotify=' "$desk" 2>/dev/null; then
+              echo 'StartupNotify=true' >> "$desk" || true
+            fi
+            cat "$desk" || true
+          done
           CTRL="$WORK/pkg/DEBIAN/control"
           # One stanza only: blank lines terminate the package paragraph in Debian control.
           TMP_CTRL="$(mktemp)"

@@ -26,7 +26,12 @@ import java.awt.Desktop
 import java.awt.Dimension
 import java.net.URI
 
-fun main() = application {
+fun main() {
+    // Taskbar / launcher label (avoid com.quickgit.desktop.MainKt)
+    System.setProperty("awt.application.name", "QuickGitNEXT")
+    System.setProperty("compose.application.name", "QuickGitNEXT")
+    System.setProperty("apple.awt.application.name", "QuickGitNEXT")
+    application {
     System.getProperty("quickgitnext.version")?.let {
         DesktopAppUpdateConfig.currentVersionName = it
     }
@@ -150,6 +155,7 @@ fun main() = application {
             }
         }
     }
+}
 }
 
 @Composable
