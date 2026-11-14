@@ -48,10 +48,16 @@ tasks.withType<JavaCompile> {
 
 compose.desktop {
     application {
-        mainClass = "com.quickgit.desktop.MainKt"
+        mainClass = "QuickGitNEXT"
         // CI stamps version via -Pquickgitnext.version (and sed on packageVersion)
         val appVer = (project.findProperty("quickgitnext.version") as String?) ?: "2.0.0"
-        jvmArgs += listOf("-Dquickgitnext.version=$appVer")
+        jvmArgs += listOf(
+            "-Dquickgitnext.version=$appVer",
+            // Allow setting awtAppClassName so Linux does not show MainKt in the dock
+            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.awt.X11=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.awt.wl=ALL-UNNAMED",
+        )
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)

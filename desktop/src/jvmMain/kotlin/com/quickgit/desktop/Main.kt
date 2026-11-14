@@ -26,11 +26,16 @@ import java.awt.Desktop
 import java.awt.Dimension
 import java.net.URI
 
-fun main() {
-    // Taskbar / launcher label (avoid com.quickgit.desktop.MainKt)
+/**
+ * Real application bootstrap. Invoked from the top-level [QuickGitNEXT] entry
+ * so the process / WM_CLASS name is QuickGitNEXT on Linux.
+ */
+fun bootstrap(args: Array<String> = emptyArray()) {
+    // Taskbar / launcher / notification labels
     System.setProperty("awt.application.name", "QuickGitNEXT")
     System.setProperty("compose.application.name", "QuickGitNEXT")
     System.setProperty("apple.awt.application.name", "QuickGitNEXT")
+    applyLinuxAppClassName("QuickGitNEXT")
     application {
     System.getProperty("quickgitnext.version")?.let {
         DesktopAppUpdateConfig.currentVersionName = it
@@ -156,6 +161,17 @@ fun main() {
         }
     }
 }
+}
+
+
+/** Set AWT X11/Wayland app class so dock/taskbar do not show MainKt. */
+private fun applyLinuxAppClassName(name: String) {
+    runCatching {
+        val toolkit = java.awt.Toolkit.getDefaultToolkit()
+        val field = toolkit.javaClass.getDeclaredField("awtAppClassName")
+        field.trySetAccessible()
+        field.set(toolkit, name)
+    }
 }
 
 @Composable
