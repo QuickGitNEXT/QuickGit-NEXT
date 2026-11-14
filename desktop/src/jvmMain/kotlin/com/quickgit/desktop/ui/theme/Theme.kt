@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 
 /**
  * Platform-native desktop theming:
@@ -518,9 +519,99 @@ private fun desktopTypography(compact: Boolean): Typography {
     )
 }
 
+/**
+ * Prefer real Linux desktop settings over Swing's isSystemInDarkTheme(),
+ * which often stays light on GNOME/KDE.
+ */
+fun detectSystemDarkTheme(): Boolean {
+    // Explicit override for testing / packaging
+    when (System.getProperty("quickgitnext.dark")?.trim()?.lowercase()) {
+        "1", "true", "dark", "yes" -> return true
+        "0", "false", "light", "no" -> return false
+    }
+    val os = System.getProperty("os.name").orEmpty().lowercase()
+    if (os.contains("linux")) {
+        // GNOME 42+: color-scheme
+        readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "color-scheme")
+            ?.lowercase()
+            ?.let { out ->
+                if ("prefer-dark" in out) return true
+                if ("prefer-light" in out) return false
+            }
+        // GTK theme name
+        readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "gtk-theme")
+            ?.lowercase()
+            ?.let { out ->
+                if ("dark" in out) return true
+            }
+        // KDE Plasma: kdeglobals ColorScheme / LookAndFeel
+        runCatching {
+            val home = System.getProperty("user.home") ?: return@runCatching
+            val globals = File(home, ".config/kdeglobals")
+            if (globals.isFile) {
+                val text = globals.readText()
+                val scheme = Regex("""(?im)^ColorScheme\s*=\s*(.+)$""")
+                    .find(text)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.trim()
+                    .orEmpty()
+                if (scheme.contains("dark", ignoreCase = true)) return true
+                if (scheme.contains("light", ignoreCase = true) || scheme.contains("breeze", ignoreCase = true) && !scheme.contains("dark", ignoreCase = true)) {
+                    // Breeze (light) default — only force light when explicitly light-like
+                    if (scheme.contains("light", ignoreCase = true)) return false
+                }
+                if (Regex("""(?im)^LookAndFeelPackage\s*=.*dark""").containsMatchIn(text)) return true
+            }
+            // kreadconfig5 fallback
+            readProcessOutput(
+                "kreadconfig5", "--file", "kdeglobals", "--group", "General", "--key", "ColorScheme"
+            )?.let { v ->
+                if (v.contains("dark", ignoreCase = true)) return true
+            }
+        }
+        // Freedesktop color-scheme portal style env (some sessions)
+        System.getenv("GTK_THEME")?.lowercase()?.let {
+            if ("dark" in it) return true
+        }
+        // Prefer dark if COLORFGBG suggests light-on-dark terminals (weak signal)
+        System.getenv("COLORFGBG")?.let { cfg ->
+            val parts = cfg.split(';')
+            val bg = parts.lastOrNull()?.toIntOrNull()
+            if (bg != null && bg <= 8) return true
+        }
+    }
+    // Swing / Compose global when available (non-composable path)
+    return runCatching {
+        val info = javax.swing.UIManager.getLookAndFeel()?.defaults
+        val bg = info?.getColor("Panel.background")
+        if (bg != null) {
+            val luminance = (0.299 * bg.red + 0.587 * bg.green + 0.114 * bg.blue)
+            return@runCatching luminance < 128
+        }
+        false
+    }.getOrDefault(false)
+}
+
+private fun readProcessOutput(vararg cmd: String): String? = runCatching {
+    val p = ProcessBuilder(*cmd)
+        .redirectErrorStream(true)
+        .start()
+    val out = p.inputStream.bufferedReader().readText().trim()
+    p.waitFor()
+    out.takeIf { it.isNotEmpty() }
+}.getOrNull()
+
+@Composable
+fun isAppInDarkTheme(): Boolean {
+    val os = System.getProperty("os.name").orEmpty().lowercase()
+    // On Linux Swing often lies; use desktop settings. Elsewhere trust Compose.
+    return if (os.contains("linux")) detectSystemDarkTheme() else isSystemInDarkTheme()
+}
+
 @Composable
 fun QuickGitTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = isAppInDarkTheme(),
     platform: DesktopPlatformStyle = detectDesktopPlatformStyle(),
     content: @Composable () -> Unit
 ) {

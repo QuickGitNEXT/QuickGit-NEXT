@@ -21,6 +21,8 @@ import com.quickgit.desktop.data.DesktopUpdateCheckResult
 import com.quickgit.desktop.ui.DesktopScreen
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
+import com.quickgit.desktop.ui.theme.detectSystemDarkTheme
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
@@ -155,10 +157,28 @@ fun bootstrap(args: Array<String> = emptyArray()) {
         val repoManager = remember { DesktopRepoManager(credentialStore) }
         val updateManager = remember { DesktopAppUpdateManager(credentialStore) }
 
-        QuickGitTheme {
+        // Re-check OS light/dark periodically (GNOME/KDE theme switches)
+        var darkTheme by remember { mutableStateOf(detectSystemDarkTheme()) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                kotlinx.coroutines.delay(1500)
+                val next = detectSystemDarkTheme()
+                if (next != darkTheme) darkTheme = next
+            }
+        }
+        QuickGitTheme(darkTheme = darkTheme) {
+            val bg = MaterialTheme.colorScheme.background
+            // Match AWT window chrome to theme (avoids white flash / fixed light frame)
+            LaunchedEffect(bg) {
+                runCatching {
+                    val rgb = bg.toArgb()
+                    window.background = java.awt.Color(rgb, true)
+                    window.contentPane?.background = java.awt.Color(rgb, true)
+                }
+            }
             Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = bg
                 ) {
                 var updatePrompt by remember { mutableStateOf<DesktopUpdateCheckResult.Available?>(null) }
 
