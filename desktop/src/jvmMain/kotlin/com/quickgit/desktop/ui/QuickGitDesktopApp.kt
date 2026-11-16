@@ -1178,6 +1178,7 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
     var coAuthorsText by remember { mutableStateOf("") }
     var stashMessage by remember { mutableStateOf("") }
     var stashes by remember { mutableStateOf(emptyList<DesktopRepoManager.StashEntry>()) }
+    var showStashDialog by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(setOf<String>()) }
     var loading by remember { mutableStateOf(true) }
     var isMerging by remember { mutableStateOf(false) }
@@ -1271,7 +1272,8 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             }
         }
 
-        // Four panels: Changed files | Commit | Stashed commits | Stash (left → right)
+
+        // Two panels: Changed files | Commit  (stash lives in a popup)
         Row(
             Modifier.weight(1f).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1398,12 +1400,12 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 }
             }
 
-            // ── 2. Commit options ───────────────────────────────────────────
+            // ── 2. Commit ───────────────────────────────────────────────────
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1.1f).fillMaxHeight()
+                modifier = Modifier.weight(1.15f).fillMaxHeight()
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
@@ -1471,83 +1473,188 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                         enabled = commitMessage.isNotBlank() || amend,
                         modifier = Modifier.fillMaxWidth()
                     ) { Text(if (amend) "Amend commit" else "Commit") }
+                    OutlinedButton(
+                        onClick = { showStashDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (stashes.isEmpty()) "Stashes…"
+                            else "Stashes (${stashes.size})…"
+                        )
+                    }
                 }
             }
+        }
+    }
 
-            // ── 3. Stashed commits list ───────────────────────────────────────────────
+    if (showStashDialog) {
+        Dialog(
+            onDismissRequest = { showStashDialog = false },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false
+            )
+        ) {
             Surface(
                 shape = MaterialTheme.shapes.medium,
-                tonalElevation = 1.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1.1f).fillMaxHeight()
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .widthIn(min = 520.dp, max = 900.dp)
+                    .heightIn(min = 360.dp, max = 640.dp)
+                    .fillMaxWidth(0.85f)
+                    .fillMaxHeight(0.8f)
             ) {
-                Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("Stashed commits", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    if (stashes.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                "No stashes",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                Column(Modifier.fillMaxSize()) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Stashes",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { showStashDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
                         }
-                    } else {
-                        LazyColumn(
-                            Modifier.weight(1f).fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Stash options
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            tonalElevation = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.weight(0.9f).fillMaxHeight()
                         ) {
-                            items(stashes, key = { it.ref }) { s ->
-                                Surface(
-                                    shape = MaterialTheme.shapes.small,
-                                    tonalElevation = 0.dp,
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            Column(
+                                Modifier.fillMaxSize().padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("Create stash", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    "Save local changes temporarily and re-apply later.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                OutlinedTextField(
+                                    value = stashMessage,
+                                    onValueChange = { stashMessage = it },
+                                    label = { Text("Message (optional)") },
+                                    singleLine = true,
                                     modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(
-                                            "stash@{${s.index}}",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Text(
-                                            s.message.ifBlank { "(no message)" },
-                                            style = MaterialTheme.typography.bodySmall,
-                                            maxLines = 3,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        val r = withContext(Dispatchers.IO) {
-                                                            repoManager.stashApply(repoPath, s.index)
-                                                        }
-                                                        r.fold(
-                                                            { reload(); onMessage("Applied stash@{${s.index}}") },
-                                                            { onMessage("Apply failed: ${it.message}") }
-                                                        )
-                                                    }
+                                )
+                                Button(
+                                    onClick = {
+                                        scope.launch {
+                                            val r = withContext(Dispatchers.IO) {
+                                                repoManager.stashSave(repoPath, stashMessage.ifBlank { null })
+                                            }
+                                            r.fold(
+                                                {
+                                                    stashMessage = ""
+                                                    reload()
+                                                    onMessage("Stashed ${it.take(7)}")
                                                 },
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                            ) { Text("Apply") }
-                                            TextButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        val r = withContext(Dispatchers.IO) {
-                                                            repoManager.stashDrop(repoPath, s.index)
-                                                        }
-                                                        r.fold(
-                                                            { reload(); onMessage("Dropped stash@{${s.index}}") },
-                                                            { onMessage("Drop failed: ${it.message}") }
-                                                        )
+                                                { onMessage("Stash failed: ${it.message}") }
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Stash changes") }
+                            }
+                        }
+                        // Stash list
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            tonalElevation = 1.dp,
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.weight(1.1f).fillMaxHeight()
+                        ) {
+                            Column(
+                                Modifier.fillMaxSize().padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("Stashed commits", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                if (stashes.isEmpty()) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            "No stashes",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        Modifier.weight(1f).fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        items(stashes, key = { it.ref }) { s ->
+                                            Surface(
+                                                shape = MaterialTheme.shapes.small,
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Column(
+                                                    Modifier.padding(10.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Text(
+                                                        "stash@{${s.index}}",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        fontFamily = FontFamily.Monospace
+                                                    )
+                                                    Text(
+                                                        s.message.ifBlank { "(no message)" },
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        maxLines = 3,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                        TextButton(
+                                                            onClick = {
+                                                                scope.launch {
+                                                                    val r = withContext(Dispatchers.IO) {
+                                                                        repoManager.stashApply(repoPath, s.index)
+                                                                    }
+                                                                    r.fold(
+                                                                        { reload(); onMessage("Applied stash@{${s.index}}") },
+                                                                        { onMessage("Apply failed: ${it.message}") }
+                                                                    )
+                                                                }
+                                                            },
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                                        ) { Text("Apply") }
+                                                        TextButton(
+                                                            onClick = {
+                                                                scope.launch {
+                                                                    val r = withContext(Dispatchers.IO) {
+                                                                        repoManager.stashDrop(repoPath, s.index)
+                                                                    }
+                                                                    r.fold(
+                                                                        { reload(); onMessage("Dropped stash@{${s.index}}") },
+                                                                        { onMessage("Drop failed: ${it.message}") }
+                                                                    )
+                                                                }
+                                                            },
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                                        ) { Text("Drop") }
                                                     }
-                                                },
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                            ) { Text("Drop") }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1556,56 +1663,9 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                     }
                 }
             }
-
-            // ── 4. Stash options ────────────────────────────────────────────
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                tonalElevation = 1.dp,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(0.9f).fillMaxHeight()
-            ) {
-                Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text("Stash", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "Save local changes temporarily and re-apply later.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = stashMessage,
-                        onValueChange = { stashMessage = it },
-                        label = { Text("Message (optional)") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val r = withContext(Dispatchers.IO) {
-                                    repoManager.stashSave(repoPath, stashMessage.ifBlank { null })
-                                }
-                                r.fold(
-                                    {
-                                        stashMessage = ""
-                                        reload()
-                                        onMessage("Stashed ${it.take(7)}")
-                                    },
-                                    { onMessage("Stash failed: ${it.message}") }
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Stash changes") }
-                    Spacer(Modifier.weight(1f))
-                }
-            }
-
-
         }
     }
+
 
     editConflictPath?.let { path ->
         AlertDialog(
