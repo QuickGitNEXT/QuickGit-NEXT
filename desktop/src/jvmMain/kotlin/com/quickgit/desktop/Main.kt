@@ -22,6 +22,7 @@ import com.quickgit.desktop.ui.DesktopScreen
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
 import com.quickgit.desktop.ui.theme.detectSystemDarkTheme
+import com.quickgit.desktop.ui.theme.detectSystemAccentColor
 import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -159,6 +160,7 @@ fun bootstrap(args: Array<String> = emptyArray()) {
 
         // Re-check OS light/dark periodically (GNOME/KDE theme switches)
         var darkTheme by remember { mutableStateOf(detectSystemDarkTheme()) }
+        var accentKey by remember { mutableStateOf(detectSystemAccentColor()?.value ?: 0u) }
         SideEffect {
             System.setProperty("quickgitnext.runtime.dark", darkTheme.toString())
         }
@@ -167,8 +169,12 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                 kotlinx.coroutines.delay(800)
                 val next = detectSystemDarkTheme()
                 if (next != darkTheme) darkTheme = next
+                val nextAccent = detectSystemAccentColor()?.value ?: 0u
+                if (nextAccent != accentKey) accentKey = nextAccent
             }
         }
+        // accentKey forces QuickGitTheme to re-read system accent when it changes
+        key(darkTheme, accentKey) {
         QuickGitTheme(darkTheme = darkTheme) {
             val bg = MaterialTheme.colorScheme.background
             // Match AWT window chrome to theme (avoids white flash / fixed light frame)
@@ -209,12 +215,13 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                             onDismiss = { updatePrompt = null }
                         )
                     }
-                }
-            }
-        }
-    }
-}
-}
+                } // Box
+            } // Surface
+        } // QuickGitTheme
+        } // key(darkTheme, accentKey)
+    } // Window
+    } // application
+} // main
 
 
 /** Set AWT X11/Wayland app class so dock/taskbar do not show MainKt. */

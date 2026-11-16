@@ -947,6 +947,136 @@ private fun readProcessOutput(vararg cmd: String): String? = runCatching {
     out.takeIf { it.isNotEmpty() }
 }.getOrNull()
 
+
+/**
+ * System accent color for Linux (GNOME/Ubuntu accent-color, KDE AccentColor).
+ * Falls back to null when unknown so the platform default primary is kept.
+ */
+fun detectSystemAccentColor(): Color? {
+    val forced = System.getProperty("quickgitnext.accent")?.trim()?.lowercase().orEmpty()
+    if (forced.isNotEmpty()) {
+        parseHexColor(forced)?.let { return it }
+        yaruAccentNamed(forced)?.let { return it }
+    }
+    val os = System.getProperty("os.name").orEmpty().lowercase()
+    if (!os.contains("linux")) return null
+
+    // GNOME / Ubuntu 22.04+: org.gnome.desktop.interface accent-color
+    readProcessOutput("gsettings", "get", "org.gnome.desktop.interface", "accent-color")
+        ?.trim()
+        ?.removePrefix("'")?.removeSuffix("'")
+        ?.removePrefix("\"")?.removeSuffix("\"")
+        ?.lowercase()
+        ?.let { name -> yaruAccentNamed(name)?.let { return it } }
+
+    // KDE Plasma accent (often "r,g,b" or hex-ish)
+    for (tool in listOf("kreadconfig6", "kreadconfig5")) {
+        val raw = readProcessOutput(
+            tool, "--file", "kdeglobals", "--group", "General", "--key", "AccentColor"
+        ).orEmpty().trim()
+        parseKdeColor(raw)?.let { return it }
+        val sel = readProcessOutput(
+            tool, "--file", "kdeglobals", "--group", "Colors:Selection", "--key", "BackgroundNormal"
+        ).orEmpty().trim()
+        parseKdeColor(sel)?.let { return it }
+    }
+
+    // kdeglobals file fallback
+    val home = System.getProperty("user.home") ?: return null
+    for (rel in listOf(".config/kdeglobals", ".config/kdedefaults/kdeglobals")) {
+        val f = File(home, rel)
+        if (!f.isFile) continue
+        val text = runCatching { f.readText() }.getOrNull() ?: continue
+        Regex("""(?im)^AccentColor\s*=\s*(.+)$""").find(text)?.groupValues?.getOrNull(1)?.trim()
+            ?.let { parseKdeColor(it)?.let { c -> return c } }
+        val selSection = Regex("""(?is)\[Colors:Selection\](.*?)(\n\[|\z)""")
+            .find(text)?.groupValues?.getOrNull(1).orEmpty()
+        Regex("""(?im)^BackgroundNormal\s*=\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)""")
+            .find(selSection)?.groupValues
+            ?.let { gv ->
+                return Color(gv[1].toInt() / 255f, gv[2].toInt() / 255f, gv[3].toInt() / 255f)
+            }
+    }
+    return null
+}
+
+/** Official-ish Yaru / GNOME accent palette (Ubuntu Settings → Accent Color). */
+private fun yaruAccentNamed(name: String): Color? = when (name.trim().lowercase()) {
+    "blue" -> Color(0xFF3584E4)
+    "teal" -> Color(0xFF219B9A)
+    "green" -> Color(0xFF3A9444)
+    "yellow" -> Color(0xFFC88800)
+    "orange" -> Color(0xFFE95420)
+    "red" -> Color(0xFFE01B24)
+    "pink" -> Color(0xFFD02670)
+    "purple" -> Color(0xFF9141AC)
+    "slate" -> Color(0xFF6F8396)
+    "brown" -> Color(0xFF986A44)
+    else -> null
+}
+
+private fun parseHexColor(raw: String): Color? {
+    var s = raw.trim().removePrefix("#")
+    if (s.startsWith("0x") || s.startsWith("0X")) s = s.substring(2)
+    if (s.length == 6) {
+        val v = s.toLongOrNull(16) ?: return null
+        return Color(0xFF000000 or v)
+    }
+    if (s.length == 8) {
+        val v = s.toLongOrNull(16) ?: return null
+        return Color(v)
+    }
+    return null
+}
+
+private fun parseKdeColor(raw: String): Color? {
+    if (raw.isBlank()) return null
+    parseHexColor(raw)?.let { return it }
+    val parts = raw.split(Regex("""[,\s]+""")).mapNotNull { it.trim().toIntOrNull() }
+    return if (parts.size >= 3) Color(parts[0] / 255f, parts[1] / 255f, parts[2] / 255f) else null
+}
+
+/** Blend primary into a ColorScheme so buttons/chips follow the system accent. */
+private fun ColorScheme.withAccent(accent: Color, dark: Boolean): ColorScheme {
+    val container = if (dark) accent.copy(alpha = 1f).darken(0.35f) else accent.lighten(0.82f)
+    val onAccent = if (accent.luminance() > 0.55f) Color(0xFF1A1A1A) else Color.White
+    val onContainer = if (dark) accent.lighten(0.75f) else accent.darken(0.45f)
+    return copy(
+        primary = accent,
+        onPrimary = onAccent,
+        primaryContainer = container,
+        onPrimaryContainer = onContainer,
+        inversePrimary = if (dark) accent.lighten(0.25f) else accent.darken(0.15f),
+        secondary = if (dark) accent.lighten(0.15f) else accent.darken(0.1f),
+        surfaceTint = accent
+    )
+}
+
+private fun Color.luminance(): Float {
+    // Relative luminance approximation on sRGB components 0..1
+    return 0.299f * red + 0.587f * green + 0.114f * blue
+}
+
+private fun Color.lighten(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red + (1f - red) * a,
+        green = green + (1f - green) * a,
+        blue = blue + (1f - blue) * a,
+        alpha = alpha
+    )
+}
+
+private fun Color.darken(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red * (1f - a),
+        green = green * (1f - a),
+        blue = blue * (1f - a),
+        alpha = alpha
+    )
+}
+
 @Composable
 fun isAppInDarkTheme(): Boolean {
     val os = System.getProperty("os.name").orEmpty().lowercase()
@@ -960,8 +1090,8 @@ fun QuickGitTheme(
     platform: DesktopPlatformStyle = detectDesktopPlatformStyle(),
     content: @Composable () -> Unit
 ) {
-    val colors: ColorScheme
-    val chrome: PlatformChromeColors
+    var colors: ColorScheme
+    var chrome: PlatformChromeColors
     val shapes: Shapes
     val typography: Typography
     when (platform) {
@@ -995,6 +1125,15 @@ fun QuickGitTheme(
             shapes = UbuntuShapes
             typography = desktopTypography(compact = false)
         }
+    }
+    // Follow GNOME/Ubuntu (and KDE) system accent for buttons, chips, links
+    val accent = detectSystemAccentColor()
+    if (accent != null) {
+        colors = colors.withAccent(accent, darkTheme)
+        chrome = chrome.copy(
+            selection = accent.copy(alpha = if (darkTheme) 0.28f else 0.20f),
+            info = accent
+        )
     }
     CompositionLocalProvider(LocalLinuxColors provides chrome) {
         MaterialTheme(
