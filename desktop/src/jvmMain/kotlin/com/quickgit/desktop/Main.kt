@@ -23,12 +23,14 @@ import com.quickgit.desktop.data.DesktopAppUpdateManager
 import com.quickgit.desktop.data.DesktopCredentialStore
 import com.quickgit.desktop.data.DesktopRepoManager
 import com.quickgit.desktop.data.DesktopUpdateCheckResult
+import com.quickgit.desktop.data.DesktopInstallResult
 import com.quickgit.desktop.ui.DesktopScreen
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
 import com.quickgit.desktop.ui.theme.detectSystemAccentColor
 import com.quickgit.desktop.ui.theme.detectSystemDarkTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
 import java.awt.Dimension
@@ -364,34 +366,95 @@ private fun UpdateAvailableDialog(
     updateManager: DesktopAppUpdateManager,
     onDismiss: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var progress by remember { mutableStateOf(-1) }
+    var status by remember { mutableStateOf<String?>(null) }
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!busy) onDismiss() },
         title = { Text("Update available") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "QuickGitNEXT " + available.latest.versionName + " is on GitHub Releases " +
+                    "QuickGitNEXT " + available.latest.versionName + " is available " +
                         "(you have " + available.current.versionName + ")."
                 )
                 Text(
-                    "Open the Releases page to download the package for your platform.",
+                    "Package: " + available.format.label + " — " + available.assetName.ifBlank { available.format.suffix },
                     style = MaterialTheme.typography.bodySmall
                 )
+                if (available.releaseNotes.isNotBlank()) {
+                    Text(
+                        available.releaseNotes.take(400),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                status?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+                if (progress in 0..100) {
+                    LinearProgressIndicator(
+                        progress = { progress / 100f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    updateManager.openReleasePage()
-                    onDismiss()
-                }
-            ) { Text("Open Releases") }
+                    if (available.downloadUrl.isBlank()) {
+                        updateManager.openReleasePage()
+                        onDismiss()
+                        return@Button
+                    }
+                    scope.launch {
+                        busy = true
+                        status = "Downloading…"
+                        progress = 0
+                        val result = withContext(Dispatchers.IO) {
+                            updateManager.downloadAndInstall(available) { p -> progress = p }
+                        }
+                        busy = false
+                        progress = -1
+                        when (result) {
+                            is DesktopInstallResult.Success -> {
+                                status = result.message
+                            }
+                            is DesktopInstallResult.Error -> {
+                                status = result.message
+                            }
+                        }
+                    }
+                },
+                enabled = !busy
+            ) {
+                Text(
+                    when {
+                        busy && progress in 0..99 -> "Downloading $progress%"
+                        busy -> "Installing…"
+                        available.downloadUrl.isBlank() -> "Open Releases"
+                        else -> "Download & install"
+                    }
+                )
+            }
         },
         dismissButton = {
-            TextButton(onClick = {
-                updateManager.snoozeForDays(7)
-                onDismiss()
-            }) { Text("Later") }
+            Row {
+                TextButton(
+                    onClick = {
+                        updateManager.snoozeForDays(7)
+                        onDismiss()
+                    },
+                    enabled = !busy
+                ) { Text("Later") }
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !busy
+                ) { Text(if (status != null && !busy) "Close" else "Cancel") }
+            }
         }
     )
 }

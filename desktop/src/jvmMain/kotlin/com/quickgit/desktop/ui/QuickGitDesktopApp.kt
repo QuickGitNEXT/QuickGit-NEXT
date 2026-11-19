@@ -6825,33 +6825,95 @@ fun SettingsScreen(
 
         Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Updates", style = MaterialTheme.typography.titleMedium)
+        val pkgFormat = remember { updateManager.detectPackageFormat() }
         Text("Current version: ${DesktopAppUpdateConfig.currentVersionName}")
+        Text(
+            "Install type: ${pkgFormat.label} (${pkgFormat.suffix.ifBlank { "auto" }})",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        var availableUpdate by remember { mutableStateOf<DesktopUpdateCheckResult.Available?>(null) }
+        var installProgress by remember { mutableStateOf(-1) }
+        var installing by remember { mutableStateOf(false) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                scope.launch {
-                    checkingUpdate = true
-                    updateStatus = null
-                    updateManager.clearSuppression()
-                    val result = withContext(Dispatchers.IO) { updateManager.checkForUpdate() }
-                    checkingUpdate = false
-                    when (result) {
-                        is DesktopUpdateCheckResult.UpToDate ->
-                            updateStatus = "Up to date (${result.current.versionName})"
-                        is DesktopUpdateCheckResult.Available ->
-                            updateStatus =
-                                "QuickGitNEXT ${result.latest.versionName} is available — open Releases to download."
-                        is DesktopUpdateCheckResult.Error ->
-                            updateStatus = "Check failed: ${result.message}"
+            Button(
+                onClick = {
+                    scope.launch {
+                        checkingUpdate = true
+                        updateStatus = null
+                        availableUpdate = null
+                        updateManager.clearSuppression()
+                        val result = withContext(Dispatchers.IO) { updateManager.checkForUpdate() }
+                        checkingUpdate = false
+                        when (result) {
+                            is DesktopUpdateCheckResult.UpToDate ->
+                                updateStatus = "Up to date (${result.current.versionName})"
+                            is DesktopUpdateCheckResult.Available -> {
+                                availableUpdate = result
+                                updateStatus =
+                                    "QuickGitNEXT ${result.latest.versionName} available (${result.format.label}: ${result.assetName})"
+                            }
+                            is DesktopUpdateCheckResult.Error ->
+                                updateStatus = "Check failed: ${result.message}"
+                        }
                     }
+                },
+                enabled = !checkingUpdate && !installing
+            ) { Text(if (checkingUpdate) "Checking…" else "Check for updates") }
+            val avail = availableUpdate
+            if (avail != null && avail.downloadUrl.isNotBlank()) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            installing = true
+                            installProgress = 0
+                            updateStatus = "Downloading ${avail.assetName}…"
+                            val result = withContext(Dispatchers.IO) {
+                                updateManager.downloadAndInstall(avail) { p -> installProgress = p }
+                            }
+                            installing = false
+                            installProgress = -1
+                            when (result) {
+                                is DesktopInstallResult.Success -> {
+                                    updateStatus = result.message
+                                    availableUpdate = null
+                                    onMessage(result.message)
+                                }
+                                is DesktopInstallResult.Error -> {
+                                    updateStatus = result.message
+                                    onMessage(result.message)
+                                }
+                            }
+                        }
+                    },
+                    enabled = !installing && !checkingUpdate
+                ) {
+                    Text(
+                        if (installing) {
+                            if (installProgress in 0..99) "Downloading $installProgress%" else "Installing…"
+                        } else {
+                            "Download & install ${avail.format.suffix}"
+                        }
+                    )
                 }
-            }, enabled = !checkingUpdate) { Text(if (checkingUpdate) "Checking…" else "Check for updates") }
+            }
             TextButton(onClick = { updateManager.openReleasePage() }) { Text("Open releases") }
         }
         updateStatus?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        if (installProgress in 0..100) {
+            LinearProgressIndicator(
+                progress = { installProgress / 100f },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
         Text("Appearance", style = MaterialTheme.typography.titleMedium)
-        Text("Dark mode is always on for the desktop app.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            "Theme follows the system light/dark setting and desktop accent colour.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
