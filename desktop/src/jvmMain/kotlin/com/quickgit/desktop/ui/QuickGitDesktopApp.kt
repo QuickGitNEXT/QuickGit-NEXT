@@ -353,6 +353,39 @@ private fun UbuntuPageHeader(
     }
 }
 
+
+/** Filter chip that uses the system/primary accent when selected (not secondary purple). */
+@Composable
+private fun AccentFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = label,
+        enabled = enabled,
+        modifier = modifier,
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.primary
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = enabled,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
+            disabledSelectedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+        )
+    )
+}
+
 /** Card-like content area used by repo detail tabs (Yaru / libadwaita density). */
 @Composable
 private fun UbuntuContentCard(
@@ -1850,13 +1883,13 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FilterChip(
+            AccentFilterChip(
                 selected = logRef == null,
                 onClick = { logRef = null },
                 label = { Text("Current branch") }
             )
             branches.forEach { b ->
-                FilterChip(
+                AccentFilterChip(
                     selected = logRef == b.name,
                     onClick = { logRef = b.name },
                     label = {
@@ -3526,7 +3559,7 @@ fun IssuesTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             IssueStateFilter.entries.forEach { f ->
-                FilterChip(
+                AccentFilterChip(
                     selected = stateFilter == f,
                     onClick = { stateFilter = f },
                     label = { Text(f.label) }
@@ -3828,7 +3861,7 @@ fun PullRequestsTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             PrStateFilter.entries.forEach { f ->
-                FilterChip(
+                AccentFilterChip(
                     selected = stateFilter == f,
                     onClick = { stateFilter = f },
                     label = { Text(f.label) }
@@ -4073,7 +4106,7 @@ fun PullRequestsTab(
                         Text("Merge method", fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             MergeMethod.entries.forEach { m ->
-                                FilterChip(
+                                AccentFilterChip(
                                     selected = mergeMethod == m,
                                     onClick = { mergeMethod = m },
                                     label = { Text(m.label) }
@@ -4457,13 +4490,13 @@ fun WorkflowsTab(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
+            AccentFilterChip(
                 selected = selectedWorkflowId == null,
                 onClick = { selectedWorkflowId = null },
                 label = { Text("All workflows") }
             )
             workflows.forEach { wf ->
-                FilterChip(
+                AccentFilterChip(
                     selected = selectedWorkflowId == wf.id,
                     onClick = { selectedWorkflowId = wf.id },
                     label = { Text(wf.name, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -4477,7 +4510,7 @@ fun WorkflowsTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             WorkflowRunFilter.entries.forEach { f ->
-                FilterChip(
+                AccentFilterChip(
                     selected = filter == f,
                     onClick = { filter = f },
                     label = { Text(f.label) }
@@ -5286,13 +5319,13 @@ fun BrowseAccountScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FilterChip(
+                    AccentFilterChip(
                         selected = selectedOrg == null,
                         onClick = { selectedOrg = null; loadGitHubRepos(null) },
                         label = { Text("Personal") }
                     )
                     orgs.forEach { org ->
-                        FilterChip(
+                        AccentFilterChip(
                             selected = selectedOrg == org,
                             onClick = { selectedOrg = org; loadGitHubRepos(org) },
                             label = { Text(org) }
@@ -6170,13 +6203,13 @@ fun ProfileScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FilterChip(
+            AccentFilterChip(
                 selected = selectedTab == ProfileProviderTab.GITHUB,
                 onClick = { selectedTab = ProfileProviderTab.GITHUB },
                 enabled = githubConnected,
                 label = { Text("GitHub") }
             )
-            FilterChip(
+            AccentFilterChip(
                 selected = selectedTab == ProfileProviderTab.GITLAB,
                 onClick = { selectedTab = ProfileProviderTab.GITLAB },
                 enabled = gitlabConnected,
@@ -6486,7 +6519,7 @@ fun UserSearchScreen(
             Text("Search GitHub", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                AccentFilterChip(
                     selected = searchMode == 0,
                     onClick = {
                         searchMode = 0
@@ -6496,7 +6529,7 @@ fun UserSearchScreen(
                     },
                     label = { Text("Users") }
                 )
-                FilterChip(
+                AccentFilterChip(
                     selected = searchMode == 1,
                     onClick = {
                         searchMode = 1
@@ -6506,7 +6539,7 @@ fun UserSearchScreen(
                     },
                     label = { Text("Repositories") }
                 )
-                FilterChip(
+                AccentFilterChip(
                     selected = searchMode == 2,
                     onClick = {
                         searchMode = 2
@@ -7305,7 +7338,7 @@ fun LogsScreen(onMessage: (String) -> Unit) {
                 singleLine = true,
                 placeholder = { Text("tag, level, or text") }
             )
-            FilterChip(
+            AccentFilterChip(
                 selected = autoScroll,
                 onClick = { autoScroll = !autoScroll },
                 label = { Text("Auto-scroll") }
