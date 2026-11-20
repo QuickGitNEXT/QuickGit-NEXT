@@ -190,8 +190,10 @@ fun RepoDetailScreenDesktop(
     // Chromebook shell keeps this composable alive while switching Changes/Files/…
     // Reload git status whenever the Changes section becomes visible again.
     LaunchedEffect(tabIndex) {
-        if (tabIndex == 0) {
-            vm.refresh()
+        when (tabIndex) {
+            0 -> vm.refresh()
+            5 -> workflowsVm.refresh() // Actions: ensure workflow list is ready for Run
+            else -> {}
         }
     }
 

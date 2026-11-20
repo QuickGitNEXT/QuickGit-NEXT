@@ -189,8 +189,9 @@ fun WorkflowsScreen(
             }
         },
         floatingActionButton = {
-            // Large phones keep the bottom run FAB; compact moves run to top-right.
-            if (state.workflows.isNotEmpty() && !compactPhone) {
+            // Large phones: bottom FAB. Compact phone: top-right. Chromebook/tablet embedded
+            // (onBack == null) always gets an in-content Run button; keep FAB as fallback.
+            if (state.workflows.isNotEmpty() && (!compactPhone || onBack == null)) {
                 FloatingActionButton(onClick = { showWorkflowPicker = true }) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Run workflow")
                 }
@@ -204,6 +205,41 @@ fun WorkflowsScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
             Column(Modifier.fillMaxSize()) {
+                // Embedded in Chromebook/tablet repo shell: no Scaffold top bar — surface Run here
+                if (onBack == null && state.supported) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (state.isGitLab) "Pipelines" else "Workflows",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (state.workflows.isEmpty() && !state.loading) {
+                                OutlinedButton(onClick = { vm.refresh() }, enabled = !state.busy) {
+                                    Text("Refresh")
+                                }
+                            }
+                            Button(
+                                onClick = { showWorkflowPicker = true },
+                                enabled = !state.busy && (state.workflows.isNotEmpty() || !state.loading)
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(if (state.isGitLab) "Run pipeline" else "Run workflow")
+                            }
+                        }
+                    }
+                }
                 // Always show all workflows — status filter only
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
