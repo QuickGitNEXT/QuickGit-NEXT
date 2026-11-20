@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -25,6 +26,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +38,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -160,52 +166,95 @@ fun ChromeOsAppChrome(
         tonalElevation = 1.dp
     ) {
         Column(Modifier.fillMaxWidth()) {
-            // Browser-style tab strip (Chrome on ChromeOS): always at the top
+            // Browser-style tab strip + Chrome overflow (☰) on the right
+            var opsMenuExpanded by remember { mutableStateOf(false) }
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = barPadH, end = barPadH, top = barPadV),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    .padding(start = barPadH, end = 4.dp, top = barPadV),
+                verticalAlignment = Alignment.Bottom
             ) {
-                repoTabs.forEach { tab ->
-                    ChromeOsRepoTabChip(
-                        title = tab.title,
-                        selected = tab.id == activeTabId,
-                        onSelect = { onSelectTab(tab.id) },
-                        onClose = { onCloseTab(tab.id) }
-                    )
-                }
-                IconButton(
-                    onClick = onNewTab,
-                    modifier = Modifier
-                        .padding(bottom = 2.dp)
-                        .size(if (compactForTablet) 32.dp else 36.dp)
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "New tab",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(if (compactForTablet) 18.dp else 20.dp)
-                    )
+                    repoTabs.forEach { tab ->
+                        ChromeOsRepoTabChip(
+                            title = tab.title,
+                            selected = tab.id == activeTabId,
+                            onSelect = { onSelectTab(tab.id) },
+                            onClose = { onCloseTab(tab.id) }
+                        )
+                    }
+                    IconButton(
+                        onClick = onNewTab,
+                        modifier = Modifier
+                            .padding(bottom = 2.dp)
+                            .size(if (compactForTablet) 32.dp else 36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "New tab",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(if (compactForTablet) 18.dp else 20.dp)
+                        )
+                    }
+                }
+                // Chrome-style stacked-lines menu with Repos / Clone / Browse / …
+                Box(Modifier.padding(bottom = 2.dp)) {
+                    IconButton(
+                        onClick = { opsMenuExpanded = true },
+                        modifier = Modifier.size(if (compactForTablet) 36.dp else 40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Menu,
+                            contentDescription = "Menu",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(if (compactForTablet) 22.dp else 24.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = opsMenuExpanded,
+                        onDismissRequest = { opsMenuExpanded = false }
+                    ) {
+                        destinations.forEach { dest ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        dest.label,
+                                        fontWeight = if (dest.selected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (dest.selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        dest.icon,
+                                        contentDescription = null,
+                                        tint = if (dest.selected) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                    )
+                                },
+                                onClick = {
+                                    opsMenuExpanded = false
+                                    dest.onClick()
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            // Primary destinations under the tab strip
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = barPadH, vertical = barPadV),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 2.dp else 4.dp)
-            ) {
-                destinations.forEach { dest ->
-                    ChromeOsToolbarItem(dest, compact = compactForTablet)
-                }
-            }
 
             // Repo workspace sections under the main menu (when a repo is open)
             if (sectionActive && sectionItems.isNotEmpty()) {
