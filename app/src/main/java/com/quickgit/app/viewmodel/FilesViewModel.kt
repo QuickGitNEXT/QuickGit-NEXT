@@ -24,7 +24,9 @@ data class FilesUiState(
     /** Relative path of a file just created — UI can navigate to editor. */
     val openAfterCreate: String? = null,
     /** Non-null while waiting for the user to confirm overwriting a same-named file. */
-    val importConflict: PendingImportConflict? = null
+    val importConflict: PendingImportConflict? = null,
+    /** Bumped after create/import/delete/rename/move so Changes can reload status. */
+    val treeRevision: Int = 0
 )
 
 class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
@@ -39,6 +41,11 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
     fun init(repoPath: String) {
         this.repoPath = repoPath
         openDir("")
+    }
+
+    private fun bumpTreeRevision() {
+        val s = _state.value
+        _state.value = s.copy(treeRevision = s.treeRevision + 1)
     }
 
     fun openDir(relativeDir: String) {
@@ -74,6 +81,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                     statusMessage = "Created $created",
                     openAfterCreate = created
                 )
+                bumpTreeRevision()
                 openDir(dir)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -93,6 +101,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                     repoManager.createDirectory(repoPath, relative)
                 }
                 _state.value = _state.value.copy(statusMessage = "Created folder $created")
+                bumpTreeRevision()
                 openDir(dir)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -111,6 +120,8 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                 }
                 val kind = if (entry.isDirectory) "folder" else "file"
                 _state.value = _state.value.copy(statusMessage = "Deleted $kind ${entry.name}")
+                bumpTreeRevision()
+                bumpTreeRevision()
                 openDir(_state.value.currentDir)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message ?: "Could not delete")
@@ -126,6 +137,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                 }
                 val kind = if (entry.isDirectory) "folder" else "file"
                 _state.value = _state.value.copy(statusMessage = "Renamed $kind to ${newRel.substringAfterLast('/')}")
+                bumpTreeRevision()
                 openDir(_state.value.currentDir)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message ?: "Could not rename")
@@ -147,6 +159,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                 _state.value = _state.value.copy(
                     statusMessage = "Moved $kind ${entry.name} → $destLabel"
                 )
+                bumpTreeRevision()
                 openDir(_state.value.currentDir)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message ?: "Could not move")
@@ -189,6 +202,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                 } else {
                     "Imported folder ${result.folderRelativePath.substringAfterLast('/')}: ${parts.joinToString(", ")}"
                 }
+                bumpTreeRevision()
                 openDir(dir)
                 _state.value = _state.value.copy(statusMessage = summary)
             } catch (e: Exception) {
@@ -258,6 +272,7 @@ class FilesViewModel(private val repoManager: RepoManager) : ViewModel() {
                 append("couldn't add: ${importFailures.joinToString(", ")}")
             }
         }
+        bumpTreeRevision()
         openDir(_state.value.currentDir)
         if (summary.isNotBlank()) {
             _state.value = _state.value.copy(statusMessage = summary)

@@ -43,6 +43,9 @@ import android.content.res.Configuration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.quickgit.app.data.models.FileChange
 import com.quickgit.app.data.models.GitOpResult
@@ -182,6 +185,33 @@ fun RepoDetailScreenDesktop(
     fun setTabIndex(i: Int) {
         if (useChromeShell) chromeSection.selectedIndex.intValue = i
         else localTabIndex = i
+    }
+
+    // Chromebook shell keeps this composable alive while switching Changes/Files/…
+    // Reload git status whenever the Changes section becomes visible again.
+    LaunchedEffect(tabIndex) {
+        if (tabIndex == 0) {
+            vm.refresh()
+        }
+    }
+
+    // Returning from the system file picker / another app / editor route
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, repoPath) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                vm.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // File tree mutations (import/create/delete) should appear on Changes without reopening the repo
+    LaunchedEffect(filesState.treeRevision) {
+        if (filesState.treeRevision > 0) {
+            vm.refresh()
+        }
     }
     /** Git Actions sheet: null = closed, "root" | "pull" | "push". */
     var gitActionsStep by remember { mutableStateOf<String?>(null) }
