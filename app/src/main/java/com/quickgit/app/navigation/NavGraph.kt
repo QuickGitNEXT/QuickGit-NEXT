@@ -28,6 +28,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -116,7 +117,12 @@ fun QuickGitNavGraph() {
         !useRail && !useChromeOsShell && (isLargePhone || (preferWideChrome && !useChromeOsShell))
     val floatingBarCompact = isLargePhone
     val isDesktopLayout = preferWideChrome || useChromeOsShell
-    val chromeRepoTabs = remember { mutableStateListOf<ChromeOsRepoTab>() }
+    // Browser-style tabs: each starts on the repo list; + opens another list tab
+    var chromeNextTabId by remember { mutableLongStateOf(2L) }
+    val chromeRepoTabs = remember {
+        mutableStateListOf(ChromeOsRepoTab(id = 1L, title = "Repos", path = null))
+    }
+    var chromeActiveTabId by remember { mutableLongStateOf(1L) }
     val chromeRepoSection = remember { ChromeOsRepoSectionController() }
     val chromePageHeader = remember { ChromeOsPageHeaderController() }
 
@@ -148,30 +154,74 @@ fun QuickGitNavGraph() {
 
     fun openRepoInChromeTab(path: String, title: String? = null) {
         val name = title ?: File(path).name.ifBlank { path.substringAfterLast('/') }
-        if (chromeRepoTabs.none { it.path == path }) {
-            chromeRepoTabs.add(ChromeOsRepoTab(path = path, title = name))
+        val idx = chromeRepoTabs.indexOfFirst { it.id == chromeActiveTabId }
+        if (idx >= 0) {
+            chromeRepoTabs[idx] = chromeRepoTabs[idx].copy(path = path, title = name)
+        } else {
+            val id = chromeNextTabId
+            chromeNextTabId = id + 1
+            chromeRepoTabs.add(ChromeOsRepoTab(id = id, title = name, path = path))
+            chromeActiveTabId = id
         }
         navController.navigate(Dest.repoDetail(path)) {
             launchSingleTop = true
         }
     }
 
-    fun closeChromeRepoTab(path: String) {
-        val idx = chromeRepoTabs.indexOfFirst { it.path == path }
-        if (idx < 0) return
-        chromeRepoTabs.removeAt(idx)
-        val active = repoPathFromCurrentRoute()
-        if (active == path) {
-            val next = chromeRepoTabs.getOrNull(idx) ?: chromeRepoTabs.getOrNull(idx - 1)
-            if (next != null) {
-                navController.navigate(Dest.repoDetail(next.path)) {
-                    launchSingleTop = true
-                    popUpTo(Dest.REPO_LIST) { inclusive = false }
-                }
-            } else {
-                navController.popBackStack(Dest.REPO_LIST, inclusive = false)
+    fun selectChromeBrowserTab(tabId: Long) {
+        val tab = chromeRepoTabs.find { it.id == tabId } ?: return
+        chromeActiveTabId = tabId
+        chromeRepoSection.deactivate()
+        chromePageHeader.clear()
+        if (tab.path != null) {
+            navController.navigate(Dest.repoDetail(tab.path)) {
+                launchSingleTop = true
+                popUpTo(Dest.REPO_LIST) { inclusive = false }
+            }
+        } else {
+            navController.navigate(Dest.REPO_LIST) {
+                launchSingleTop = true
+                popUpTo(Dest.REPO_LIST) { inclusive = false }
             }
         }
+    }
+
+    fun newChromeBrowserTab() {
+        val id = chromeNextTabId
+        chromeNextTabId = id + 1
+        chromeRepoTabs.add(ChromeOsRepoTab(id = id, title = "Repos", path = null))
+        chromeActiveTabId = id
+        chromeRepoSection.deactivate()
+        chromePageHeader.clear()
+        navController.navigate(Dest.REPO_LIST) {
+            launchSingleTop = true
+            popUpTo(Dest.REPO_LIST) { inclusive = false }
+        }
+    }
+
+    fun closeChromeBrowserTab(tabId: Long) {
+        val idx = chromeRepoTabs.indexOfFirst { it.id == tabId }
+        if (idx < 0) return
+        // Keep at least one tab
+        if (chromeRepoTabs.size <= 1) {
+            chromeRepoTabs[0] = chromeRepoTabs[0].copy(title = "Repos", path = null)
+            chromeActiveTabId = chromeRepoTabs[0].id
+            chromeRepoSection.deactivate()
+            navController.popBackStack(Dest.REPO_LIST, inclusive = false)
+            return
+        }
+        chromeRepoTabs.removeAt(idx)
+        if (chromeActiveTabId == tabId) {
+            val next = chromeRepoTabs.getOrNull(idx) ?: chromeRepoTabs.getOrNull(idx - 1)
+            if (next != null) {
+                selectChromeBrowserTab(next.id)
+            }
+        }
+    }
+
+    fun closeChromeRepoTab(path: String) {
+        val tab = chromeRepoTabs.find { it.path == path } ?: return
+        closeChromeBrowserTab(tab.id)
     }
 
     fun selectedRepoTab(): RepoDetailBottomTab? = when {
@@ -752,6 +802,11 @@ fun QuickGitNavGraph() {
                             selectedRoute = currentRoute,
                             onRepos = {
                                 chromeRepoSection.deactivate()
+                                chromePageHeader.clear()
+                                val idx = chromeRepoTabs.indexOfFirst { it.id == chromeActiveTabId }
+                                if (idx >= 0) {
+                                    chromeRepoTabs[idx] = chromeRepoTabs[idx].copy(title = "Repos", path = null)
+                                }
                                 navController.navigate(Dest.REPO_LIST) {
                                     launchSingleTop = true
                                     popUpTo(Dest.REPO_LIST) { inclusive = false }
@@ -779,14 +834,10 @@ fun QuickGitNavGraph() {
                             }
                         ),
                         repoTabs = chromeRepoTabs.toList(),
-                        activeRepoPath = repoPathFromCurrentRoute(),
-                        onSelectRepoTab = { path ->
-                            navController.navigate(Dest.repoDetail(path)) {
-                                launchSingleTop = true
-                                popUpTo(Dest.REPO_LIST) { inclusive = false }
-                            }
-                        },
-                        onCloseRepoTab = { path -> closeChromeRepoTab(path) },
+                        activeTabId = chromeActiveTabId,
+                        onSelectTab = { id -> selectChromeBrowserTab(id) },
+                        onCloseTab = { id -> closeChromeBrowserTab(id) },
+                        onNewTab = { newChromeBrowserTab() },
                         compactForTablet = compactChromeForTablet
                     )
                     ChromeOsContentWithWatermark(

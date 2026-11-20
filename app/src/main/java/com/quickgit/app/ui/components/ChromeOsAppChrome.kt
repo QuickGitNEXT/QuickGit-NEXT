@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -45,9 +46,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.quickgit.app.ui.theme.GitGreen
 
+/**
+ * Browser-style workspace tab on ChromeOS.
+ * [path] is null while the tab is on the repo list (or other non-repo screens);
+ * set when a repository is opened in this tab.
+ */
 data class ChromeOsRepoTab(
-    val path: String,
-    val title: String
+    val id: Long,
+    val title: String,
+    val path: String? = null
 )
 
 data class ChromeOsDestItem(
@@ -127,9 +134,10 @@ val LocalChromeOsPageHeader = staticCompositionLocalOf { ChromeOsPageHeaderContr
 fun ChromeOsAppChrome(
     destinations: List<ChromeOsDestItem>,
     repoTabs: List<ChromeOsRepoTab>,
-    activeRepoPath: String?,
-    onSelectRepoTab: (String) -> Unit,
-    onCloseRepoTab: (String) -> Unit,
+    activeTabId: Long?,
+    onSelectTab: (Long) -> Unit,
+    onCloseTab: (Long) -> Unit,
+    onNewTab: () -> Unit,
     modifier: Modifier = Modifier,
     compactForTablet: Boolean = false
 ) {
@@ -152,11 +160,44 @@ fun ChromeOsAppChrome(
         tonalElevation = 1.dp
     ) {
         Column(Modifier.fillMaxWidth()) {
-            // Primary destinations only — no brand logo / app name in the top bar
+            // Browser-style tab strip (Chrome on ChromeOS): always at the top
             Row(
                 Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
+                    .padding(start = barPadH, end = barPadH, top = barPadV),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                repoTabs.forEach { tab ->
+                    ChromeOsRepoTabChip(
+                        title = tab.title,
+                        selected = tab.id == activeTabId,
+                        onSelect = { onSelectTab(tab.id) },
+                        onClose = { onCloseTab(tab.id) }
+                    )
+                }
+                IconButton(
+                    onClick = onNewTab,
+                    modifier = Modifier
+                        .padding(bottom = 2.dp)
+                        .size(if (compactForTablet) 32.dp else 36.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "New tab",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(if (compactForTablet) 18.dp else 20.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+            // Primary destinations under the tab strip
+            Row(
+                Modifier
+                    .fillMaxWidth()
                     .padding(horizontal = barPadH, vertical = barPadV),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 2.dp else 4.dp)
@@ -169,7 +210,7 @@ fun ChromeOsAppChrome(
             // Repo workspace sections under the main menu (when a repo is open)
             if (sectionActive && sectionItems.isNotEmpty()) {
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
                 )
                 Row(
                     Modifier
@@ -177,21 +218,28 @@ fun ChromeOsAppChrome(
                         .horizontalScroll(rememberScrollState())
                         .padding(horizontal = sectionPadH, vertical = sectionPadV),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(1.dp)
+                    horizontalArrangement = Arrangement.spacedBy(if (compactForTablet) 2.dp else 4.dp)
                 ) {
-                    sectionItems.forEachIndexed { i, item ->
-                        val selected = sectionIndex == i
-                        val fg = if (selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                        // Icon-only section controls (Changes / Files / Branches / Issues / PRs / Actions / Releases)
-                        IconButton(
-                            onClick = { section.selectedIndex.intValue = i },
-                            modifier = Modifier
-                                .size(if (compactForTablet) 36.dp else 40.dp)
+                    sectionItems.forEachIndexed { index, item ->
+                        val selected = index == sectionIndex
+                        val bg = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                        } else {
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                        }
+                        val fg = if (selected) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        Row(
+                            Modifier
                                 .clip(RoundedCornerShape(if (compactForTablet) 6.dp else 8.dp))
-                                .background(
-                                    if (selected) GitGreen.copy(alpha = 0.14f)
-                                    else MaterialTheme.colorScheme.surface.copy(alpha = 0f)
-                                )
+                                .background(bg)
+                                .clickable { section.selectedIndex.intValue = index }
+                                .padding(horizontal = chipPadH, vertical = chipPadV),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
                                 item.icon,
@@ -199,54 +247,21 @@ fun ChromeOsAppChrome(
                                 tint = fg,
                                 modifier = Modifier.size(iconSize)
                             )
+                            Text(
+                                item.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = fg,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
             }
-
-            // Open-repo tab strip
-            if (repoTabs.isNotEmpty()) {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-                )
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    repoTabs.forEach { tab ->
-                        val selected = tab.path == activeRepoPath
-                        ChromeOsRepoTabChip(
-                            title = tab.title,
-                            selected = selected,
-                            onSelect = { onSelectRepoTab(tab.path) },
-                            onClose = { onCloseRepoTab(tab.path) }
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
         }
     }
 }
 
-/** Soft brand watermark for Chromebook pages (bottom-centered). */
-@Composable
-fun BoxScope.ChromeOsWatermark(compactForTablet: Boolean = false) {
-    AppBrandLogo(
-        size = if (compactForTablet) 72.dp else 96.dp,
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = if (compactForTablet) 16.dp else 28.dp)
-            .alpha(if (compactForTablet) 0.05f else 0.07f)
-    )
-}
 
 /** Content host with optional Chromebook watermark behind [content]. */
 @Composable
