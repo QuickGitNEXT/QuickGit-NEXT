@@ -267,8 +267,7 @@ fun ChromeOsAppChrome(
 @Composable
 private fun BoxScope.ChromeOsWatermark(compactForTablet: Boolean = false) {
     AppBrandLogo(
-        contentDescription = null,
-        maxSide = if (compactForTablet) 72.dp else 96.dp,
+        size = if (compactForTablet) 72.dp else 96.dp,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = if (compactForTablet) 16.dp else 28.dp)
