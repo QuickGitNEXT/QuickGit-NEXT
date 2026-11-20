@@ -161,10 +161,14 @@ fun RepoDetailScreenDesktop(
     val hardwareChromebook = LocalContext.current.isChromebookDevice()
     val appPrefs = (LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp).appPreferences
     val wideUiMode by appPrefs.wideUiMode.collectAsState()
-    // ChromeOS shell on real Chromebooks, or tablets forced into Chromebook mode.
-    val useChromeShell =
-        hardwareChromebook || wideUiMode == com.quickgit.app.data.WideUiMode.CHROMEBOOK
-    // Tablet-only denser chrome — never applied on real Chromebook hardware.
+    // Match NavGraph: TABLET mode always uses the floating section bar, even on Chromebook hardware.
+    // CHROMEBOOK mode uses top chrome; AUTO follows real Chromebook hardware.
+    val useChromeShell = when (wideUiMode) {
+        com.quickgit.app.data.WideUiMode.CHROMEBOOK -> true
+        com.quickgit.app.data.WideUiMode.TABLET -> false
+        com.quickgit.app.data.WideUiMode.AUTO -> hardwareChromebook
+    }
+    // Denser chrome when a non-Chromebook tablet is forced into Chromebook shell mode.
     val tabletChromeCompact = useChromeShell && !hardwareChromebook
     val chromeSection = LocalChromeOsRepoSection.current
     val chromePageHeader = LocalChromeOsPageHeader.current
