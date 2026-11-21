@@ -408,53 +408,101 @@ private fun UbuntuPageHeader(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
-        // Prefer Material scheme (tracks dark/light) over chrome tokens that can lag
         color = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (onBack != null) {
-                TextButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Repositories")
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val compact = maxWidth < 920.dp
+            if (compact) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Repositories")
+                            }
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (!subtitle.isNullOrBlank()) {
+                                Text(
+                                    subtitle,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = actions
+                    )
                 }
-                Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant).width(1.dp).height(24.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (!subtitle.isNullOrBlank()) {
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+            } else {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (onBack != null) {
+                        TextButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Repositories")
+                        }
+                        Box(Modifier.background(MaterialTheme.colorScheme.outlineVariant).width(1.dp).height(24.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!subtitle.isNullOrBlank()) {
+                            Text(
+                                subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = actions
                     )
                 }
             }
-            Row(
-                Modifier
-                    .weight(1f, fill = false)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions
-            )
         }
     }
 }
@@ -543,7 +591,12 @@ fun RepoListScreen(
     }
     LaunchedEffect(Unit) { reload() }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         UbuntuPageHeader(
             title = "Local repositories",
             subtitle = "Root: " + repoManager.getReposRoot().absolutePath
@@ -1016,7 +1069,12 @@ fun RepoDetailScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         UbuntuPageHeader(
             title = repoPath.substringAfterLast('/'),
             subtitle = repoPath,
@@ -1430,29 +1488,30 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         }
 
 
-        // Two panels: Changed files | Commit — horizontally scrollable when narrow
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-        val narrow = maxWidth < 780.dp
-        Row(
+        // Changed files + Commit stacked so half-screen never clips the commit box
+        Column(
             Modifier
-                .fillMaxSize()
-                .then(if (narrow) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // ── 1. Changed files ────────────────────────────────────────────
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = if (narrow) Modifier.width(340.dp).fillMaxHeight()
-                else Modifier.weight(1.35f).fillMaxHeight()
+                modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 320.dp)
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("Changed files", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
@@ -1567,8 +1626,7 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = if (narrow) Modifier.width(320.dp).fillMaxHeight()
-                else Modifier.weight(1.15f).fillMaxHeight()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
@@ -1579,9 +1637,9 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                         value = commitMessage,
                         onValueChange = { commitMessage = it },
                         label = { Text("Message") },
-                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-                        minLines = 4,
-                        maxLines = 8
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 6
                     )
                     OutlinedTextField(
                         value = coAuthorsText,
@@ -1648,7 +1706,6 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 }
             }
         }
-        }
     }
 
     if (showStashDialog) {
@@ -1665,12 +1722,10 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
                 modifier = Modifier
-                    .widthIn(min = 300.dp, max = 900.dp)
-                    .heightIn(min = 220.dp, max = 700.dp)
+                    .widthIn(min = 280.dp, max = 900.dp)
+                    .heightIn(min = 200.dp, max = 700.dp)
                     .fillMaxWidth(0.94f)
                     .fillMaxHeight(0.85f)
-                    .fillMaxWidth(0.85f)
-                    .fillMaxHeight(0.8f)
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Row(
