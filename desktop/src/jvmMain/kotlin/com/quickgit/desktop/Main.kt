@@ -51,6 +51,7 @@ fun bootstrap(args: Array<String> = emptyArray()) {
             DesktopAppUpdateConfig.currentVersionName = it
         }
 
+        // Default ~full laptop window; freely resizable down to half/quarter screen
         val windowState = rememberWindowState(width = 1280.dp, height = 840.dp)
         var menuScreen by remember { mutableStateOf<DesktopScreen?>(null) }
         val appIcon = painterResource("icon.png")
@@ -65,7 +66,9 @@ fun bootstrap(args: Array<String> = emptyArray()) {
             state = windowState,
             icon = appIcon
         ) {
-            window.minimumSize = Dimension(900, 640)
+            // Allow half-screen and smaller laptops; content layouts adapt below this
+            window.minimumSize = Dimension(480, 360)
+            window.isResizable = true
             LaunchedEffect(Unit) {
                 runCatching {
                     val stream = object {}.javaClass.getResourceAsStream("/icon.png")

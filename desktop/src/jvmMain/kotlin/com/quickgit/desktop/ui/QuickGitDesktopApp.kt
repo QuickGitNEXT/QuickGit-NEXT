@@ -301,10 +301,10 @@ fun QuickGitDesktopApp(
                         tonalElevation = 6.dp,
                         shadowElevation = 8.dp,
                         modifier = Modifier
-                            .widthIn(min = 480.dp, max = 960.dp)
-                            .heightIn(min = 360.dp, max = 720.dp)
-                            .fillMaxWidth(0.92f)
-                            .fillMaxHeight(0.88f)
+                            .widthIn(min = 320.dp, max = 1100.dp)
+                            .heightIn(min = 240.dp, max = 900.dp)
+                            .fillMaxWidth(0.96f)
+                            .fillMaxHeight(0.92f)
                     ) {
                         Column(Modifier.fillMaxSize()) {
                             Row(
@@ -1420,9 +1420,13 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         }
 
 
-        // Two panels: Changed files | Commit  (stash lives in a popup)
+        // Two panels: Changed files | Commit — horizontally scrollable when narrow
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+        val narrow = maxWidth < 780.dp
         Row(
-            Modifier.weight(1f).fillMaxWidth(),
+            Modifier
+                .fillMaxSize()
+                .then(if (narrow) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // ── 1. Changed files ────────────────────────────────────────────
@@ -1430,7 +1434,8 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1.35f).fillMaxHeight()
+                modifier = if (narrow) Modifier.width(340.dp).fillMaxHeight()
+                else Modifier.weight(1.35f).fillMaxHeight()
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
@@ -1552,7 +1557,8 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 shape = MaterialTheme.shapes.medium,
                 tonalElevation = 1.dp,
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.weight(1.15f).fillMaxHeight()
+                modifier = if (narrow) Modifier.width(320.dp).fillMaxHeight()
+                else Modifier.weight(1.15f).fillMaxHeight()
             ) {
                 Column(
                     Modifier.fillMaxSize().padding(12.dp),
@@ -1632,6 +1638,7 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 }
             }
         }
+        }
     }
 
     if (showStashDialog) {
@@ -1648,8 +1655,10 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp,
                 modifier = Modifier
-                    .widthIn(min = 520.dp, max = 900.dp)
-                    .heightIn(min = 360.dp, max = 640.dp)
+                    .widthIn(min = 300.dp, max = 900.dp)
+                    .heightIn(min = 220.dp, max = 700.dp)
+                    .fillMaxWidth(0.94f)
+                    .fillMaxHeight(0.85f)
                     .fillMaxWidth(0.85f)
                     .fillMaxHeight(0.8f)
             ) {
@@ -2834,8 +2843,14 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
     }
 
     Row(Modifier.fillMaxSize()) {
-        // ---- Browser pane ----
-        Column(Modifier.width(340.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerLow)) {
+        // ---- Browser pane (shrinks on half-screen) ----
+        Column(
+            Modifier
+                .widthIn(min = 120.dp, max = 320.dp)
+                .weight(0.34f)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+        ) {
             // Path bar + actions
             Row(
                 Modifier.fillMaxWidth().padding(8.dp),
