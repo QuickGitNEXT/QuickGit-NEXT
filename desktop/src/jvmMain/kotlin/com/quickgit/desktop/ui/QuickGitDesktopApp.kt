@@ -466,13 +466,17 @@ private fun UbuntuPageHeader(
                         )
                     }
                     Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        content = actions
-                    )
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(Modifier.weight(1f))
+                        Row(
+                            Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            content = actions
+                        )
+                    }
                 }
             } else {
                 Row(
@@ -509,7 +513,7 @@ private fun UbuntuPageHeader(
                         }
                     }
                     Row(
-                        Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
+                        Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         content = actions
