@@ -154,7 +154,7 @@ fun RepoDetailScreenDesktop(
         "PRs" to Icons.Default.CallMerge,
         "Actions" to Icons.Default.PlayCircle,
         "Releases" to Icons.Default.NewReleases,
-        "Wiki" to Icons.Default.MenuBook,
+        "Wiki" to Icons.Default.Description,
     )
     var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }

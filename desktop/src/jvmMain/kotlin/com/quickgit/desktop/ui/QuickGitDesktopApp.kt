@@ -242,7 +242,7 @@ fun QuickGitDesktopApp(
         DesktopSectionItem(Icons.Default.CallMerge, "PRs"),
         DesktopSectionItem(Icons.Default.PlayCircle, "Actions"),
         DesktopSectionItem(Icons.Default.NewReleases, "Releases"),
-        DesktopSectionItem(Icons.Default.MenuBook, "Wiki"),
+        DesktopSectionItem(Icons.Default.Description, "Wiki"),
     ) else emptyList()
 
     Scaffold(

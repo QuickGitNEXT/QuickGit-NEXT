@@ -4245,8 +4245,8 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
                 git.add().addFilepattern(safe).call()
                 if (git.status().call().isClean) return@runCatching
                 val author = org.eclipse.jgit.lib.PersonIdent(
-                    credentialStore.getAuthorName() ?: "QuickGit",
-                    credentialStore.getAuthorEmail() ?: "quickgit@local"
+                    getCommitAuthorName(),
+                    getCommitAuthorEmail()
                 )
                 git.commit().setMessage(message).setAuthor(author).setCommitter(author).call()
                 val url = git.repository.config.getString("remote", "origin", "url")
