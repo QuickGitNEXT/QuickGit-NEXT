@@ -3189,10 +3189,10 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         IconButton(onClick = { goToMatch(matchIndex - 1) }, enabled = findMatches.isNotEmpty()) {
-                            Icon(Icons.Default.VpnKeyboardArrowUp, contentDescription = "Previous")
+                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous")
                         }
                         IconButton(onClick = { goToMatch(matchIndex + 1) }, enabled = findMatches.isNotEmpty()) {
-                            Icon(Icons.Default.VpnKeyboardArrowDown, contentDescription = "Next")
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next")
                         }
                         IconButton(onClick = { findOpen = false; findQuery = "" }) {
                             Icon(Icons.Default.Close, contentDescription = "Close find")
