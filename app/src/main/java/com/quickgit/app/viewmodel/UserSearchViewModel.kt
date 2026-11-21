@@ -19,8 +19,8 @@ import kotlinx.coroutines.withContext
 
 enum class UserSearchProvider { GITHUB, GITLAB }
 
-/** People search vs repository search (repos are GitHub-only for now). */
-enum class UserSearchKind { PEOPLE, REPOS }
+/** People, repositories, or organizations (orgs/repos are GitHub-only). */
+enum class UserSearchKind { PEOPLE, REPOS, ORGS }
 
 data class UserSearchUiState(
     val selectedTab: UserSearchProvider = UserSearchProvider.GITHUB,
@@ -72,7 +72,8 @@ class UserSearchViewModel(
     }
 
     fun selectTab(tab: UserSearchProvider) {
-        val kind = if (tab == UserSearchProvider.GITLAB) UserSearchKind.PEOPLE else _state.value.searchKind
+        val kind = if (tab == UserSearchProvider.GITLAB) UserSearchKind.PEOPLE
+        else _state.value.searchKind
         _state.value = _state.value.copy(
             selectedTab = tab,
             searchKind = kind,
@@ -91,8 +92,8 @@ class UserSearchViewModel(
     }
 
     fun selectKind(kind: UserSearchKind) {
-        if (kind == UserSearchKind.REPOS) {
-            // Repo search is GitHub-only
+        if (kind == UserSearchKind.REPOS || kind == UserSearchKind.ORGS) {
+            // Repo/org search is GitHub-only
             _state.value = _state.value.copy(selectedTab = UserSearchProvider.GITHUB)
         }
         _state.value = _state.value.copy(
@@ -213,16 +214,59 @@ class UserSearchViewModel(
         val requestPage = if (reset) 1 else page + 1
 
         when {
-            s.searchKind == UserSearchKind.REPOS ||
-                (s.selectedTab == UserSearchProvider.GITHUB && s.searchKind == UserSearchKind.REPOS) -> {
+            s.searchKind == UserSearchKind.REPOS -> {
                 searchRepos(q, requestPage, reset)
+            }
+            s.searchKind == UserSearchKind.ORGS -> {
+                searchOrgs(q, requestPage, reset)
             }
             s.selectedTab == UserSearchProvider.GITHUB -> searchGithubPeople(q, requestPage, reset)
             s.selectedTab == UserSearchProvider.GITLAB -> searchGitlabPeople(q, requestPage, reset)
         }
     }
 
-    private suspend fun searchRepos(q: String, requestPage: Int, reset: Boolean) {
+    
+    private suspend fun searchOrgs(q: String, requestPage: Int, reset: Boolean) {
+        val pageSize = 30
+        val (list, result) = withContext(Dispatchers.IO) {
+            accountManager.searchOrganizations(q, page = requestPage, perPage = pageSize)
+        }
+        when (result) {
+            is PrOpResult.Success -> {
+                val merged = if (reset) list else _state.value.githubResults + list
+                page = requestPage
+                _state.value = _state.value.copy(
+                    loading = false,
+                    loadingMore = false,
+                    githubResults = merged,
+                    searched = true,
+                    hasMore = list.size >= pageSize,
+                    errorMessage = null
+                )
+            }
+            is PrOpResult.AuthRequired -> _state.value = _state.value.copy(
+                loading = false,
+                loadingMore = false,
+                authRequired = true,
+                searched = true,
+                errorMessage = "Connect GitHub in Credentials to search organizations"
+            )
+            is PrOpResult.Error -> _state.value = _state.value.copy(
+                loading = false,
+                loadingMore = false,
+                searched = true,
+                errorMessage = result.message
+            )
+            else -> _state.value = _state.value.copy(
+                loading = false,
+                loadingMore = false,
+                searched = true,
+                errorMessage = "Organization search failed"
+            )
+        }
+    }
+
+private suspend fun searchRepos(q: String, requestPage: Int, reset: Boolean) {
         if (!_state.value.githubConnected) {
             _state.value = _state.value.copy(
                 loading = false,

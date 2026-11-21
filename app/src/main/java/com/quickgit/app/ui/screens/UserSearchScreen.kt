@@ -90,7 +90,7 @@ fun UserSearchScreen(
                 return@Column
             }
 
-            // People vs Repositories
+            // People / Repositories / Organisations
             SingleChoiceSegmentedButtonRow(
                 Modifier
                     .fillMaxWidth()
@@ -99,13 +99,18 @@ fun UserSearchScreen(
                 SegmentedButton(
                     selected = state.searchKind == UserSearchKind.PEOPLE,
                     onClick = { vm.selectKind(UserSearchKind.PEOPLE) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
                 ) { Text("People") }
                 SegmentedButton(
                     selected = state.searchKind == UserSearchKind.REPOS,
                     onClick = { vm.selectKind(UserSearchKind.REPOS) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
                 ) { Text("Repos") }
+                SegmentedButton(
+                    selected = state.searchKind == UserSearchKind.ORGS,
+                    onClick = { vm.selectKind(UserSearchKind.ORGS) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                ) { Text("Orgs") }
             }
 
             if (state.searchKind == UserSearchKind.PEOPLE) {
@@ -149,6 +154,7 @@ fun UserSearchScreen(
                         when (state.searchKind) {
                             UserSearchKind.PEOPLE -> "Search by username…"
                             UserSearchKind.REPOS -> "Search repositories…"
+                            UserSearchKind.ORGS -> "Search organisations…"
                         }
                     )
                 },
@@ -241,6 +247,38 @@ fun UserSearchScreen(
                             item {
                                 Text(
                                     "No repositories found.",
+                                    modifier = Modifier.padding(24.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    UserSearchKind.ORGS -> {
+                        items(state.githubResults, key = { it.login }) { org ->
+                            ListItem(
+                                headlineContent = { Text(org.login) },
+                                supportingContent = {
+                                    Text(
+                                        "Organisation",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                leadingContent = {
+                                    UserAvatar(
+                                        avatarUrl = org.avatarUrl,
+                                        login = org.login,
+                                        size = 40.dp
+                                    )
+                                },
+                                modifier = Modifier.clickable { onUserClick(org.login) }
+                            )
+                            HorizontalDivider()
+                        }
+                        if (state.searched && !state.loading && state.githubResults.isEmpty()) {
+                            item {
+                                Text(
+                                    "No organisations found.",
                                     modifier = Modifier.padding(24.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

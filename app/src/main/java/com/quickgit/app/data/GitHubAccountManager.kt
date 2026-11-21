@@ -419,7 +419,20 @@ class GitHubAccountManager(
     }
 
     /** Global GitHub repository search. [page] is 1-based. */
-    fun searchRepositoriesPage(
+    fun searchOrganizations(
+        query: String,
+        page: Int = 1,
+        perPage: Int = 30
+    ): Pair<List<GitHubApi.GitHubUserSummary>, PrOpResult> {
+        val api = apiOrNull() ?: return emptyList<GitHubApi.GitHubUserSummary>() to PrOpResult.AuthRequired
+        val result = api.searchOrganizations(query, perPage = perPage, page = page)
+        return result.fold(
+            onSuccess = { it to PrOpResult.Success },
+            onFailure = { emptyList<GitHubApi.GitHubUserSummary>() to it.toPrOpResult(host) }
+        )
+    }
+
+        fun searchRepositoriesPage(
         query: String,
         page: Int = 1,
         perPage: Int = 30

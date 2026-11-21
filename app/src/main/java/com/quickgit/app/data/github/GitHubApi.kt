@@ -104,6 +104,25 @@ class GitHubApi(private val token: String?) {
         }
     }
 
+    /** Search organizations (GitHub Search API, type:org). [page] is 1-based. */
+    fun searchOrganizations(query: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubUserSummary>> = runCatching {
+        val q = query.trim()
+        if (q.isEmpty()) return@runCatching emptyList()
+        val full = if ("type:org" in q.lowercase()) q else "$q type:org"
+        val encoded = java.net.URLEncoder.encode(full, "UTF-8")
+        val arr = (request("GET", "/search/users?q=$encoded&per_page=$perPage&page=$page") as JSONObject)
+            .getJSONArray("items")
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            GitHubUserSummary(
+                login = o.getString("login"),
+                avatarUrl = o.optString("avatar_url").takeIf { it.isNotBlank() },
+                htmlUrl = o.optString("html_url", ""),
+                type = o.optString("type", "Organization")
+            )
+        }
+    }
+
     /** Global repository search (GitHub Search API). [page] is 1-based. */
     fun searchRepositories(query: String, perPage: Int = 30, page: Int = 1): Result<List<GitHubRemoteRepo>> = runCatching {
         val q = query.trim()
