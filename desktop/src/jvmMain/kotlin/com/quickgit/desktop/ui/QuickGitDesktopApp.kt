@@ -412,9 +412,9 @@ private fun UbuntuPageHeader(
     title: String,
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {},
     /** Fixed on the right edge (e.g. History icon) — not inside the scrolling actions. */
-    trailing: @Composable RowScope.() -> Unit = {}
+    trailing: @Composable RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,

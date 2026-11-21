@@ -31,6 +31,10 @@ val GitGreen = Color(0xFF2DA44E)
 val GitRed = Color(0xFFCF222E)
 val GitAmber = Color(0xFFBF8700)
 
+/** Google Chrome blue (Chromebook shell). */
+val ChromeBlue = Color(0xFF1A73E8)
+val ChromeBlueLight = Color(0xFF8AB4F8)
+
 /** Static light scheme (pre–Android 12 or when dynamic color is off). */
 private val LightColors = lightColorScheme(
     primary = GitBlue,
