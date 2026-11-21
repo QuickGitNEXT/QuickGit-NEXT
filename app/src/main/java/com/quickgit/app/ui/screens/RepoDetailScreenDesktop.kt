@@ -154,6 +154,7 @@ fun RepoDetailScreenDesktop(
         "PRs" to Icons.Default.CallMerge,
         "Actions" to Icons.Default.PlayCircle,
         "Releases" to Icons.Default.NewReleases,
+        "Wiki" to Icons.Default.MenuBook,
     )
     var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
@@ -516,6 +517,11 @@ fun RepoDetailScreenDesktop(
                         onBack = null,
                         onNeedsAuth = onNeedsAuth,
                         embedded = true
+                    )
+                    7 -> WikiScreen(
+                        repoPath = repoPath,
+                        repoManager = (LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp).repoManager,
+                        onMessage = { /* snackbar via parent if needed */ }
                     )
                 }
             }

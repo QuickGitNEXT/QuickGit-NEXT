@@ -241,6 +241,7 @@ fun QuickGitDesktopApp(
         DesktopSectionItem(Icons.Default.CallMerge, "PRs"),
         DesktopSectionItem(Icons.Default.PlayCircle, "Actions"),
         DesktopSectionItem(Icons.Default.NewReleases, "Releases"),
+        DesktopSectionItem(Icons.Default.MenuBook, "Wiki"),
     ) else emptyList()
 
     Scaffold(
@@ -1029,7 +1030,7 @@ fun RepoDetailScreen(
         if (chromebookMode) onChromeTabIndexChange(i) else localTabIndex = i
     }
     // History is a header icon on the right (not a tab label — avoids overflow on half-screen)
-    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases")
+    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases", "Wiki")
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var pullMenuExpanded by remember { mutableStateOf(false) }
@@ -1102,13 +1103,13 @@ fun RepoDetailScreen(
             onBack = onBack,
             trailing = {
                 IconButton(
-                    onClick = { setTabIndex(7) },
+                    onClick = { setTabIndex(8) },
                     enabled = !busy
                 ) {
                     Icon(
                         Icons.Default.History,
                         contentDescription = "History",
-                        tint = if (tabIndex == 7) MaterialTheme.colorScheme.primary
+                        tint = if (tabIndex == 8) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1412,7 +1413,8 @@ fun RepoDetailScreen(
                 4 -> PullRequestsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
                 5 -> WorkflowsTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
                 6 -> ReleasesTab(repoPath, repoManager, credentialStore, githubApi, onMessage)
-                7 -> HistoryTab(repoPath, repoManager, onMessage)
+                7 -> WikiTab(repoPath, repoManager, onMessage)
+                8 -> HistoryTab(repoPath, repoManager, onMessage)
             }
         }
     }
@@ -1953,6 +1955,227 @@ fun ChangesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         )
     }
 }
+
+
+@Composable
+fun WikiTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (String) -> Unit) {
+    var wikiDir by remember { mutableStateOf<java.io.File?>(null) }
+    var pages by remember { mutableStateOf(emptyList<DesktopRepoManager.WikiPage>()) }
+    var selected by remember { mutableStateOf<String?>(null) }
+    var content by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(true) }
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showNew by remember { mutableStateOf(false) }
+    var newTitle by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    fun reloadPages(dir: java.io.File) {
+        pages = repoManager.listWikiPages(dir)
+        if (selected == null || pages.none { it.fileName == selected }) {
+            selected = pages.firstOrNull()?.fileName
+        }
+        selected?.let { name ->
+            content = repoManager.readWikiPage(dir, name).getOrDefault("")
+        }
+    }
+
+    fun loadWiki() {
+        scope.launch {
+            loading = true
+            error = null
+            val r = withContext(Dispatchers.IO) { repoManager.ensureWikiRepo(repoPath) }
+            loading = false
+            r.fold(
+                onSuccess = { dir ->
+                    wikiDir = dir
+                    reloadPages(dir)
+                },
+                onFailure = {
+                    wikiDir = null
+                    pages = emptyList()
+                    error = it.message ?: "Could not open wiki"
+                }
+            )
+        }
+    }
+
+    LaunchedEffect(repoPath) { loadWiki() }
+
+    Column(Modifier.fillMaxSize().fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "GitHub Wiki",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(onClick = { loadWiki() }, enabled = !loading && !saving) {
+                Text("Refresh")
+            }
+            OutlinedButton(onClick = { showNew = true }, enabled = wikiDir != null && !saving) {
+                Text("New page")
+            }
+            Button(
+                onClick = {
+                    val dir = wikiDir ?: return@Button
+                    val name = selected ?: return@Button
+                    scope.launch {
+                        saving = true
+                        val r = withContext(Dispatchers.IO) {
+                            repoManager.saveWikiPage(dir, name, content)
+                        }
+                        saving = false
+                        r.fold(
+                            {
+                                onMessage("Wiki page saved and pushed")
+                                reloadPages(dir)
+                            },
+                            { onMessage("Save failed: ${it.message}") }
+                        )
+                    }
+                },
+                enabled = wikiDir != null && selected != null && !saving && !loading
+            ) {
+                Text(if (saving) "Saving…" else "Save & push")
+            }
+        }
+        when {
+            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            error != null -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            else -> {
+                Row(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+                    Surface(
+                        tonalElevation = 1.dp,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .widthIn(min = 140.dp, max = 280.dp)
+                            .weight(0.32f)
+                            .fillMaxHeight()
+                    ) {
+                        LazyColumn(Modifier.fillMaxSize().padding(8.dp)) {
+                            items(pages, key = { it.fileName }) { page ->
+                                val sel = page.fileName == selected
+                                Text(
+                                    page.title,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(MaterialTheme.shapes.small)
+                                        .background(
+                                            if (sel) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                            else Color.Transparent
+                                        )
+                                        .clickable {
+                                            selected = page.fileName
+                                            wikiDir?.let { dir ->
+                                                content = repoManager.readWikiPage(dir, page.fileName).getOrDefault("")
+                                            }
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (pages.isEmpty()) {
+                                item {
+                                    Text(
+                                        "No pages yet. Create one.",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        Text(
+                            selected ?: "Select a page",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                        OutlinedTextField(
+                            value = content,
+                            onValueChange = { content = it },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .weight(1f),
+                            textStyle = TextStyle(
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 13.sp
+                            ),
+                            enabled = selected != null && !saving
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showNew) {
+        AlertDialog(
+            onDismissRequest = { showNew = false },
+            title = { Text("New wiki page") },
+            text = {
+                OutlinedTextField(
+                    value = newTitle,
+                    onValueChange = { newTitle = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val dir = wikiDir ?: return@Button
+                        val title = newTitle.trim()
+                        if (title.isBlank()) return@Button
+                        showNew = false
+                        scope.launch {
+                            saving = true
+                            val r = withContext(Dispatchers.IO) {
+                                repoManager.createWikiPage(dir, title)
+                            }
+                            saving = false
+                            r.fold(
+                                { name ->
+                                    onMessage("Created $name")
+                                    reloadPages(dir)
+                                    selected = name
+                                    content = repoManager.readWikiPage(dir, name).getOrDefault("")
+                                    newTitle = ""
+                                },
+                                { onMessage("Create failed: ${it.message}") }
+                            )
+                        }
+                    },
+                    enabled = newTitle.isNotBlank()
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNew = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
 
 @Composable
 fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (String) -> Unit) {

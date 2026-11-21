@@ -4152,4 +4152,113 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
         override fun onEndTask(taskName: String?, workCurr: Int) {}
         override fun onEndTask(taskName: String?, workCurr: Int, workTotal: Int, percentDone: Int) {}
     }
+
+
+    // ---------- GitHub Wiki ----------
+
+    private fun wikiCredentials(url: String?): CredentialsProvider? {
+        val u = url ?: return null
+        if (!u.startsWith("https://")) return null
+        val host = CredentialStore.hostOf(u)
+        val user = credentialStore.getHttpsUsername(host)
+        val token = credentialStore.getHttpsToken(host) ?: return null
+        return UsernamePasswordCredentialsProvider(user ?: "x-access-token", token)
+    }
+
+    fun wikiRemoteUrl(repoRemoteUrl: String?): String? {
+        val u = repoRemoteUrl?.trim().orEmpty()
+        if (u.isEmpty()) return null
+        val lower = u.lowercase()
+        if ("github.com" !in lower) return null
+        val path = when {
+            u.startsWith("git@") -> u.substringAfter(":", "")
+            "://" in u -> u.substringAfter("://").substringAfter("/")
+            else -> u
+        }.removeSuffix(".git").trim('/')
+        val parts = path.split('/').filter { it.isNotBlank() }
+        if (parts.size < 2) return null
+        val owner = parts[parts.size - 2]
+        val repo = parts.last().removeSuffix(".wiki")
+        return if (u.startsWith("git@") || lower.startsWith("ssh://")) {
+            "git@github.com:$owner/$repo.wiki.git"
+        } else {
+            "https://github.com/$owner/$repo.wiki.git"
+        }
+    }
+
+    fun getOriginUrl(repoPath: String): String? = try {
+        openGit(repoPath).use { it.repository.config.getString("remote", "origin", "url") }
+    } catch (_: Exception) { null }
+
+    private fun wikiCacheDir(wikiUrl: String): File {
+        val key = wikiUrl.removePrefix("https://").removePrefix("http://").removePrefix("git@")
+            .replace(':', '/').removeSuffix(".git")
+            .replace(Regex("[^A-Za-z0-9._/-]"), "_")
+        return File(context.cacheDir, "wikis/$key").also { it.parentFile?.mkdirs() }
+    }
+
+    fun ensureWikiRepo(repoPath: String): Result<File> {
+        val remote = getOriginUrl(repoPath)
+            ?: return Result.failure(IllegalStateException("No origin remote"))
+        val wikiUrl = wikiRemoteUrl(remote)
+            ?: return Result.failure(IllegalStateException("Wikis require a GitHub remote"))
+        val dest = wikiCacheDir(wikiUrl)
+        return try {
+            if (File(dest, ".git").exists()) {
+                openGit(dest.absolutePath).use { git ->
+                    val pull = git.pull()
+                    wikiCredentials(wikiUrl)?.let { pull.setCredentialsProvider(it) }
+                    runCatching { pull.call() }
+                }
+                Result.success(dest)
+            } else {
+                if (dest.exists()) dest.deleteRecursively()
+                dest.parentFile?.mkdirs()
+                val cmd = Git.cloneRepository().setURI(wikiUrl).setDirectory(dest).setCloneAllBranches(true)
+                wikiCredentials(wikiUrl)?.let { cmd.setCredentialsProvider(it) }
+                cmd.call().close()
+                Result.success(dest)
+            }
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("Could not open wiki: ${e.message}", e))
+        }
+    }
+
+    data class WikiPage(val fileName: String, val title: String)
+
+    fun listWikiPages(wikiDir: File): List<WikiPage> =
+        wikiDir.listFiles()
+            ?.filter { it.isFile && it.extension.equals("md", true) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { WikiPage(it.name, it.nameWithoutExtension.replace('-', ' ')) }
+            .orEmpty()
+
+    fun readWikiPage(wikiDir: File, fileName: String): Result<String> = runCatching {
+        File(wikiDir, fileName).readText()
+    }
+
+    fun saveWikiPage(wikiDir: File, fileName: String, content: String, message: String = "Update $fileName"): Result<Unit> =
+        runCatching {
+            val safe = fileName.trim().removeSuffix(".md").ifBlank { "Home" } + ".md"
+            File(wikiDir, safe).writeText(content)
+            openGit(wikiDir.absolutePath).use { git ->
+                git.add().addFilepattern(safe).call()
+                if (git.status().call().isClean) return@runCatching
+                val author = org.eclipse.jgit.lib.PersonIdent(
+                    credentialStore.getAuthorName() ?: "QuickGit",
+                    credentialStore.getAuthorEmail() ?: "quickgit@local"
+                )
+                git.commit().setMessage(message).setAuthor(author).setCommitter(author).call()
+                val url = git.repository.config.getString("remote", "origin", "url")
+                val push = git.push().setRemote("origin")
+                wikiCredentials(url)?.let { push.setCredentialsProvider(it) }
+                push.call()
+            }
+        }
+
+    fun createWikiPage(wikiDir: File, title: String): Result<String> {
+        val slug = title.trim().replace(Regex("\\s+"), "-").replace(Regex("[^A-Za-z0-9._-]"), "").ifBlank { "New-Page" }
+        val fileName = "$slug.md"
+        return saveWikiPage(wikiDir, fileName, "# $title\n\n", "Create $fileName").map { fileName }
+    }
 }
