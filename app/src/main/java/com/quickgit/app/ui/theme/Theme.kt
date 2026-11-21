@@ -16,6 +16,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import com.quickgit.app.ui.security.isChromebookDevice
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -55,6 +56,44 @@ private val LightColors = lightColorScheme(
     surfaceVariant = Color(0xFFE0E2EC),
     onSurfaceVariant = Color(0xFF43474E),
     outline = Color(0xFF74777F)
+)
+
+private val ChromeLightColors = lightColorScheme(
+    primary = ChromeBlue,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD2E3FC),
+    onPrimaryContainer = Color(0xFF041E49),
+    secondary = Color(0xFF5F6368),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8EAED),
+    onSecondaryContainer = Color(0xFF202124),
+    tertiary = Color(0xFF188038),
+    onTertiary = Color.White,
+    error = Color(0xFFD93025),
+    onError = Color.White,
+    background = Color(0xFFF1F3F4),
+    onBackground = Color(0xFF202124),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF202124),
+    surfaceVariant = Color(0xFFE8EAED),
+    onSurfaceVariant = Color(0xFF5F6368),
+    outline = Color(0xFFDADCE0)
+)
+
+private val ChromeDarkColors = darkColorScheme(
+    primary = ChromeBlueLight,
+    onPrimary = Color(0xFF062E6F),
+    primaryContainer = Color(0xFF174EA6),
+    onPrimaryContainer = Color(0xFFD2E3FC),
+    secondary = Color(0xFF9AA0A6),
+    onSecondary = Color(0xFF202124),
+    background = Color(0xFF202124),
+    onBackground = Color(0xFFE8EAED),
+    surface = Color(0xFF292A2D),
+    onSurface = Color(0xFFE8EAED),
+    surfaceVariant = Color(0xFF3C4043),
+    onSurfaceVariant = Color(0xFF9AA0A6),
+    outline = Color(0xFF5F6368)
 )
 
 private val DarkColors = darkColorScheme(
@@ -156,7 +195,9 @@ fun QuickGitTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
+    val chromebook = context.isChromebookDevice()
     val colorScheme = when {
+        chromebook -> if (darkTheme) ChromeDarkColors else ChromeLightColors
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

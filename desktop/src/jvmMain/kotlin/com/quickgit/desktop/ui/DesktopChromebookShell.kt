@@ -2,6 +2,7 @@ package com.quickgit.desktop.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,20 +56,36 @@ fun DesktopChromebookShell(
     sectionIndex: Int,
     onSectionIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** Frameless Chrome window controls (minimize / maximize / close). */
+    onWindowMinimize: (() -> Unit)? = null,
+    onWindowMaximize: (() -> Unit)? = null,
+    onWindowClose: (() -> Unit)? = null,
+    onWindowDrag: ((dx: Float, dy: Float) -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     var opsMenuExpanded by remember { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            tonalElevation = 1.dp,
+            // Chrome tab-strip gray/blue shell
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.fillMaxWidth()) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 12.dp, end = 4.dp, top = 6.dp),
+                        .then(
+                            if (onWindowDrag != null) {
+                                Modifier.pointerInput(onWindowDrag) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        onWindowDrag(dragAmount.x, dragAmount.y)
+                                    }
+                                }
+                            } else Modifier
+                        )
+                        .padding(start = 8.dp, end = 2.dp, top = 4.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Row(
@@ -133,6 +152,29 @@ fun DesktopChromebookShell(
                                         dest.onClick()
                                     }
                                 )
+                            }
+                        }
+                    }
+                    if (onWindowMinimize != null || onWindowMaximize != null || onWindowClose != null) {
+                        Spacer(Modifier.width(4.dp))
+                        Row(
+                            Modifier.padding(bottom = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (onWindowMinimize != null) {
+                                IconButton(onClick = onWindowMinimize, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Minimize", modifier = Modifier.size(18.dp))
+                                }
+                            }
+                            if (onWindowMaximize != null) {
+                                IconButton(onClick = onWindowMaximize, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.CropSquare, contentDescription = "Maximize", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            if (onWindowClose != null) {
+                                IconButton(onClick = onWindowClose, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
                     }
@@ -211,7 +253,7 @@ private fun DesktopBrowserTabChip(
     val bg = if (selected) {
         MaterialTheme.colorScheme.surface
     } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f)
     }
     val fg = if (selected) {
         MaterialTheme.colorScheme.onSurface

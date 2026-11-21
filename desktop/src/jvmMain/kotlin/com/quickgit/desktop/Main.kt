@@ -15,6 +15,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.quickgit.desktop.data.AppLog
@@ -64,7 +65,10 @@ fun bootstrap(args: Array<String> = emptyArray()) {
             onCloseRequest = ::exitApplication,
             title = "QuickGitNEXT",
             state = windowState,
-            icon = appIcon
+            icon = appIcon,
+            // Chrome-style: no system title bar in Chromebook mode
+            undecorated = chromebookMode,
+            transparent = false
         ) {
             // Allow half-screen and smaller laptops; content layouts adapt below this
             window.minimumSize = Dimension(480, 360)
@@ -177,7 +181,10 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                 }
             }
             key(darkTheme, accentKey) {
-                QuickGitTheme(darkTheme = darkTheme) {
+                QuickGitTheme(
+                    chromeBrowserTheme = chromebookMode,
+                    darkTheme = darkTheme
+                ) {
                     val bg = MaterialTheme.colorScheme.background
                     LaunchedEffect(bg) {
                         runCatching {
@@ -213,6 +220,23 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                                     credentialStore = credentialStore,
                                     updateManager = updateManager,
                                     externalScreen = menuScreen,
+                                    onWindowMinimize = if (chromebookMode) ({ windowState.isMinimized = true }) else null,
+                                    onWindowMaximize = if (chromebookMode) ({
+                                        windowState.placement =
+                                            if (windowState.placement == WindowPlacement.Maximized)
+                                                WindowPlacement.Floating
+                                            else WindowPlacement.Maximized
+                                    }) else null,
+                                    onWindowClose = if (chromebookMode) ({ exitApplication() }) else null,
+                                    onWindowDrag = if (chromebookMode) ({ dx, dy ->
+                                        val p = windowState.position
+                                        // WindowPosition may be Absolute
+                                        runCatching {
+                                            val x = (window.x + dx).toInt()
+                                            val y = (window.y + dy).toInt()
+                                            window.setLocation(x, y)
+                                        }
+                                    }) else null,
                                     onScreenChanged = { menuScreen = it }
                                 )
                                 updatePrompt?.let { available ->

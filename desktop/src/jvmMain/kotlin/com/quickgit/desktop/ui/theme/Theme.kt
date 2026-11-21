@@ -53,6 +53,16 @@ val GitGreen = UbuntuSuccess
 val GitRed = UbuntuError
 val GitAmber = UbuntuOrange
 
+/** Google Chrome browser theme (Chromebook / ChromeOS shell). */
+val ChromeBlue = Color(0xFF1A73E8)
+val ChromeBlueLight = Color(0xFF8AB4F8)
+val ChromeTabStripLight = Color(0xFFDEE1E6)
+val ChromeTabActiveLight = Color(0xFFFFFFFF)
+val ChromeBgLight = Color(0xFFF1F3F4)
+val ChromeTabStripDark = Color(0xFF202124)
+val ChromeTabActiveDark = Color(0xFF292A2D)
+val ChromeBgDark = Color(0xFF202124)
+
 /** Breeze / Plasma accent (KDE system blue). */
 val PlasmaAccent = Color(0xFF3DAEE9)
 val PlasmaAccentDark = Color(0xFF2980B9)
@@ -1084,17 +1094,123 @@ fun isAppInDarkTheme(): Boolean {
     return if (os.contains("linux")) detectSystemDarkTheme() else isSystemInDarkTheme()
 }
 
+
+private val ChromeLightColors: ColorScheme = lightColorScheme(
+    primary = ChromeBlue,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD2E3FC),
+    onPrimaryContainer = Color(0xFF041E49),
+    secondary = Color(0xFF5F6368),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE8EAED),
+    onSecondaryContainer = Color(0xFF202124),
+    tertiary = Color(0xFF188038),
+    onTertiary = Color.White,
+    error = Color(0xFFD93025),
+    onError = Color.White,
+    background = ChromeBgLight,
+    onBackground = Color(0xFF202124),
+    surface = ChromeTabActiveLight,
+    onSurface = Color(0xFF202124),
+    surfaceVariant = Color(0xFFE8EAED),
+    onSurfaceVariant = Color(0xFF5F6368),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF8F9FA),
+    surfaceContainer = ChromeTabStripLight,
+    surfaceContainerHigh = Color(0xFFD3D6DA),
+    surfaceContainerHighest = Color(0xFFC4C7C5),
+    outline = Color(0xFFDADCE0),
+    outlineVariant = Color(0xFFE8EAED),
+    surfaceTint = ChromeBlue
+)
+
+private val ChromeDarkColors: ColorScheme = darkColorScheme(
+    primary = ChromeBlueLight,
+    onPrimary = Color(0xFF062E6F),
+    primaryContainer = Color(0xFF174EA6),
+    onPrimaryContainer = Color(0xFFD2E3FC),
+    secondary = Color(0xFF9AA0A6),
+    onSecondary = Color(0xFF202124),
+    secondaryContainer = Color(0xFF3C4043),
+    onSecondaryContainer = Color(0xFFE8EAED),
+    tertiary = Color(0xFF81C995),
+    onTertiary = Color(0xFF0D652D),
+    error = Color(0xFFF28B82),
+    onError = Color(0xFF5F1111),
+    background = ChromeBgDark,
+    onBackground = Color(0xFFE8EAED),
+    surface = ChromeTabActiveDark,
+    onSurface = Color(0xFFE8EAED),
+    surfaceVariant = Color(0xFF3C4043),
+    onSurfaceVariant = Color(0xFF9AA0A6),
+    surfaceContainerLowest = Color(0xFF17181A),
+    surfaceContainerLow = Color(0xFF1F2022),
+    surfaceContainer = ChromeTabStripDark,
+    surfaceContainerHigh = Color(0xFF303134),
+    surfaceContainerHighest = Color(0xFF3C4043),
+    outline = Color(0xFF5F6368),
+    outlineVariant = Color(0xFF3C4043),
+    surfaceTint = ChromeBlueLight
+)
+
 @Composable
 fun QuickGitTheme(
     darkTheme: Boolean = isAppInDarkTheme(),
     platform: DesktopPlatformStyle = detectDesktopPlatformStyle(),
+    /** Chromebook / Chrome browser look (blue theme). */
+    chromeBrowserTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     var colors: ColorScheme
     var chrome: PlatformChromeColors
     val shapes: Shapes
     val typography: Typography
-    when (platform) {
+    if (chromeBrowserTheme) {
+        colors = if (darkTheme) ChromeDarkColors else ChromeLightColors
+        chrome = if (darkTheme) {
+            PlatformChromeColors(
+                headerBar = ChromeTabStripDark,
+                headerBarOn = Color(0xFFE8EAED),
+                sidebar = ChromeTabActiveDark,
+                sidebarOn = Color(0xFFE8EAED),
+                cardBorder = Color(0xFF3C4043),
+                codeBackground = Color(0xFF17181A),
+                codeOn = Color(0xFFE8EAED),
+                codeGutter = ChromeTabStripDark,
+                success = Color(0xFF81C995),
+                warning = Color(0xFFFDD663),
+                info = ChromeBlueLight,
+                selection = Color(0x448AB4F8),
+                hover = Color(0x14FFFFFF),
+                inactive = Color(0xFF9AA0A6)
+            )
+        } else {
+            PlatformChromeColors(
+                headerBar = ChromeTabStripLight,
+                headerBarOn = Color(0xFF202124),
+                sidebar = Color(0xFFF8F9FA),
+                sidebarOn = Color(0xFF202124),
+                cardBorder = Color(0xFFDADCE0),
+                codeBackground = Color(0xFFFFFFFF),
+                codeOn = Color(0xFF202124),
+                codeGutter = ChromeTabStripLight,
+                success = Color(0xFF188038),
+                warning = Color(0xFFF9AB00),
+                info = ChromeBlue,
+                selection = Color(0x331A73E8),
+                hover = Color(0x14000000),
+                inactive = Color(0xFF5F6368)
+            )
+        }
+        shapes = Shapes(
+            extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+            small = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            medium = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            large = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+        )
+        typography = desktopTypography(compact = true)
+    } else when (platform) {
         DesktopPlatformStyle.Windows -> {
             colors = if (darkTheme) WindowsDarkColors else WindowsLightColors
             chrome = if (darkTheme) WindowsDarkChrome else WindowsLightChrome

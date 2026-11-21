@@ -50,7 +50,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.quickgit.app.ui.theme.GitGreen
+import com.quickgit.app.ui.theme.ChromeBlue
+import com.quickgit.app.ui.theme.ChromeBlue
 
 /**
  * Browser-style workspace tab on ChromeOS.
@@ -343,11 +344,11 @@ fun ChromeOsContentWithWatermark(
 @Composable
 private fun ChromeOsToolbarItem(item: ChromeOsDestItem, compact: Boolean = false) {
     val bg = if (item.selected) {
-        GitGreen.copy(alpha = 0.16f)
+        ChromeBlue.copy(alpha = 0.16f)
     } else {
         MaterialTheme.colorScheme.surface.copy(alpha = 0f)
     }
-    val fg = if (item.selected) GitGreen else MaterialTheme.colorScheme.onSurfaceVariant
+    val fg = if (item.selected) ChromeBlue else MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         Modifier
             .clip(RoundedCornerShape(if (compact) 6.dp else 8.dp))

@@ -84,7 +84,11 @@ fun QuickGitDesktopApp(
     credentialStore: DesktopCredentialStore,
     updateManager: DesktopAppUpdateManager = DesktopAppUpdateManager(credentialStore),
     externalScreen: DesktopScreen? = null,
-    onScreenChanged: (DesktopScreen) -> Unit = {}
+    onScreenChanged: (DesktopScreen) -> Unit = {},
+    onWindowMinimize: (() -> Unit)? = null,
+    onWindowMaximize: (() -> Unit)? = null,
+    onWindowClose: (() -> Unit)? = null,
+    onWindowDrag: ((Float, Float) -> Unit)? = null
 ) {
     // Home is always the repository workspace (list or open repo detail).
     // Every other destination opens as an in-app popup window with a Close button.
@@ -277,7 +281,11 @@ fun QuickGitDesktopApp(
                     sectionItems = chromeSectionItems,
                     sectionIndex = chromeSectionIndex,
                     onSectionIndex = { chromeSectionIndex = it },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    onWindowMinimize = onWindowMinimize,
+                    onWindowMaximize = onWindowMaximize,
+                    onWindowClose = onWindowClose,
+                    onWindowDrag = onWindowDrag
                 ) {
                     homeContent()
                 }
