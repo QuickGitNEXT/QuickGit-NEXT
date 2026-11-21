@@ -448,6 +448,9 @@ private fun UbuntuPageHeader(
                 }
             }
             Row(
+                Modifier
+                    .weight(1f, fill = false)
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 content = actions
@@ -497,8 +500,9 @@ private fun UbuntuContentCard(
 ) {
     Surface(
         modifier = modifier
+            .fillMaxWidth()
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
         tonalElevation = 0.dp,
@@ -506,8 +510,9 @@ private fun UbuntuContentCard(
     ) {
         Box(
             Modifier
+                .fillMaxWidth()
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(8.dp),
             content = content
         )
     }
@@ -1276,12 +1281,17 @@ fun RepoDetailScreen(
         }
         // Ubuntu-style view switcher under the header (hidden in Chromebook shell)
         if (!chromebookMode) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             ScrollableTabRow(
                 selectedTabIndex = tabIndex,
-                edgePadding = 12.dp,
+                edgePadding = 8.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 tabs.forEachIndexed { i, title ->
                     Tab(
@@ -1990,12 +2000,14 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().fillMaxWidth()) {
         Text(
             "Branch log · cherry-pick, revert, or reset onto the current branch",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
         )
         // Branch / remote-tracking ref picker
         Row(
@@ -2062,14 +2074,24 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             }
         } else {
             LazyColumn(
-                Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                Modifier
+                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(commits, key = { it.id }) { c ->
                     val multiSelected = c.id in cherrySelection
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Checkbox(
                                     checked = multiSelected,
                                     onCheckedChange = {
@@ -2087,35 +2109,52 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                                     modifier = Modifier.weight(1f)
                                 )
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
                                 Text(
                                     c.shortId,
                                     fontFamily = FontFamily.Monospace,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
-                                Text(c.author, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    c.author,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                                 Text(
                                     dateFormat.format(Date(c.time)),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
                                 )
                             }
                             Row(
-                                Modifier.fillMaxWidth().padding(top = 8.dp),
+                                Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(top = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 OutlinedButton(
                                     onClick = { confirmCherry = c },
-                                    enabled = !busy
+                                    enabled = !busy,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) { Text("Cherry-pick") }
                                 OutlinedButton(
                                     onClick = { confirmRevert = c },
-                                    enabled = !busy
+                                    enabled = !busy,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) { Text("Revert") }
                                 OutlinedButton(
                                     onClick = { confirmReset = c },
-                                    enabled = !busy
+                                    enabled = !busy,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) { Text("Reset") }
                             }
                         }
