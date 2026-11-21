@@ -65,6 +65,7 @@ fun UserSearchScreen(
                         pageTitle = when (state.searchKind) {
                             UserSearchKind.PEOPLE -> "Search people"
                             UserSearchKind.REPOS -> "Search repositories"
+                            UserSearchKind.ORGS -> "Search organisations"
                         }
                     )
                 },

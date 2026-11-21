@@ -418,21 +418,21 @@ class GitHubAccountManager(
         return Triple(batch, hasMore, result.toPrOpResult(host))
     }
 
-    /** Global GitHub repository search. [page] is 1-based. */
     fun searchOrganizations(
         query: String,
         page: Int = 1,
         perPage: Int = 30
     ): Pair<List<GitHubApi.GitHubUserSummary>, PrOpResult> {
-        val api = apiOrNull() ?: return emptyList<GitHubApi.GitHubUserSummary>() to PrOpResult.AuthRequired
+        if (!isConnected()) {
+            return emptyList<GitHubApi.GitHubUserSummary>() to PrOpResult.AuthRequired(host)
+        }
         val result = api.searchOrganizations(query, perPage = perPage, page = page)
-        return result.fold(
-            onSuccess = { it to PrOpResult.Success },
-            onFailure = { emptyList<GitHubApi.GitHubUserSummary>() to it.toPrOpResult(host) }
-        )
+        val batch = result.getOrNull() ?: emptyList()
+        return batch to result.toPrOpResult(host)
     }
 
-        fun searchRepositoriesPage(
+    /** Global GitHub repository search. [page] is 1-based. */
+    fun searchRepositoriesPage(
         query: String,
         page: Int = 1,
         perPage: Int = 30
