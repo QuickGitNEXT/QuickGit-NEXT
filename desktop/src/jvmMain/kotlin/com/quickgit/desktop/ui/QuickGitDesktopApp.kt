@@ -237,7 +237,6 @@ fun QuickGitDesktopApp(
         DesktopSectionItem(Icons.Default.CallMerge, "PRs"),
         DesktopSectionItem(Icons.Default.PlayCircle, "Actions"),
         DesktopSectionItem(Icons.Default.NewReleases, "Releases"),
-        DesktopSectionItem(Icons.Default.History, "History"),
     ) else emptyList()
 
     Scaffold(
@@ -405,7 +404,9 @@ private fun UbuntuPageHeader(
     title: String,
     subtitle: String? = null,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+    actions: @Composable RowScope.() -> Unit = {},
+    /** Fixed on the right edge (e.g. History icon) — not inside the scrolling actions. */
+    trailing: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
@@ -451,6 +452,10 @@ private fun UbuntuPageHeader(
                                 )
                             }
                         }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            content = trailing
+                        )
                     }
                     Row(
                         Modifier
@@ -496,10 +501,14 @@ private fun UbuntuPageHeader(
                         }
                     }
                     Row(
-                        Modifier.horizontalScroll(rememberScrollState()),
+                        Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         content = actions
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = trailing
                     )
                 }
             }
@@ -1007,8 +1016,8 @@ fun RepoDetailScreen(
     fun setTabIndex(i: Int) {
         if (chromebookMode) onChromeTabIndexChange(i) else localTabIndex = i
     }
-    // Changes first, then Files (file manager), Branches, Issues, PRs, Actions, Releases, History last
-    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases", "History")
+    // History is a header icon on the right (not a tab label — avoids overflow on half-screen)
+    val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases")
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var pullMenuExpanded by remember { mutableStateOf(false) }
@@ -1078,7 +1087,20 @@ fun RepoDetailScreen(
         UbuntuPageHeader(
             title = repoPath.substringAfterLast('/'),
             subtitle = repoPath,
-            onBack = onBack
+            onBack = onBack,
+            trailing = {
+                IconButton(
+                    onClick = { setTabIndex(7) },
+                    enabled = !busy
+                ) {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = "History",
+                        tint = if (tabIndex == 7) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         ) {
             Box {
                 OutlinedButton(onClick = { pullMenuExpanded = true }, enabled = !busy) { Text("Pull ▾") }
