@@ -93,6 +93,14 @@ fun QuickGitDesktopApp(
     var popupScreen by remember { mutableStateOf<DesktopScreen?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // Chromebook shell (matches Android ChromeOS mode)
+    var chromebookMode by remember { mutableStateOf(com.quickgit.desktop.data.DesktopUiPrefs.isChromebookMode()) }
+    var chromeNextTabId by remember { mutableStateOf(2L) }
+    val chromeTabs = remember {
+        mutableStateListOf(DesktopBrowserTab(id = 1L, title = "Repos", path = null))
+    }
+    var chromeActiveTabId by remember { mutableStateOf(1L) }
+    var chromeSectionIndex by remember { mutableStateOf(0) }
 
     fun homeScreen(): DesktopScreen =
         if (homeIsDetail && selectedRepoPath != null) DesktopScreen.RepoDetail else DesktopScreen.RepoList
@@ -106,6 +114,13 @@ fun QuickGitDesktopApp(
         popupScreen = null
         homeIsDetail = false
         onScreenChanged(DesktopScreen.RepoList)
+        if (chromebookMode) {
+            val idx = chromeTabs.indexOfFirst { it.id == chromeActiveTabId }
+            if (idx >= 0) {
+                chromeTabs[idx] = chromeTabs[idx].copy(path = null, title = "Repos")
+            }
+            chromeSectionIndex = 0
+        }
     }
 
     fun openHomeDetail(path: String) {
@@ -113,6 +128,14 @@ fun QuickGitDesktopApp(
         homeIsDetail = true
         popupScreen = null
         onScreenChanged(DesktopScreen.RepoDetail)
+        if (chromebookMode) {
+            val name = java.io.File(path).name.ifBlank { path.substringAfterLast('/') }
+            val idx = chromeTabs.indexOfFirst { it.id == chromeActiveTabId }
+            if (idx >= 0) {
+                chromeTabs[idx] = chromeTabs[idx].copy(path = path, title = name)
+            }
+            chromeSectionIndex = 0
+        }
     }
 
     fun navigate(screen: DesktopScreen) {
@@ -159,28 +182,108 @@ fun QuickGitDesktopApp(
         else -> "QuickGitNEXT"
     }
 
+    fun selectChromeTab(tabId: Long) {
+        val tab = chromeTabs.find { it.id == tabId } ?: return
+        chromeActiveTabId = tabId
+        chromeSectionIndex = 0
+        if (tab.path != null) {
+            selectedRepoPath = tab.path
+            homeIsDetail = true
+            popupScreen = null
+            onScreenChanged(DesktopScreen.RepoDetail)
+        } else {
+            openHomeList()
+        }
+    }
+    fun newChromeTab() {
+        val id = chromeNextTabId
+        chromeNextTabId = id + 1
+        chromeTabs.add(DesktopBrowserTab(id = id, title = "Repos", path = null))
+        chromeActiveTabId = id
+        chromeSectionIndex = 0
+        openHomeList()
+    }
+    fun closeChromeTab(tabId: Long) {
+        val idx = chromeTabs.indexOfFirst { it.id == tabId }
+        if (idx < 0) return
+        if (chromeTabs.size <= 1) {
+            chromeTabs[0] = chromeTabs[0].copy(title = "Repos", path = null)
+            chromeActiveTabId = chromeTabs[0].id
+            openHomeList()
+            return
+        }
+        chromeTabs.removeAt(idx)
+        if (chromeActiveTabId == tabId) {
+            val next = chromeTabs.getOrNull(idx) ?: chromeTabs.getOrNull(idx - 1)
+            if (next != null) selectChromeTab(next.id)
+        }
+    }
+
+    val chromeDestinations = listOf(
+        DesktopChromeDest(Icons.Default.FolderOpen, "Repos", !homeIsDetail && popupScreen == null, { openHomeList() }),
+        DesktopChromeDest(Icons.Default.CloudDownload, "Clone", popupScreen == DesktopScreen.Clone, { navigate(DesktopScreen.Clone) }),
+        DesktopChromeDest(Icons.Default.TravelExplore, "Browse", popupScreen == DesktopScreen.BrowseAccount, { navigate(DesktopScreen.BrowseAccount) }),
+        DesktopChromeDest(Icons.Default.Search, "Search", popupScreen == DesktopScreen.UserSearch, { navigate(DesktopScreen.UserSearch) }),
+        DesktopChromeDest(Icons.Default.Person, "Profiles", popupScreen == DesktopScreen.Profile, { navigate(DesktopScreen.Profile) }),
+        DesktopChromeDest(Icons.Default.Settings, "Settings", popupScreen == DesktopScreen.Settings, { navigate(DesktopScreen.Settings) }),
+        DesktopChromeDest(Icons.Default.Info, "Logs", popupScreen == DesktopScreen.Logs, { navigate(DesktopScreen.Logs) }),
+        DesktopChromeDest(Icons.Default.VpnKey, "Credentials", popupScreen == DesktopScreen.Credentials, { navigate(DesktopScreen.Credentials) }),
+    )
+    val chromeSectionItems = if (homeIsDetail) listOf(
+        DesktopSectionItem(Icons.Default.Edit, "Changes"),
+        DesktopSectionItem(Icons.Default.Folder, "Files"),
+        DesktopSectionItem(Icons.Default.AccountTree, "Branches"),
+        DesktopSectionItem(Icons.Default.BugReport, "Issues"),
+        DesktopSectionItem(Icons.Default.CallMerge, "PRs"),
+        DesktopSectionItem(Icons.Default.PlayCircle, "Actions"),
+        DesktopSectionItem(Icons.Default.NewReleases, "Releases"),
+        DesktopSectionItem(Icons.Default.History, "History"),
+    ) else emptyList()
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            // ── Home page: repository list or open repository ───────────────
-            if (homeIsDetail && selectedRepoPath != null) {
-                RepoDetailScreen(
-                    repoPath = selectedRepoPath!!,
-                    repoManager = repoManager,
-                    credentialStore = credentialStore,
-                    githubApi = githubApi(),
-                    onBack = { openHomeList() },
-                    onMessage = ::showMessage
-                )
+            val homeContent: @Composable () -> Unit = {
+                if (homeIsDetail && selectedRepoPath != null) {
+                    RepoDetailScreen(
+                        repoPath = selectedRepoPath!!,
+                        repoManager = repoManager,
+                        credentialStore = credentialStore,
+                        githubApi = githubApi(),
+                        onBack = { openHomeList() },
+                        onMessage = ::showMessage,
+                        chromebookMode = chromebookMode,
+                        chromeTabIndex = chromeSectionIndex,
+                        onChromeTabIndexChange = { chromeSectionIndex = it }
+                    )
+                } else {
+                    RepoListScreen(
+                        repoManager = repoManager,
+                        credentialStore = credentialStore,
+                        githubApi = githubApi(),
+                        onSelect = { openHomeDetail(it) },
+                        onMessage = ::showMessage
+                    )
+                }
+            }
+            if (chromebookMode) {
+                DesktopChromebookShell(
+                    tabs = chromeTabs.toList(),
+                    activeTabId = chromeActiveTabId,
+                    onSelectTab = { selectChromeTab(it) },
+                    onCloseTab = { closeChromeTab(it) },
+                    onNewTab = { newChromeTab() },
+                    destinations = chromeDestinations,
+                    sectionItems = chromeSectionItems,
+                    sectionIndex = chromeSectionIndex,
+                    onSectionIndex = { chromeSectionIndex = it },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    homeContent()
+                }
             } else {
-                RepoListScreen(
-                    repoManager = repoManager,
-                    credentialStore = credentialStore,
-                    githubApi = githubApi(),
-                    onSelect = { openHomeDetail(it) },
-                    onMessage = ::showMessage
-                )
+                homeContent()
             }
 
             // ── In-app popup windows for menu destinations ──────────────────
@@ -836,9 +939,16 @@ fun RepoDetailScreen(
     credentialStore: DesktopCredentialStore,
     githubApi: GitHubApi,
     onBack: () -> Unit,
-    onMessage: (String) -> Unit
+    onMessage: (String) -> Unit,
+    chromebookMode: Boolean = false,
+    chromeTabIndex: Int = 0,
+    onChromeTabIndexChange: (Int) -> Unit = {}
 ) {
-    var tabIndex by remember { mutableStateOf(0) }
+    var localTabIndex by remember { mutableStateOf(0) }
+    val tabIndex = if (chromebookMode) chromeTabIndex else localTabIndex
+    fun setTabIndex(i: Int) {
+        if (chromebookMode) onChromeTabIndexChange(i) else localTabIndex = i
+    }
     // Changes first, then Files (file manager), Branches, Issues, PRs, Actions, Releases, History last
     val tabs = listOf("Changes", "Files", "Branches", "Issues", "PRs", "Actions", "Releases", "History")
     val scope = rememberCoroutineScope()
@@ -1164,7 +1274,8 @@ fun RepoDetailScreen(
                 }
             )
         }
-        // Ubuntu-style view switcher under the header
+        // Ubuntu-style view switcher under the header (hidden in Chromebook shell)
+        if (!chromebookMode) {
         Surface(color = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface) {
             ScrollableTabRow(
                 selectedTabIndex = tabIndex,
@@ -1175,7 +1286,7 @@ fun RepoDetailScreen(
                 tabs.forEachIndexed { i, title ->
                     Tab(
                         selected = tabIndex == i,
-                        onClick = { tabIndex = i },
+                        onClick = { setTabIndex(i) },
                         text = {
                             Text(
                                 title,
@@ -1186,7 +1297,10 @@ fun RepoDetailScreen(
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        } // !chromebookMode internal tab strip
+        if (!chromebookMode) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+        }
         UbuntuContentCard(modifier = Modifier.weight(1f)) {
             when (tabIndex) {
                 0 -> ChangesTab(repoPath, repoManager, onMessage)
@@ -2277,7 +2391,7 @@ fun BranchesTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (S
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        if (b.isRemote) Icons.Default.Cloud else Icons.Default.Commit,
+                        if (b.isRemote) Icons.Default.Cloud else Icons.Default.Edit,
                         contentDescription = null,
                         tint = if (b.isCurrent) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -3075,10 +3189,10 @@ fun FilesEditorTab(repoPath: String, repoManager: DesktopRepoManager, onMessage:
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         IconButton(onClick = { goToMatch(matchIndex - 1) }, enabled = findMatches.isNotEmpty()) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous")
+                            Icon(Icons.Default.VpnKeyboardArrowUp, contentDescription = "Previous")
                         }
                         IconButton(onClick = { goToMatch(matchIndex + 1) }, enabled = findMatches.isNotEmpty()) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next")
+                            Icon(Icons.Default.VpnKeyboardArrowDown, contentDescription = "Next")
                         }
                         IconButton(onClick = { findOpen = false; findQuery = "" }) {
                             Icon(Icons.Default.Close, contentDescription = "Close find")
@@ -6912,6 +7026,44 @@ fun SettingsScreen(
         Text(
             "Theme follows the system light/dark setting and desktop accent colour.",
             style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        Text("Chromebook mode", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "Browser-style tabs and ☰ menu matching the Android Chromebook shell. Auto enables on ChromeOS hosts.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        val chromeSetting = remember {
+            mutableStateOf(
+                when (com.quickgit.desktop.data.DesktopUiPrefs.chromebookModeSetting()) {
+                    true -> "Always"
+                    false -> "Never"
+                    null -> "Auto"
+                }
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Auto", "Always", "Never").forEach { label ->
+                FilterChip(
+                    selected = chromeSetting.value == label,
+                    onClick = {
+                        chromeSetting.value = label
+                        when (label) {
+                            "Always" -> com.quickgit.desktop.data.DesktopUiPrefs.setChromebookMode(true)
+                            "Never" -> com.quickgit.desktop.data.DesktopUiPrefs.setChromebookMode(false)
+                            else -> com.quickgit.desktop.data.DesktopUiPrefs.setChromebookMode(null)
+                        }
+                        onMessage("Chromebook mode: $label — reopen the home window to apply")
+                    },
+                    label = { Text(label) }
+                )
+            }
+        }
+        Text(
+            "Detected host Chromebook-like: ${com.quickgit.desktop.data.DesktopUiPrefs.detectChromeOsHost()} · active now: ${com.quickgit.desktop.data.DesktopUiPrefs.isChromebookMode()}",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

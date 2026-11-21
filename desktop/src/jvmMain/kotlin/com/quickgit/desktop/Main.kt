@@ -28,6 +28,7 @@ import com.quickgit.desktop.ui.DesktopScreen
 import com.quickgit.desktop.ui.QuickGitDesktopApp
 import com.quickgit.desktop.ui.theme.QuickGitTheme
 import com.quickgit.desktop.ui.theme.detectSystemAccentColor
+import com.quickgit.desktop.data.DesktopUiPrefs
 import com.quickgit.desktop.ui.theme.detectSystemDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,6 +57,7 @@ fun bootstrap(args: Array<String> = emptyArray()) {
         val isLinux = remember {
             System.getProperty("os.name").orEmpty().lowercase().contains("linux")
         }
+        val chromebookMode = remember { DesktopUiPrefs.isChromebookMode() }
 
         Window(
             onCloseRequest = ::exitApplication,
@@ -92,8 +94,8 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                 }
             }
 
-            // Native MenuBar only off Linux — on Linux it stays light and ignores Material dark theme
-            if (!isLinux) {
+            // Native MenuBar: skip on Linux (themed bar) and whenever Chromebook shell is active
+            if (!isLinux && !chromebookMode) {
                 MenuBar {
                     Menu("File", mnemonic = 'F') {
                         Item("Quit", onClick = ::exitApplication, shortcut = KeyShortcut(Key.Q, ctrl = true))
@@ -196,7 +198,7 @@ fun bootstrap(args: Array<String> = emptyArray()) {
                         }
 
                         Column(Modifier.fillMaxSize()) {
-                            if (isLinux) {
+                            if (isLinux && !chromebookMode) {
                                 LinuxThemedMenuBar(
                                     onNavigate = { menuScreen = it },
                                     onQuit = ::exitApplication
