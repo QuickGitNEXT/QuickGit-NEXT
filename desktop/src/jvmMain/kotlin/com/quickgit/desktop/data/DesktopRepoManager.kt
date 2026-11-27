@@ -899,10 +899,11 @@ class DesktopRepoManager(
                 log.add(start)
             }
             return log.call().map { c ->
+                val full = c.fullMessage?.trim().orEmpty().ifBlank { c.shortMessage }
                 CommitInfo(
                     id = c.name,
                     shortId = c.name.take(7),
-                    message = c.shortMessage,
+                    message = full,
                     author = c.authorIdent.name,
                     email = c.authorIdent.emailAddress,
                     time = c.authorIdent.`when`.time
@@ -962,6 +963,55 @@ class DesktopRepoManager(
             }
         }
     }
+
+
+    data class DiffLine(val type: String, val text: String) // CONTEXT, ADDED, REMOVED, HEADER
+    data class FileDiff(val path: String, val lines: List<DiffLine>, val isBinary: Boolean = false)
+
+    /** Unified diff for [filePath] in [commitId] vs its first parent. */
+    fun getCommitDiff(repoPath: String, commitId: String, filePath: String): FileDiff {
+        open(File(repoPath)).use { git ->
+            val repo = git.repository
+            RevWalk(repo).use { walk ->
+                val commit = walk.parseCommit(ObjectId.fromString(commitId))
+                val newTree = commit.tree
+                val oldTree = if (commit.parentCount > 0) walk.parseCommit(commit.getParent(0)).tree else null
+                val out = java.io.ByteArrayOutputStream()
+                DiffFormatter(out).use { formatter ->
+                    formatter.setRepository(repo)
+                    formatter.setDiffComparator(org.eclipse.jgit.diff.RawTextComparator.DEFAULT)
+                    formatter.setDetectRenames(true)
+                    formatter.pathFilter = org.eclipse.jgit.treewalk.filter.PathFilter.create(filePath)
+                    val reader = repo.newObjectReader()
+                    try {
+                        val newParser = CanonicalTreeParser().apply { reset(reader, newTree) }
+                        if (oldTree != null) {
+                            val oldParser = CanonicalTreeParser().apply { reset(reader, oldTree) }
+                            formatter.format(oldParser, newParser)
+                        } else {
+                            formatter.format(null, newParser)
+                        }
+                    } finally {
+                        reader.close()
+                    }
+                }
+                val raw = out.toString(Charsets.UTF_8.name())
+                if (raw.contains("Binary files")) return FileDiff(filePath, emptyList(), isBinary = true)
+                val lines = raw.lineSequence().mapNotNull { line ->
+                    when {
+                        line.startsWith("+++") || line.startsWith("---") -> DiffLine("HEADER", line)
+                        line.startsWith("@@") -> DiffLine("HEADER", line)
+                        line.startsWith("+") -> DiffLine("ADDED", line)
+                        line.startsWith("-") -> DiffLine("REMOVED", line)
+                        line.startsWith("diff ") || line.startsWith("index ") -> null
+                        else -> DiffLine("CONTEXT", line)
+                    }
+                }.toList()
+                return FileDiff(filePath, lines)
+            }
+        }
+    }
+
 
     fun listTreeAtCommit(repoPath: String, commitId: String, relativeDir: String = ""): List<TreeEntry> {
         open(File(repoPath)).use { git ->

@@ -3118,7 +3118,7 @@ class RepoManager(private val context: Context, private val credentialStore: Cre
     private fun RevCommit.toCommitInfo() = CommitInfo(
         id = name(),
         shortId = name().take(7),
-        message = shortMessage,
+        message = fullMessage?.trim().orEmpty().ifBlank { shortMessage },
         authorName = authorIdent.name,
         authorEmail = authorIdent.emailAddress,
         timeEpochSeconds = commitTime.toLong()

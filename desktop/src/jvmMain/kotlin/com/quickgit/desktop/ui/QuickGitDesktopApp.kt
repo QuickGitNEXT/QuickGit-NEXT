@@ -2194,6 +2194,13 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
     var confirmReset by remember { mutableStateOf<DesktopRepoManager.CommitInfo?>(null) }
     var cherrySelection by remember { mutableStateOf(setOf<String>()) }
     var confirmMultiCherry by remember { mutableStateOf(false) }
+    var selectedCommitId by remember { mutableStateOf<String?>(null) }
+    var selectedChanges by remember { mutableStateOf(emptyList<DesktopRepoManager.CommitChange>()) }
+    var changesLoading by remember { mutableStateOf(false) }
+    var diffPath by remember { mutableStateOf<String?>(null) }
+    var diffLines by remember { mutableStateOf(emptyList<DesktopRepoManager.DiffLine>()) }
+    var diffBinary by remember { mutableStateOf(false) }
+    var diffLoading by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
     val scope = rememberCoroutineScope()
 
@@ -2202,7 +2209,7 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             loading = true
             branches = withContext(Dispatchers.IO) { repoManager.listBranches(repoPath) }
             commits = withContext(Dispatchers.IO) {
-                runCatching { repoManager.getHistory(repoPath, 200, logRef) }
+                runCatching { repoManager.getHistory(repoPath, 500, logRef) }
                     .getOrElse {
                         onMessage("Could not load history for ${logRef ?: "HEAD"}: ${it.message}")
                         emptyList()
@@ -2316,6 +2323,39 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
         }
     }
 
+
+    fun openCommit(id: String?) {
+        if (id == null || id == selectedCommitId) {
+            selectedCommitId = null
+            selectedChanges = emptyList()
+            diffPath = null
+            return
+        }
+        selectedCommitId = id
+        diffPath = null
+        scope.launch {
+            changesLoading = true
+            selectedChanges = withContext(Dispatchers.IO) {
+                runCatching { repoManager.listCommitChanges(repoPath, id) }.getOrElse { emptyList() }
+            }
+            changesLoading = false
+        }
+    }
+
+    fun openDiff(path: String, commitId: String) {
+        scope.launch {
+            diffLoading = true
+            diffPath = path
+            val fd = withContext(Dispatchers.IO) {
+                runCatching { repoManager.getCommitDiff(repoPath, commitId, path) }.getOrNull()
+            }
+            diffLines = fd?.lines.orEmpty()
+            diffBinary = fd?.isBinary == true
+            diffLoading = false
+        }
+    }
+
+
     Column(Modifier.fillMaxSize().fillMaxWidth()) {
         Text(
             "Branch log · cherry-pick, revert, or reset onto the current branch",
@@ -2398,7 +2438,19 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             ) {
                 items(commits, key = { it.id }) { c ->
                     val multiSelected = c.id in cherrySelection
-                    Card(Modifier.fillMaxWidth()) {
+                    val selected = c.id == selectedCommitId
+                    Card(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { openCommit(c.id) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = when {
+                                selected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                multiSelected -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+                                else -> MaterialTheme.colorScheme.surface
+                            }
+                        )
+                    ) {
                         Column(
                             Modifier
                                 .fillMaxWidth()
@@ -2418,7 +2470,7 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
                                     enabled = !busy
                                 )
                                 Text(
-                                    c.message,
+                                    c.message.lineSequence().firstOrNull().orEmpty(),
                                     fontWeight = FontWeight.Medium,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
@@ -2480,6 +2532,138 @@ fun HistoryTab(repoPath: String, repoManager: DesktopRepoManager, onMessage: (St
             }
         }
         } // list Box weight
+
+            // Commit detail: full message + changed files + optional unified diff
+            if (selectedCommitId != null) {
+                val commit = commits.find { it.id == selectedCommitId }
+                Surface(
+                    tonalElevation = 2.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(8.dp)
+                ) {
+                    Column(Modifier.fillMaxSize().padding(12.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Commit ${commit?.shortId ?: selectedCommitId?.take(7)}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { openCommit(null) }) { Text("Close") }
+                        }
+                        if (commit != null) {
+                            Text(
+                                "${commit.author} · ${dateFormat.format(Date(commit.time))}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                commit.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 160.dp)
+                                    .verticalScroll(rememberScrollState())
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "Changed files",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        when {
+                            changesLoading -> CircularProgressIndicator(Modifier.size(24.dp))
+                            selectedChanges.isEmpty() -> Text(
+                                "No file changes",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            else -> LazyColumn(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 180.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(selectedChanges, key = { it.path + it.changeType }) { change ->
+                                    val label = when (change.changeType) {
+                                        "ADD" -> "+ ${change.path}"
+                                        "DELETE" -> "- ${change.path}"
+                                        "RENAME" -> "→ ${change.oldPath} → ${change.path}"
+                                        else -> "M ${change.path}"
+                                    }
+                                    Text(
+                                        label,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                if (change.changeType != "DELETE") {
+                                                    openDiff(change.path, selectedCommitId!!)
+                                                }
+                                            }
+                                            .padding(vertical = 4.dp),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = when (change.changeType) {
+                                            "ADD" -> MaterialTheme.colorScheme.primary
+                                            "DELETE" -> MaterialTheme.colorScheme.error
+                                            else -> MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (diffPath != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Diff · $diffPath",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            when {
+                                diffLoading -> CircularProgressIndicator(Modifier.size(24.dp))
+                                diffBinary -> Text(
+                                    "Binary file",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                else -> LazyColumn(
+                                    Modifier
+                                        .weight(1f)
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                        .padding(6.dp)
+                                ) {
+                                    items(diffLines.size) { i ->
+                                        val line = diffLines[i]
+                                        val color = when (line.type) {
+                                            "ADDED" -> Color(0xFF1B7F3A)
+                                            "REMOVED" -> Color(0xFFC62828)
+                                            "HEADER" -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.onSurface
+                                        }
+                                        Text(
+                                            line.text,
+                                            color = color,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
     }
 
     confirmCherry?.let { c ->

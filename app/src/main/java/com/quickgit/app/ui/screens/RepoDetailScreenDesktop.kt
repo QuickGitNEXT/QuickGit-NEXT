@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -158,6 +160,12 @@ fun RepoDetailScreenDesktop(
     )
     var localTabIndex by remember { mutableStateOf(0) }
     var showHistory by remember { mutableStateOf(false) }
+    var historyDiff by remember { mutableStateOf<Pair<String, String>?>(null) } // path to commitId
+    var historyDiffText by remember { mutableStateOf<List<com.quickgit.app.data.models.DiffLine>>(emptyList()) }
+    var historyDiffBinary by remember { mutableStateOf(false) }
+    var historyDiffLoading by remember { mutableStateOf(false) }
+    val historyScope = rememberCoroutineScope()
+    val appCtx = LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val hardwareChromebook = LocalContext.current.isChromebookDevice()
     val appPrefs = (LocalContext.current.applicationContext as com.quickgit.app.QuickGitApp).appPreferences
@@ -229,8 +237,55 @@ fun RepoDetailScreenDesktop(
             HistoryScreen(
                 repoPath = repoPath,
                 vm = historyVm,
-                onBack = { showHistory = false }
+                onBack = { showHistory = false },
+                onOpenCommitDiff = { filePath, commitId ->
+                    historyDiff = filePath to commitId
+                    historyScope.launch {
+                        historyDiffLoading = true
+                        val fd = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            runCatching { appCtx.repoManager.getCommitDiff(repoPath, commitId, filePath) }.getOrNull()
+                        }
+                        historyDiffText = fd?.lines.orEmpty()
+                        historyDiffBinary = fd?.isBinary == true
+                        historyDiffLoading = false
+                    }
+                }
             )
+            if (historyDiff != null) {
+                AlertDialog(
+                    onDismissRequest = { historyDiff = null },
+                    title = { Text("Diff · ${historyDiff!!.first}") },
+                    text = {
+                        when {
+                            historyDiffLoading -> CircularProgressIndicator()
+                            historyDiffBinary -> Text("Binary file")
+                            else -> androidx.compose.foundation.lazy.LazyColumn(
+                                Modifier.heightIn(max = 420.dp)
+                            ) {
+                                items(historyDiffText.size) { i ->
+                                    val line = historyDiffText[i]
+                                    val color = when (line.type) {
+                                        com.quickgit.app.data.models.DiffLineType.ADDED -> Color(0xFF1B7F3A)
+                                        com.quickgit.app.data.models.DiffLineType.REMOVED -> Color(0xFFC62828)
+                                        com.quickgit.app.data.models.DiffLineType.HEADER -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                    Text(
+                                        line.text,
+                                        color = color,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        maxLines = 3
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { historyDiff = null }) { Text("Close") }
+                    }
+                )
+            }
             return@Box
         }
 
