@@ -1380,8 +1380,11 @@ fun RepoDetailScreen(
             contentColor = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.fillMaxWidth()
         ) {
+            // History (index 8) is header-only and is not in [tabs]; coerce so TabRow never
+            // receives an out-of-bounds selectedTabIndex (crash / exit on desktop).
+            val tabRowSelected = if (tabIndex in tabs.indices) tabIndex else -1
             ScrollableTabRow(
-                selectedTabIndex = tabIndex,
+                selectedTabIndex = tabRowSelected.coerceIn(0, (tabs.size - 1).coerceAtLeast(0)),
                 edgePadding = 8.dp,
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary,
